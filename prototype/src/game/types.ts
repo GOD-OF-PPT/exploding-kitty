@@ -170,12 +170,12 @@ export type LegalAction = {
 };
 
 export type PendingView =
-  | { kind: "RESPONSE"; windowId: string; actorId: string; cardTypes: CardType[]; nopeCount: number; deadline: number }
-  | { kind: "FAVOR_CHOICE"; promptId: string; requesterId: string; targetId: string; deadline: number }
-  | { kind: "PRIVATE_PEEK"; promptId: string; playerId: string; cards: Card[]; deadline: number }
-  | { kind: "EXPLOSION"; promptId: string; playerId: string; deadline: number }
-  | { kind: "DEFUSE_INSERTION"; promptId?: string; playerId: string; deadline: number }
-  | { kind: "WAITING_PRIVATE_CHOICE"; playerId: string; deadline: number };
+  | { kind: "RESPONSE"; windowId: string; actorId: string; cardTypes: CardType[]; nopeCount: number; deadlineId: string; deadline: number; viewerPassed: boolean; canPass: boolean }
+  | { kind: "FAVOR_CHOICE"; promptId: string; requesterId: string; targetId: string; deadlineId: string; deadline: number }
+  | { kind: "PRIVATE_PEEK"; promptId: string; playerId: string; cards: Card[]; deadlineId: string; deadline: number }
+  | { kind: "EXPLOSION"; promptId: string; playerId: string; deadlineId: string; deadline: number }
+  | { kind: "DEFUSE_INSERTION"; promptId?: string; playerId: string; deadlineId: string; deadline: number }
+  | { kind: "WAITING_PRIVATE_CHOICE"; playerId: string; deadlineId: string; deadline: number; requesterId?: string };
 
 export type PlayerView = {
   rulesetVersion: typeof RULESET_VERSION;

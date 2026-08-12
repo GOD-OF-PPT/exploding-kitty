@@ -1,93 +1,90 @@
-# Design QA — 爆裂漫画工坊全流程原型
+# Design QA — Live 全页面轮流审查
 
 - source visual truth path: `C:\Users\KSG\.codex\generated_images\019ff580-3299-76f0-ba20-9da1dde934f8\exec-7b947574-a240-45ef-8e4d-55dce6bef3e0.png`
-- implementation screenshot paths:
-  - `E:\githome\exploding-kitty\prototype\qa\screens\game-390x844.png`
-  - `E:\githome\exploding-kitty\prototype\qa\screens\response-390x844.png`
-  - `E:\githome\exploding-kitty\prototype\qa\screens\explosion-390x844.png`
-  - `E:\githome\exploding-kitty\prototype\qa\screens\result-390x844.png`
-- latest live implementation evidence: in-app browser capture on 2026-08-12 at 390 × 844, covering Login → Home → Create Room → Lobby → Add Bot → Start Match → Draw → Play Cards → Nope Pass. The browser console contained no warnings or errors.
-- comparison boards:
-  - `E:\githome\exploding-kitty\prototype\qa\comparison-game.png`
-  - `E:\githome\exploding-kitty\prototype\qa\comparison-game-focused.png`
-- viewport: 390 × 844 CSS px, DPR 1
-- state: `#game` default turn; additional checks on `#response`, `#explosion`, and `#result`
-- runtime entry: complete game at `/`; the hash gallery remains available only at `#gallery` for visual regression evidence.
-
-## Full-view comparison evidence
-
-The source and implementation were normalized to the same 390 × 844 content frame and placed together in `qa/comparison-game.png`. Both share the defining composition: three opponent portraits with public hand counts, an oversized red turn banner, two central piles, a sulfur-yellow primary draw burst, and a fanned hand filling the lower red region. The implementation intentionally uses original generated cats, card faces, danger art, and card back rather than any official assets.
-
-## Focused region comparison evidence
-
-`qa/comparison-game-focused.png` compares the turn/pile/action region at readable scale. Hierarchy, black outline weight, cream card edges, stacked pile shadow, asymmetry, and the red/yellow/cream/charcoal palette match the selected direction. The implementation uses a dedicated original card back so the draw pile no longer reveals its top card.
-
-## Required fidelity surfaces
-
-- Fonts and typography: ZCOOL KuaiLe supplies the irregular display voice; Noto Sans SC provides readable body/UI copy. Display titles use heavy optical weight, tight line height and black offset shadows; small labels remain legible without truncation at 390 px. Browser-rendered Chinese glyphs loaded successfully.
-- Spacing and layout rhythm: the mobile surface is exactly 390 × 844 on all 25 routes. Full-screen routes have no document overflow; intentionally long `rules` and `history` views scroll inside the phone. Every primary CTA remains in frame. Safe-area offsets were added to bottom actions.
-- Colors and visual tokens: implementation tokens preserve hot vermilion (`#f23b20`), sulfur yellow (`#ffc928`), warm cream (`#fff1c7`), charcoal (`#171512`), and limited cyan (`#16bfd2`). Contrast is strongest on primary actions and critical states.
-- Image quality and asset fidelity: all visible illustrations are raster assets, not CSS/SVG substitutes. Original card back and danger-card art are 700 × 1000 PNGs. All route images loaded with non-zero natural dimensions. Existing sprite-derived cards/cats are clean at their displayed crops; no official logo, character, or card face is used.
-- Copy and content: the standalone product uses coherent Chinese labels for turn, piles, response, private choices, recovery, and results. Privacy copy is explicit on future-view, gift, and defuse states. Defuse is disabled as a normal playable card and its detail says it cannot be actively played or Nope'd.
-
-## Interaction, responsive, and console checks
-
-- 25/25 hash routes render and deep-link directly; browser `hashchange` keeps navigation synchronized.
-- Core path tested: 首页 → 开一局 → 创建房间 → 房主房间 → 开始游戏.
-- Game branches tested: 透视 → 预见未来 → 返回牌桌; 抽牌 → 爆炸揭示 → 拆弹 → 返回牌桌.
-- Secondary paths tested: 6 位房间码 → 成员房间; 帮忙目标 → 被请求者赠牌; Attack debt `3× → 2× → 1× → other-turn`.
-- Other-turn and response backgrounds expose disabled pile/hand controls; draw pile uses hidden card back.
-- All 25 screens: `phone scrollWidth === 390`, `phone scrollHeight === 844`, images loaded, no clipped primary CTA.
-- Desktop: left gallery exposes all 25 boards; mobile breakpoint hides the gallery and preserves the fixed phone surface.
-- Keyboard focus: high-contrast `:focus-visible` ring present; game utility icons have accessible names; disabled controls are semantic buttons.
-- Browser console: no errors or warnings after final key-route pass.
-- Build: `npm run build` passed after the final source and asset changes.
+- source screen gallery: `E:\githome\exploding-kitty\prototype\src\App.jsx`
+- viewport: 390 × 844 CSS px
+- browser-rendered implementation evidence: `E:\githome\exploding-kitty\prototype\audit\current\after\implementation-*-390x844-final.png`（25 个实现状态；浏览器内确认 `innerWidth=390`、`innerHeight=844` 后直接截图）
+- full-view comparison evidence: `E:\githome\exploding-kitty\prototype\audit\current\comparisons\final-*.jpg`（25 组真实 390 × 844 同状态对比）
+- focused comparison evidence: `E:\githome\exploding-kitty\prototype\audit\current\comparisons\final-response.jpg`、`final-favor.jpg`、`final-defuse.jpg`、`final-explosion.jpg`、`final-other-turn.jpg`、`final-result.jpg`
+- state set: 登录、首页、开局方式、建房/加房、房主/成员房间、我的/他人回合、Attack 欠回合、Favor 目标、否决、赠牌、拆弹、预见、爆炸、淘汰、结算、教程、规则、卡牌详情、记录、菜单、网络、设置
 
 ## Findings
 
-No actionable P0, P1, or P2 mismatch remains for the selected art-direction target and prototype scope.
+当前轮次没有仍待处理的 P0、P1 或 P2。
 
-- [P3] Several source-derived card/cat cutouts retain very small neighboring-edge fragments at native resolution. Current fixed crops and dark outlines hide these at delivery size; individually regenerating every character and card would improve production asset hygiene.
-- [P3] Font packages emit a large number of CJK subsets in the prototype bundle. This does not affect design fidelity, but a production mini-game should subset fonts and transcode large backgrounds to WebP/AVIF.
+- [P3] 他人回合中央灰色状态字在暗背景下可进一步提高对比度；当前仍清晰可读。
+- [P3] 设置资料区未提供设计演示稿中的昵称“编辑”入口；当前产品范围不含昵称编辑。
+- [P3] Favor 使用通用目标选择说明，措辞与专用设计演示稿略有差异，不影响理解和操作。
+- [P3] 真实小程序画面不保留设计画廊的手机设备圆角外框；页面内容相较画廊预览略紧凑，CTA 与安全区完整。
+- [P3] 否决与五种猫咪牌仍复用通用正面资源；牌型文字可辨，后续可补齐六套独立原创卡面。
+- [P3] CJK 字体包较大，生产小程序应做字体子集与图片压缩；不影响本轮视觉一致性。
+
+## Required fidelity surfaces
+
+- Fonts and typography: ZCOOL KuaiLe 保留漫画标题，Noto Sans SC 承担正文；修复了深色标题压黑底的问题。标题字号、重量、行高、换行及按钮文字在 390 px 下均清晰。
+- Spacing and layout rhythm: 应用壳固定 390 × 844；开局方式、专用私密页、淘汰和结算恢复完整页面结构。5 人房间及 4 对手牌桌使用紧凑布局，底部主操作保持可见。
+- Colors and visual tokens: 保留朱红、硫磺黄、暖奶油、炭黑与少量青色；浅色卡片显式使用深色前景，关键 CTA 与状态色语义一致。
+- Image quality and asset fidelity: 所有角色、卡面、背景继续使用仓库内原创 raster 资产和 Phosphor 图标，没有用 emoji、CSS 图形或占位框替代设计稿可见资产。
+- Copy and content: 房间码改为 `582 913`；内部版本与秒数改为“基础版 2025 · 轻松计时”；恢复教程、回合流程、卡牌详情、设置入口、淘汰与网络同步文案。
 
 ## Comparison history
 
 ### Iteration 1 — blocked
 
-- P1: direct `#game` and other hash links showed Home. Fixed by using lazy hash initialization, adding `hashchange` synchronization, and validating all 25 deep links.
-- P1: draw pile exposed an action-card face. Fixed with a generated original `card-back.png`; post-fix evidence is visible in both comparison boards.
-- P1: drawing routed to the Nope response window and joining a code routed to the host lobby. Fixed to route draw → explosion and join → member lobby; browser interaction checks confirmed both.
-- P1: Defuse appeared normally playable and Attack debt did not decrement. Fixed by disabling Defuse during normal hand selection and adding the 3 → 2 → 1 → next-player demonstration flow.
-- P2: login screen reported internal horizontal overflow. Fixed by constraining the cast container to the screen width; repeated 25-screen metrics showed 390 px.
-- P2: several utility and bottom actions had undersized touch areas/no safe-area allowance. Fixed by enlarging icon buttons, adding semantic labels/focus rings, increasing link hit areas, and applying safe-area bottom offsets.
+- P1：Live 全局深色文字造成标题不可读。修复为暖奶油全局前景，浅色表面单独使用深色。
+- P1：首页缺开局方式，教学直接进牌桌。补 `PlayModeView` 与三步 `TutorialView`。
+- P1：JoinRoom 将加入者设为房主。修复本地房主投影并增加回归测试，成员房间态可达。
+- P1：房间头像过小、名字重复、5 人溢出。恢复大头像、单一名字与紧凑 5 人布局。
+- P1：Favor、否决、赠牌、拆弹、预见和爆炸使用通用底窗。改为设计稿对应的专用全屏流程。
+- P1：淘汰页、卡牌详情、回合流程缺失。补齐全部页面与场景分流。
+- P0：淘汰玩家仍可能获得合法动作；赢家 fallback 可能排序错误；重连 sequence 读错。修复 normalizer、场景分流、排序与 `lastAckSeq`。
+- P1：私密提示会投放给非目标玩家。投影层现在只给目标可操作 prompt，其他玩家收到等待态；增加爆炸隐私回归断言。
+- P2：否决已 Pass 后按钮仍可用、手牌读屏 click 不可靠、4 对手布局挤压。补 viewerPassed/canPass、标准 onClick 与四列紧凑布局。
+- P0：独立回归审阅发现目标选择条件 return 位于 Hook 之前，选 Favor/组合会触发 React Hook 数量变化。已将 `useDeadline` 移到条件 return 之前并重新构建。
+- P1：成员加入后曾由成员客户端在全员准备后自动开局。现已恢复房主权限：成员准备只更新状态，只有房主明确开始才能进入对局，且成员伪造开局会被拒绝。
+- P1：教程启动成功与房间创建成功时 overlay/history 可能残留。场景切换现在同时清空 overlay 栈。
 
-### Iteration 2 — passed
+### Iteration 2 — blocked by evidence quality
 
-- Rebuilt and recaptured `#game`, `#response`, `#explosion`, and `#result` at 390 × 844.
-- Recreated full-view and focused side-by-side comparisons after fixes.
-- Re-ran 25-route layout/image/CTA checks, core interaction paths, disabled states, console scan, and production build.
-- No actionable P0/P1/P2 issue remained.
+- 使用应用内浏览器重走登录 → 首页 → 开局方式 → 创建/加入房间，以及教程、规则、卡牌详情、牌桌与结算。
+- 增加仅在开发模式可达的静态审查夹具 `#audit/*`，让真实 Live 组件可以稳定呈现瞬时私密/异常状态；生产构建不会进入该分支。
+- 首轮截图由桌面视口裁切/缩放，且存在非同状态比较，不能作为最终通过证据。
+- 独立审阅标记否决背景、规则四 Tab、他人回合状态、结算遮挡、爆炸 CTA 与夹具动作格式等问题。
 
-### Iteration 3 — live implementation integration passed
+### Iteration 3 — passed
 
-- Replaced hash-driven demo state as the default product entry with the real `GameSession` and deterministic rule kernel; retained `#gallery` only for design QA.
-- Ran the live product at 390 × 844 through login, room creation, Bot seating, match start, safe draw, Bot turn, action-card selection, response window and Pass resolution.
-- Fixed the create/join overlay transition, wrapped-session projection, card identity mapping, turn deadlines, private peek acknowledgement, card-fan indexing and mobile hand spacing.
-- Compared the live capture against the existing source/implementation boards: the defining composition, hierarchy, palette, type, asset quality and 390 × 844 frame remain unchanged. No new P0/P1/P2 visual drift was introduced.
-- Browser console remained empty for warnings/errors; `npm test`, strict typecheck and production build passed.
+- Chrome 通过设备指标覆盖并 reload，每页现场确认 `innerWidth=390`、`innerHeight=844`；24 张实现证据均为直接 390 × 844 截图，页面 `scrollWidth=390`。
+- 审查夹具与设计稿对齐大厅人数/准备态、牌桌 6 张手牌/弃牌、Favor 已选目标等瞬时状态，再生成 `final-*.jpg` 同状态比较板。
+- 修复生产 CSS 顺序下规则四 Tab 换行、爆炸唯一 ComicButton 被 `:last-child` 弱化、他人回合主状态层级，以及结算页 844 高度布局。
+- 三名独立审阅者按页面分组轮流打开比较板复审；大厅空座夹具也改为与设计稿一致的“邀请好友”分支，最终结论均为无 P0/P1/P2，仅保留上述 P3。
+- 浏览器控制台无 warning/error；所有主 CTA 均在 390 × 844 画面内，未见横向溢出、原生滚动条泄漏或排名遮挡。
+- 浏览器控制台只出现 Vite/React 开发信息，无 warning/error。
+- 主交互、返回栈、滚动页、底部 CTA 与输入/按钮可用性已复核。
+- `npm test`：30/30；`npm run typecheck`：通过；`npm run build`：通过。
+
+### Iteration 4 — passed
+
+- 补拍卡牌详情的真实 390 × 844 浏览器证据，并以相同“攻击牌”状态生成 `final-card-detail.jpg`；最终证据集为 25 个页面/状态。
+- 复审发现局内顶栏菜单入口不可达；现保留规则与行动记录，同时恢复对局菜单，设置、网络状态、认输均可从真实牌桌进入。
+- legacy gallery 与审查夹具均限定为开发环境动态加载，生产环境任意 hash 都进入真实 Live 应用。
+- Local adapter 移除成员全员准备后的自动开局；仅房主可明确开始，首回合归房主，并加入成员越权与房主正向回归测试。
+- 修复后重新捕获牌桌、对局菜单与卡牌详情，生成同状态比较板；无新增 P0/P1/P2。
+- 最终规范复审继续覆盖默认加入房间、计时器竞态与对局内教学复习路径；对应回归修复和测试见本轮最终验证。
+- 最终规范复审修复三条真实路径：默认加入房间由 Bot 模拟房主在全员就绪后以房主身份开局；过期/提前计时器分别被安全拒绝；对局内重看教学只复习并返回、不替换当前对局。
+- `npm test`：48/48；`npm run typecheck`：通过；`npm run build`：通过；`git diff --check`：通过。
 
 ## Implementation checklist
 
-- [x] 25-screen gallery and direct hash navigation
-- [x] 390 × 844 mobile frame with desktop board index
-- [x] Key turn, private-choice, response, danger, recovery, result, and network states
-- [x] Original scheme-1 raster assets and icon-library UI controls
-- [x] Main clickable flow and representative rule branches
-- [x] Responsive, accessibility, image-load, console, and build validation
+- [x] 启动、首页、开局方式、建房/加房、房主/成员房间
+- [x] 牌桌、Attack 债务、Favor 目标、否决、赠牌、拆弹、预见、爆炸
+- [x] 淘汰、结算、三步教程、规则/详情、记录、菜单、网络、设置
+- [x] 私密投影、身份、赢家排序、淘汰 legal actions 与重连 sequence
+- [x] 390 × 844 浏览器复截图、同画面对比、控制台检查
+- [x] 测试、类型检查、生产构建
 
 ## Follow-up polish
 
-- Regenerate each cat and card as a fully independent production asset before shipping.
-- Subset fonts and transcode heavy PNG backgrounds for a real mini-game package budget.
+- 为否决与五种猫咪牌制作独立原创卡面。
+- 上线小程序前做字体子集、WebP/AVIF 转码与包体预算检查。
 
 final result: passed

@@ -1,14 +1,21 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App.jsx";
 import { createPlayableSession } from "./app/createPlayableApp.js";
+import { resolveBootstrapRoute } from "./bootstrapRoute.js";
 import { LiveGameApp } from "./live/LiveGameApp.jsx";
 import "./styles.css";
 
 const root = createRoot(document.getElementById("root"));
 
 async function bootstrap() {
-  if (window.location.hash === "#gallery" || window.location.hash.startsWith("#gallery/")) {
+  const route = resolveBootstrapRoute(window.location.hash, import.meta.env.DEV);
+  if (import.meta.env.DEV && route.surface === "audit") {
+    const { renderAuditFixture } = await import("./live/auditFixture.jsx");
+    root.render(renderAuditFixture(route.route));
+    return;
+  }
+  if (import.meta.env.DEV && route.surface === "gallery") {
+    const { App } = await import("./App.jsx");
     root.render(<App />);
     return;
   }

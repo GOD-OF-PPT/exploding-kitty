@@ -256,7 +256,7 @@ body { margin: 0; min-width: 320px; min-height: 100vh; -webkit-font-smoothing: a
 .explosion-word { color: var(--yellow); font-family: "ZCOOL KuaiLe"; font-size: 79px; line-height: 1; padding-top: 35px; transform: rotate(-5deg); text-shadow: 7px 7px 0 #000; }
 .explosion-card { width: 210px; height: 345px; margin: 13px auto 12px; border: 6px solid var(--cream); border-radius: 12px; overflow: hidden; transform: rotate(3deg); box-shadow: 10px 11px 0 #000; }.explosion-card img { width: 100%; height: 100%; object-fit: cover; }
 .explosion-copy span { color: var(--cyan); font-size: 9px; font-weight: 800; letter-spacing: .15em; }.explosion-copy h1 { font-family: "ZCOOL KuaiLe"; font-size: 38px; margin: 2px 0; }.explosion-copy p { color: #d0bea6; font-size: 11px; margin: 0; }
-.explosion-actions { position: absolute; left: 23px; right: 23px; bottom: calc(26px + env(safe-area-inset-bottom)); display: grid; gap: 9px; }.explosion-actions > button:last-child { border: 0; color: var(--cream); background: transparent; text-decoration: underline; font-size: 11px; min-height: 44px; }
+.explosion-actions { position: absolute; left: 23px; right: 23px; bottom: calc(26px + env(safe-area-inset-bottom)); display: grid; gap: 9px; }.explosion-actions > button:last-child:not(.comic-button) { border: 0; color: var(--cream); background: transparent; text-decoration: underline; font-size: 11px; min-height: 44px; }
 
 .screen--eliminated { background: linear-gradient(#a31510b8, #12100ef4), url("/assets/comic-bg.png") center / cover; text-align: center; }
 .eliminated-copy { padding-top: 30px; }

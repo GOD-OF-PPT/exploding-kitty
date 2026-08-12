@@ -1,0 +1,5 @@
+current/after/*
+!current/after/implementation-*-390x844-final.png
+current/before/*
+current/comparisons/*
+!current/comparisons/final-*.jpg

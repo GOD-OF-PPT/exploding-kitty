@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-打开 `http://localhost:4173/` 即可游玩。默认入口是完整游戏；`http://localhost:4173/#gallery` 保留 25 屏设计 QA 画廊。
+打开 `http://localhost:4173/` 即可游玩。默认入口是完整游戏；开发服务器中的 `http://localhost:4173/#gallery` 保留 25 屏设计 QA 画廊，生产构建不会包含该画廊或审查夹具。
 
 ```powershell
 npm test

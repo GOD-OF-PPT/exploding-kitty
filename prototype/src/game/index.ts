@@ -492,9 +492,11 @@ function applyPlayerCommand(state: GameState, command: Exclude<Command, { type: 
 }
 
 function applyDeadline(state: GameState, command: Extract<Command, { type: "DeadlineElapsed" }>): void {
-  state.clock = Math.max(state.clock, command.now ?? state.clock);
+  const now = command.now ?? state.clock;
   const pending = state.pending;
   if (pending && pending.deadlineId === command.deadlineId) {
+    if (now < pending.deadline) fail("DEADLINE_NOT_ELAPSED");
+    state.clock = Math.max(state.clock, now);
     if (pending.kind === "RESPONSE") closeResponse(state, pending);
     else if (pending.kind === "FAVOR_CHOICE") {
       const target = state.players[pending.targetId];
@@ -523,6 +525,8 @@ function applyDeadline(state: GameState, command: Extract<Command, { type: "Dead
     return;
   }
   if (state.turn?.deadlineId === command.deadlineId && !state.pending) {
+    if (now < state.turn.deadline) fail("DEADLINE_NOT_ELAPSED");
+    state.clock = Math.max(state.clock, now);
     drawForCurrentTurn(state, state.turn.playerId);
     return;
   }
@@ -548,16 +552,25 @@ function projectPending(state: GameState, viewerId: string): PendingView | null 
     actorId: pending.action.actorId,
     cardTypes: pending.action.cardIds.map((id) => state.discard.find((card) => card.id === id)?.type ?? pending.action.cardType),
     nopeCount: pending.nopeCount,
+    deadlineId: pending.deadlineId,
     deadline: pending.deadline,
+    viewerPassed: pending.passedPlayerIds.includes(viewerId),
+    canPass: !pending.passedPlayerIds.includes(viewerId),
   };
-  if (pending.kind === "FAVOR_CHOICE") return { kind: "FAVOR_CHOICE", promptId: pending.promptId, requesterId: pending.requesterId, targetId: pending.targetId, deadline: pending.deadline };
-  if (pending.kind === "PRIVATE_PEEK") {
-    if (pending.playerId === viewerId) return { kind: "PRIVATE_PEEK", promptId: pending.promptId, playerId: pending.playerId, cards: [...pending.cards], deadline: pending.deadline };
-    return { kind: "WAITING_PRIVATE_CHOICE", playerId: pending.playerId, deadline: pending.deadline };
+  if (pending.kind === "FAVOR_CHOICE") {
+    if (pending.targetId === viewerId) return { kind: "FAVOR_CHOICE", promptId: pending.promptId, requesterId: pending.requesterId, targetId: pending.targetId, deadlineId: pending.deadlineId, deadline: pending.deadline };
+    return { kind: "WAITING_PRIVATE_CHOICE", playerId: pending.targetId, requesterId: pending.requesterId, deadlineId: pending.deadlineId, deadline: pending.deadline };
   }
-  if (pending.kind === "EXPLOSION") return { kind: "EXPLOSION", promptId: pending.promptId, playerId: pending.playerId, deadline: pending.deadline };
-  if (pending.playerId === viewerId) return { kind: "DEFUSE_INSERTION", promptId: pending.promptId, playerId: pending.playerId, deadline: pending.deadline };
-  return { kind: "WAITING_PRIVATE_CHOICE", playerId: pending.playerId, deadline: pending.deadline };
+  if (pending.kind === "PRIVATE_PEEK") {
+    if (pending.playerId === viewerId) return { kind: "PRIVATE_PEEK", promptId: pending.promptId, playerId: pending.playerId, cards: [...pending.cards], deadlineId: pending.deadlineId, deadline: pending.deadline };
+    return { kind: "WAITING_PRIVATE_CHOICE", playerId: pending.playerId, deadlineId: pending.deadlineId, deadline: pending.deadline };
+  }
+  if (pending.kind === "EXPLOSION") {
+    if (pending.playerId === viewerId) return { kind: "EXPLOSION", promptId: pending.promptId, playerId: pending.playerId, deadlineId: pending.deadlineId, deadline: pending.deadline };
+    return { kind: "WAITING_PRIVATE_CHOICE", playerId: pending.playerId, deadlineId: pending.deadlineId, deadline: pending.deadline };
+  }
+  if (pending.playerId === viewerId) return { kind: "DEFUSE_INSERTION", promptId: pending.promptId, playerId: pending.playerId, deadlineId: pending.deadlineId, deadline: pending.deadline };
+  return { kind: "WAITING_PRIVATE_CHOICE", playerId: pending.playerId, deadlineId: pending.deadlineId, deadline: pending.deadline };
 }
 
 export function projectView(state: GameState, viewerId: string): PlayerView {

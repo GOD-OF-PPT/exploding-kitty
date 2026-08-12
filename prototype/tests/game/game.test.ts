@@ -73,6 +73,8 @@ describe("original-2025@1 game kernel", () => {
     state.turn!.source = "ATTACK";
     state = applyCommand(state, { type: "Draw", commandId: "boom", actorId: "alice", turnId: state.turn!.id });
     expect(state.pending?.kind).toBe("EXPLOSION");
+    expect(projectView(state, "bob").pending).toMatchObject({ kind: "WAITING_PRIVATE_CHOICE", playerId: "alice" });
+    expect(projectView(state, "bob").pending?.deadlineId).toBe(state.pending?.deadlineId);
     const defuse = state.players.alice.hand.find((c) => c.type === "DEFUSE")!;
     state = applyCommand(state, { type: "UseDefuse", commandId: "defuse", actorId: "alice", promptId: (state.pending as any).promptId, cardId: defuse.id });
     const insertionPrompt = (state.pending as any).promptId;
@@ -144,5 +146,37 @@ describe("original-2025@1 game kernel", () => {
     expect(state).toMatchObject({ status: "FINISHED", winnerId: "human", turn: null, pending: null });
     expect(state.events.filter((event) => event.type === "GAME_FINISHED")).toHaveLength(1);
     expect(totalCards(state)).toBe(56);
+  });
+
+  it("rejects a matching deadline before its due time without changing the match", () => {
+    const state = createMatch({
+      playerIds: ["alice", "bob"],
+      seed: 12,
+      firstPlayerId: "alice",
+      now: 1_000,
+      turnDurationMs: 45_000,
+    });
+
+    expect(() => applyCommand(state, {
+      type: "DeadlineElapsed",
+      commandId: "too-early",
+      deadlineId: state.turn!.deadlineId,
+      now: state.turn!.deadline - 1,
+    })).toThrowError("DEADLINE_NOT_ELAPSED");
+    expect(state.turn).toMatchObject({ playerId: "alice", deadline: 46_000 });
+    expect(state.commandResults).not.toHaveProperty("too-early");
+  });
+
+  it("rejects a stale deadline id without changing the current deadline", () => {
+    const state = createMatch({ playerIds: ["alice", "bob"], firstPlayerId: "alice", now: 1_000 });
+
+    expect(() => applyCommand(state, {
+      type: "DeadlineElapsed",
+      commandId: "stale-timer",
+      deadlineId: "deadline-stale",
+      now: state.turn!.deadline,
+    })).toThrowError("STALE_DEADLINE");
+    expect(state.turn).toMatchObject({ playerId: "alice", deadlineId: "deadline-turn-1" });
+    expect(state.commandResults).not.toHaveProperty("stale-timer");
   });
 });

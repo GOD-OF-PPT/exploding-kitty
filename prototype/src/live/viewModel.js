@@ -1,13 +1,13 @@
 export const BASE_CARDS = [
-  { type: "EXPLODING_KITTEN", name: "危险猫", count: 4, image: "/assets/cards/danger.png", nopeable: false },
-  { type: "DEFUSE", name: "拆弹", count: 6, image: "/assets/cards/defuse.png", nopeable: false },
-  { type: "NOPE", name: "否决", count: 5, image: "/assets/cards/card-back.png", nopeable: true },
-  { type: "ATTACK", name: "攻击", count: 4, image: "/assets/cards/attack.png", nopeable: true },
-  { type: "FAVOR", name: "帮忙", count: 4, image: "/assets/cards/reverse.png", nopeable: true },
-  { type: "SHUFFLE", name: "洗牌", count: 4, image: "/assets/cards/shuffle.png", nopeable: true },
-  { type: "SKIP", name: "跳过", count: 4, image: "/assets/cards/skip.png", nopeable: true },
-  { type: "SEE_THE_FUTURE", name: "预见未来", count: 5, image: "/assets/cards/peek.png", nopeable: true },
-  { type: "CAT_CARD", name: "猫咪牌", count: 20, image: "/assets/cards/card-back.png", nopeable: true },
+  { type: "EXPLODING_KITTEN", name: "危险猫", count: 4, image: "/assets/cards/danger.png", nopeable: false, endsTurn: true, category: "危险牌", copy: "抽到立即揭示；拆弹或淘汰", details: "抽到后必须立刻处理。若有拆弹，就消耗拆弹并秘密放回；否则当场淘汰。" },
+  { type: "DEFUSE", name: "拆弹", count: 6, image: "/assets/cards/defuse.png", nopeable: false, endsTurn: false, category: "救援牌", copy: "化解危险猫并秘密放回", details: "只能在抽到危险猫时使用，不能在普通回合主动打出，也不进入否决窗口。" },
+  { type: "NOPE", name: "否决", count: 5, image: "/assets/cards/card-back.png", nopeable: true, endsTurn: false, category: "响应牌", copy: "取消上一张可否决的动作牌", details: "所有存活玩家都能在响应窗口打出；奇数张否决取消动作，偶数张让动作重新生效。" },
+  { type: "ATTACK", name: "攻击", count: 4, image: "/assets/cards/attack.png", nopeable: true, endsTurn: true, category: "动作牌", copy: "结束你的回合，让下家承担 2 回合", details: "攻击可以叠加并转移欠回合数；跳过只会减少其中 1 个回合。" },
+  { type: "FAVOR", name: "帮忙", count: 4, image: "/assets/cards/reverse.png", nopeable: true, endsTurn: false, category: "动作牌", copy: "指定玩家交给你 1 张手牌", details: "你选择目标，对方秘密选择交出的牌；目标必须仍有手牌。" },
+  { type: "SHUFFLE", name: "洗牌", count: 4, image: "/assets/cards/shuffle.png", nopeable: true, endsTurn: false, category: "动作牌", copy: "立即打乱抽牌堆", details: "结算后无人知道牌堆顺序；你仍需继续当前回合。" },
+  { type: "SKIP", name: "跳过", count: 4, image: "/assets/cards/skip.png", nopeable: true, endsTurn: true, category: "动作牌", copy: "不抽牌，结束 1 个欠回合", details: "普通状态下直接结束回合；被攻击时只减少 1 个欠回合。" },
+  { type: "SEE_THE_FUTURE", name: "预见未来", count: 5, image: "/assets/cards/peek.png", nopeable: true, endsTurn: false, category: "动作牌", copy: "秘密查看牌堆顶至多 3 张", details: "牌堆不足 3 张时查看剩余全部；只查看，不改变顺序。" },
+  { type: "CAT_CARD", name: "猫咪牌", count: 20, image: "/assets/cards/card-back.png", nopeable: true, endsTurn: false, category: "组合牌", copy: "5 种花色各 4 张；单张无效果", details: "两张同名可随机偷牌，三张同名可点名索要一种牌；组合必须是同一种猫咪牌。" },
 ];
 
 export const CARD_TYPE_OPTIONS = [
@@ -134,7 +134,7 @@ export function normalizePending(pending) {
   else if (/(EXPLOS)/.test(rawKind)) kind = "EXPLOSION";
   else if (/(DEFUSE|INSERT)/.test(rawKind)) kind = "DEFUSE_INSERTION";
   else if (/(FUTURE|PEEK)/.test(rawKind)) kind = "PRIVATE_PEEK";
-  else if (/(FAVOR|GIVE).*?(CARD|CHOICE)|CHOOSE_CARD|CARD_GIVE/.test(rawKind)) kind = "GIVE_CARD";
+  else if (/(FAVOR|GIVE).*?(CARD|CHOICE)|CHOOSE_CARD|CARD_GIVE/.test(rawKind) || rawKind === "FAVOR_CHOICE") kind = "GIVE_CARD";
   return {
     ...value,
     kind,
@@ -180,12 +180,29 @@ export function normalizeSnapshot(snapshot = {}) {
   const result = first(source.result, game.result, snapshot.result);
   const eliminated = Boolean(first(source.eliminated, me.eliminated, me.alive === false, false));
   const visibleTurn = first(game.turn, source.turn);
-  if (!legalActions.length && visibleTurn?.playerId === meId && !pending && rawStatus !== "FINISHED") {
+  if (!eliminated && !legalActions.length && visibleTurn?.playerId === meId && !pending && rawStatus !== "FINISHED") {
     legalActions = [{ type: "DRAW" }, { type: "PLAY_CARDS" }];
   }
-  if (!legalActions.some((action) => action.type === "PLAY_CARDS") && visibleTurn?.playerId === meId && !pending && rawStatus !== "FINISHED") {
+  if (!eliminated && !legalActions.some((action) => action.type === "PLAY_CARDS") && visibleTurn?.playerId === meId && !pending && rawStatus !== "FINISHED") {
     legalActions.push({ type: "PLAY_CARDS" });
   }
+  if (eliminated) legalActions = [];
+
+  const winnerId = first(result?.winnerId, source.winnerId, game.winnerId);
+  const rawRankings = list(first(result?.rankings, result?.players));
+  const rankings = rawRankings.length
+    ? rawRankings.map((ranking, index) => {
+        const playerId = String(first(ranking.id, ranking.playerId, ""));
+        const player = players.find((item) => item.id === playerId) || {};
+        return { ...player, ...ranking, id: playerId || player.id || `rank-${index}`, winner: Boolean(first(ranking.winner, playerId === winnerId, false)) };
+      })
+    : winnerId
+      ? players.map((player) => ({ ...player, winner: player.id === winnerId }))
+      : [];
+  const orderedRankings = rankings
+    .slice()
+    .sort((a, b) => Number(Boolean(b.winner)) - Number(Boolean(a.winner)) || Number(a.rank ?? Number.MAX_SAFE_INTEGER) - Number(b.rank ?? Number.MAX_SAFE_INTEGER))
+    .map((player, index) => ({ ...player, rank: Number(player.rank) || index + 1 }));
 
   return {
     raw: snapshot,
@@ -224,21 +241,27 @@ export function normalizeSnapshot(snapshot = {}) {
     connection: snapshot.connectivity === "local"
       ? { state: "CONNECTED", latency: 0 }
       : normalizeConnection({ ...source, connection: first(source.connection, snapshot.connectivity) }),
-    result: result || (first(source.winnerId, game.winnerId) ? {
-      summary: "最后一名存活玩家获胜",
-      rankings: players.map((player) => ({ ...player, winner: player.id === first(source.winnerId, game.winnerId), rank: player.id === first(source.winnerId, game.winnerId) ? 1 : undefined })),
-    } : undefined),
+    result: result || winnerId ? {
+      ...(result || {}),
+      summary: first(result?.summary, "最后一名存活玩家获胜"),
+      winnerId,
+      rankings: orderedRankings,
+    } : undefined,
     eliminated,
+    elimination: first(source.elimination, source.you?.elimination, me.elimination, {}),
     settings: first(source.settings, snapshot.settings, { sound: true, vibration: true }),
     lastAckSeq: first(snapshot.lastSequence, source.lastAckSeq),
+    lifecycle: upper(first(snapshot.lifecycle, source.lifecycle, "ACTIVE")),
   };
 }
 
 export function deriveScene(view) {
   const connection = upper(view.connection?.state);
-  if (["DISCONNECTED", "OFFLINE", "RECONNECTING", "ERROR"].includes(connection)) return "network";
+  const lifecycle = upper(view.lifecycle);
+  if (["DISCONNECTED", "OFFLINE", "RECONNECTING", "CONNECTING", "RECOVERING", "FAILED", "ERROR"].includes(connection) || ["OPENING", "RECOVERING", "FAILED"].includes(lifecycle)) return "network";
   if (!view.authenticated) return "login";
   if (view.result || /(FINISHED|GAME_OVER|RESULT)/.test(view.status)) return "result";
+  if (view.eliminated) return "eliminated";
   if (view.game?.id || /(AWAITING_TURN|PLAYING|MATCH|GAME|RESPONSE|CHOICE|DEFUSE)/.test(view.status)) return "game";
   if (view.room?.id || /(ROOM|LOBBY|READY)/.test(view.status)) return "lobby";
   return "home";
@@ -287,4 +310,10 @@ export function eventCopy(event) {
     GAME_FINISHED: "对局结束",
   };
   return first(event.copy, event.message, copies[type], type.replaceAll("_", " "));
+}
+
+export function eventCopyForView(event, players = []) {
+  if (typeof event === "string") return event;
+  const player = players.find((item) => item.id === String(first(event?.playerId, event?.actorId, "")));
+  return eventCopy(player && !event?.actorName && !event?.playerName ? { ...event, actorName: player.name } : event);
 }

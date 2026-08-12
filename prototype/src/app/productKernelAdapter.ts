@@ -77,11 +77,14 @@ function gameProblem(error: unknown) {
   const message = error instanceof Error ? error.message : "UNKNOWN_GAME_ERROR";
   const labels: Record<string, string> = {
     NOT_YOUR_TURN: "还没轮到你",
+    NOT_ROOM_HOST: "只有房主可以开始游戏",
     STALE_TURN: "这个回合已经结束",
     STALE_WINDOW: "否决窗口已经关闭",
     STALE_PROMPT: "这个选择已经失效",
     CARD_NOT_OWNED: "这张牌不在你的手里",
     INVALID_TARGET: "请选择合法目标",
+    STALE_DEADLINE: "这个计时器已经失效",
+    DEADLINE_NOT_ELAPSED: "倒计时尚未结束",
   };
   return { code: message, message: labels[message] || `当前不能执行：${message}`, retryable: false };
 }
@@ -178,9 +181,28 @@ function advanceExpiredDeadlines(state: ProductState, now: number): void {
   }
 }
 
-function tickIntent(state: ProductState, commandId: string, now: number): Command | null {
-  const deadlineId = state.game?.pending?.deadlineId ?? state.game?.turn?.deadlineId;
-  return deadlineId ? { type: "DeadlineElapsed", commandId, deadlineId, now } : null;
+function startMatchAsHost(state: ProductState, hostId: string, now: number): void {
+  if (state.room.ownerId !== hostId) throw new Error("NOT_ROOM_HOST");
+  if (state.players.length < 2) {
+    const profile = BOT_PROFILES[0];
+    state.players.push({ id: "bot-1", ...profile, isBot: true, ready: true });
+  }
+  state.game = createMatch({
+    playerIds: state.players.map((player) => player.id),
+    seed: state.seed,
+    firstPlayerId: hostId,
+    now,
+    turnDurationMs: state.room.turnSeconds ? state.room.turnSeconds * 1000 : Number.MAX_SAFE_INTEGER,
+    responseWindowMs: state.room.responseSeconds * 1000,
+    choiceDurationMs: state.room.choiceSeconds * 1000,
+  });
+  state.phase = "MATCH";
+}
+
+function maybeStartJoinedLocalRoom(state: ProductState, now: number): void {
+  const simulatedHost = state.players.find((player) => player.id === state.room.ownerId && player.isBot);
+  if (!simulatedHost || state.players.length < 2 || !state.players.every((player) => player.ready)) return;
+  startMatchAsHost(state, simulatedHost.id, now);
 }
 
 function projectProduct(state: ProductState) {
@@ -274,10 +296,14 @@ export function createProductKernelAdapter(options: ProductKernelOptions): Local
             state.phase = "LOBBY";
             break;
           }
-          case "JoinRoom":
-            state.room = { ...state.room, id: String(intent.code), code: String(intent.code), ownerId: state.viewerId };
+          case "JoinRoom": {
+            const roomOwner = state.players.find((player) => player.id !== state.viewerId);
+            if (!roomOwner) throw new Error("ROOM_HOST_UNAVAILABLE");
+            state.room = { ...state.room, id: String(intent.code), code: String(intent.code), ownerId: roomOwner.id };
+            state.players = state.players.map((player) => ({ ...player, ready: player.id !== state.viewerId }));
             state.phase = "LOBBY";
             break;
+          }
           case "LeaveRoom": state.phase = "HOME"; state.game = null; break;
           case "AddBot": {
             if (!state.room.allowBots || state.players.length >= state.room.maxPlayers) throw new Error("ROOM_FULL");
@@ -289,6 +315,7 @@ export function createProductKernelAdapter(options: ProductKernelOptions): Local
           case "SetReady": {
             const viewer = state.players.find((player) => player.id === state.viewerId);
             if (viewer) viewer.ready = Boolean(intent.ready);
+            maybeStartJoinedLocalRoom(state, envelope.sentAt);
             break;
           }
           case "StartTutorial": {
@@ -301,20 +328,7 @@ export function createProductKernelAdapter(options: ProductKernelOptions): Local
             break;
           }
           case "StartMatch": {
-            if (state.players.length < 2) {
-              const profile = BOT_PROFILES[0];
-              state.players.push({ id: "bot-1", ...profile, isBot: true, ready: true });
-            }
-            state.game = createMatch({
-              playerIds: state.players.map((player) => player.id),
-              seed: state.seed,
-              firstPlayerId: state.viewerId,
-              now: envelope.sentAt,
-              turnDurationMs: state.room.turnSeconds ? state.room.turnSeconds * 1000 : Number.MAX_SAFE_INTEGER,
-              responseWindowMs: state.room.responseSeconds * 1000,
-              choiceDurationMs: state.room.choiceSeconds * 1000,
-            });
-            state.phase = "MATCH";
+            startMatchAsHost(state, state.viewerId, envelope.sentAt);
             break;
           }
           case "RestartMatch":
@@ -325,8 +339,13 @@ export function createProductKernelAdapter(options: ProductKernelOptions): Local
           case "Reconnect": break;
           case "DeadlineElapsed": {
             if (!state.game) break;
-            const command = tickIntent(state, envelope.commandId, envelope.sentAt);
-            if (command) state.game = applyCommand(state.game, command);
+            const deadlineId = String(intent.deadlineId || "");
+            state.game = applyCommand(state.game, {
+              type: "DeadlineElapsed",
+              commandId: envelope.commandId,
+              deadlineId,
+              now: envelope.sentAt,
+            });
             runBots(state);
             break;
           }
