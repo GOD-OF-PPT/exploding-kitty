@@ -1,10 +1,14 @@
 # Dependencies
 node_modules/
+**/.npm-cache/
+**/.npmrc
 
 # Build output
 dist/
 build/
 coverage/
+prototype/dist-live-check/
+prototype/qa/
 
 # Environment and secrets
 .env
