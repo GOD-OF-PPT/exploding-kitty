@@ -1,0 +1,30 @@
+{
+  "appid": "touristappid",
+  "compileType": "game",
+  "projectname": "exploding-kitty-minigame",
+  "miniprogramRoot": "release/",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "compileHotReLoad": true,
+    "postcss": false,
+    "minified": false,
+    "uglifyFileName": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": false,
+    "coverView": true,
+    "useIsolateContext": false,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "useApiHostProcess": true,
+    "useStaticServer": true,
+    "showShadowRootInWxmlPanel": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "minifyWXML": true
+  },
+  "condition": {}
+}

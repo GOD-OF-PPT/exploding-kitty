@@ -1,0 +1,12 @@
+export { buildApp, type AppDependencies } from "./app.js";
+export { AuthService, DisabledWechatProvider, WechatCode2SessionProvider, type WechatIdentityProvider } from "./auth/authService.js";
+export { DeadlineWorker } from "./deadline/deadlineWorker.js";
+export { createSafeLoggerOptions, type SafeLoggerOptions } from "./logging.js";
+export { MatchCoordinator } from "./match/matchCoordinator.js";
+export { RoomCoordinator } from "./room/roomCoordinator.js";
+export { MemoryGameStore } from "./persistence/memoryStore.js";
+export { PgGameStore } from "./persistence/pgStore.js";
+export { ConnectionHub } from "./transport/connectionHub.js";
+export { SessionGateway } from "./transport/sessionGateway.js";
+export type { GameStore, MatchTransaction } from "./persistence/store.js";
+export type { AuthContext, MatchSnapshot, RoomRecord } from "./model.js";

@@ -1,0 +1,30 @@
+{
+  "source": "assets",
+  "output": "release/assets",
+  "files": [
+    "cat-cast.png",
+    "cards/attack.png",
+    "cards/card-back.png",
+    "cards/danger.png",
+    "cards/defuse.png",
+    "cards/peek.png",
+    "cards/reverse.png",
+    "cards/shuffle.png",
+    "cards/skip.png",
+    "cats/a-ju.png",
+    "cats/player.png",
+    "cats/tuan-zi.png",
+    "cats/xiao-hui.png",
+    "sounds/action.wav",
+    "sounds/danger.wav",
+    "sounds/nope.wav",
+    "sounds/select.wav"
+  ],
+  "budgets": {
+    "developmentBytes": 15000000,
+    "releaseTargetBytes": 3800000,
+    "largestFileTargetBytes": 900000,
+    "mainPackageBytes": 4194304,
+    "minimumHeadroomRatio": 0.2
+  }
+}

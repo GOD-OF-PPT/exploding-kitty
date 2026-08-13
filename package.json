@@ -1,0 +1,25 @@
+{
+  "name": "exploding-kitty",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "prototype"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run && npm --workspace prototype test",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:minigame": "npm --workspace @exploding-kitty/minigame run dev",
+    "dev:server": "npm --workspace @exploding-kitty/game-server run dev",
+    "build:minigame": "npm --workspace @exploding-kitty/minigame run build",
+    "build:server": "npm --workspace @exploding-kitty/game-server run build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

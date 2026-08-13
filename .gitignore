@@ -9,6 +9,8 @@ build/
 coverage/
 prototype/dist-live-check/
 prototype/qa/
+apps/minigame/release/
+apps/minigame/.devtools/
 
 # Environment and secrets
 .env
@@ -21,10 +23,18 @@ prototype/qa/
 .DS_Store
 Thumbs.db
 
+# WeChat developer tool per-machine settings
+**/project.private.config.json
+
 # Logs and temporary files
 *.log
 tmp/
 temp/
+
+# Local runtime data
+*.sqlite
+*.sqlite-journal
+.runtime/
 
 # Cocos Creator generated files
 library/

@@ -2,22 +2,25 @@
 
 微信端回合制卡牌游戏方案与可运行参考实现仓库。
 
-仓库现已实现 `original-2025@1` 的本地完整切片：2–5 人、确定性 Bot、56 张基础牌、全部基础牌效、Nope 响应链、组合、拆弹私密插回、淘汰、结算、存档恢复与 25 个产品界面。规则内核、会话、持久化、传输和 React 表现层通过可替换 adapter 分离。
+仓库现已实现 `original-2025@1` 的微信小游戏与权威服务端功能切片：2–5 人、确定性 Bot、56 张基础牌、全部基础牌效、Nope 响应链、组合、拆弹私密插回、淘汰、结算、弱网恢复、三步规则说明、服务端权威教学局引导与 25 个产品场景。规则内核、会话、持久化、传输和表现层通过可替换 adapter 分离；`prototype/` 仅保留为设计与回归基准。微信工具、真机与生产环境仍须按验收矩阵联调，不能仅凭代码视为已发布。
 
 ## 文档
 
 - [规则基线与微信端实现方案](docs/EXPLODING_KITTENS_RULES_AND_IMPLEMENTATION.md)
 - [已实现范围与上线前配置](docs/IMPLEMENTED_SCOPE.md)
+- [正式架构](docs/ARCHITECTURE.md)
+- [验收矩阵](docs/ACCEPTANCE.md)
 
 ## 运行与验证
 
 ```powershell
-cd prototype
 npm install
-npm run dev
+npm run dev:server
+# 另开终端
+npm run dev:minigame
 ```
 
-打开 `http://localhost:4173/` 即可游玩。默认入口是完整游戏；开发服务器中的 `http://localhost:4173/#gallery` 保留 25 屏设计 QA 画廊，生产构建不会包含该画廊或审查夹具。
+小游戏正式构建需设置 `MINIGAME_API_BASE_URL`，再将 `apps/minigame` 导入微信开发者工具。`demo=1` 只对开发模式构建生效且必须显式提供；生产构建忽略调试 query，不会静默回退到 Demo、开发身份或 query 指定的服务器。
 
 ```powershell
 npm test
@@ -25,14 +28,18 @@ npm run typecheck
 npm run build
 ```
 
+生产服务当前限定为单实例：连接广播仍在进程内，加入跨实例通知总线前不可水平扩容。WSS 握手通过 `Authorization: Bearer <session>` Header 认证，长期会话凭证不进入 URL。生产还必须提供 PostgreSQL、至少 32 字符的随机 `AUTH_SECRET`、微信凭据和 HTTPS/WSS；内存存储与开发认证仅用于本地开发。客户端没有“断线 60 秒后由 Bot 托管”功能。
+
 ## 当前实现结构
 
 ```text
-prototype/src/game/       确定性规则内核与玩家投影
-prototype/src/session/    Local/Remote GameSession
-prototype/src/adapters/   浏览器存档与 WebSocket adapter
-prototype/src/app/        本地产品流程与内核组合根
-prototype/src/live/       方案 1 的完整可玩界面
+packages/game-core/         确定性规则内核与玩家投影
+packages/protocol/          严格版本化传输协议
+packages/session-client/    全量快照、outbox 与恢复
+packages/presentation-model/产品页面模型与动作构造
+apps/game-server/           权威 Node.js/WSS/PostgreSQL 服务
+apps/minigame/              微信原生小游戏客户端
+prototype/                  设计与视觉回归基准
 ```
 
 ## 重要说明

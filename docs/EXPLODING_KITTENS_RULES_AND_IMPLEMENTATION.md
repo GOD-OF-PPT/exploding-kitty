@@ -1,6 +1,6 @@
 # 《爆炸猫咪》规则基线与微信端实现方案
 
-> 文档状态：立项草案<br>
+> 文档状态：实施基线<br>
 > 规则基线：`original-2025@1`<br>
 > 调研日期：2026-08-12<br>
 > 目标载体：微信小游戏（正式产品）；普通微信小程序可作为低保真验证壳
@@ -9,14 +9,15 @@
 
 首版只实现官方 **Exploding Kittens: Original Edition 2025** 基础规则，2-5 人，56 张牌，不混入 Party Pack、2-Player Edition、旧版“五种不同牌”组合或任何扩展牌。
 
-正式产品建议采用：
+正式产品采用：
 
-- 微信小游戏 + Cocos Creator + TypeScript：2D 卡牌、动画、音效和资源管理；
-- Node.js + TypeScript 常驻长连接服务器：房间、权威规则、计时、重连；
-- 纯 TypeScript `game-core`：确定性状态机，不依赖 Cocos、微信或网络；
-- PostgreSQL（事件/快照）+ Redis（路由/在线状态，可后置）。
+- 微信原生小游戏 + TypeScript + `minigame-canvas-engine`：Flex 风格 UI、触摸、滚动和九宫格资源；牌桌高频动画封装在局部 Canvas2D 表面；
+- Node.js + TypeScript 模块化单体：WSS、认证、房间、权威规则、计时和重连；
+- 纯 TypeScript `game-core`：确定性状态机，不依赖微信、渲染器或网络；
+- PostgreSQL：权威快照、命令回执、审计事件和可恢复截止时间；Redis 只在连接路由成为实测瓶颈后引入；
+- React/Vite 原型继续作为交互和视觉回归基准，不进入小游戏生产包。
 
-如果当前目标只是 2-3 周内验证规则和交互，可先使用微信原生小程序壳或 Web 壳；`game-core`、协议类型和 ruleset 可复用，但客户端渲染、生命周期、登录、Socket 与分包 adapter 仍需针对正式小游戏适配。当前仓库为空且尚未初始化 Git，因此可直接从下面的 workspace 结构起步。
+不采用 Cocos Creator 作为首版前置依赖。当前产品是 UI 密集的 2D 回合制卡牌游戏，不需要物理、地图、3D 或完整场景编辑器；轻量 Canvas UI 足以覆盖首版。若真机 PoC 证明牌桌动画无法达到目标，再只替换 `CardTableSurface` 的渲染 adapter，不改规则、协议、会话或页面模型。
 
 ## 2. 官方规则基线
 
@@ -136,7 +137,7 @@ MVP 暂不做：扩展包、Party Pack、快速匹配、段位、观战、聊天
 | Nope 窗 | 5 秒；全员显式 Pass 可提前结束 |
 | 普通回合 | 45 秒；超时自动抽牌 |
 | 私密选择 | 15 秒；服务端按确定性 RNG 合法代选 |
-| 掉线 | 60 秒宽限；期间计时照常，之后 Bot 托管；竞技房可改为判负 |
+| 掉线 | 当前实现保持原玩家席位并允许重连恢复；服务端计时照常。尚未实现按离线时长 Bot 托管或自动判负 |
 | 并发 Nope | 服务端接收顺序优先 |
 | 认输 | 视为平台淘汰，手牌正面移入 `eliminatedZone`；不触发爆炸牌，也不进入弃牌堆 |
 
@@ -146,7 +147,7 @@ MVP 暂不做：扩展包、Party Pack、快速匹配、段位、观战、聊天
 - 目标没有手牌时，Favor/偷牌是禁止选择目标，还是动作无效；
 - 玩家离开/认输后手牌与排序（这是平台补充规则，不等同于官方爆炸淘汰）；
 - 最后一名玩家何时立即获胜（建议淘汰事件后原子判定）；
-- 断线托管与多设备会话策略；
+- 后续若引入断线托管或多设备会话，需先确定并版本化其裁决策略；当前不提供托管；
 - 是否允许玩家在同一个 Nope 窗先 Pass 后再改为 Nope（建议不允许）。
 
 ### 4.3 建议的 Favor/组合边界
@@ -214,10 +215,10 @@ PlayNope(cardToken, windowId)
 PassResponse(windowId)
 Choose(promptId, value)
 Concede
-DeadlineElapsed(deadlineId)
+DeadlineElapsed(deadlineId) // 仅服务端内部系统命令
 ```
 
-每个玩家命令必须带 `commandId`、`matchId`、玩家会话、目标 `turnId/windowId/promptId` 和客户端最后确认的 `sequence`。重复 `commandId` 返回原结果；过期标识返回结构化错误，绝不扣牌。
+每个玩家命令必须带 `commandId`、`matchId`、目标 `turnId/windowId/promptId` 和客户端最后观察到的 `revision`。玩家身份来自认证连接，客户端不得提交或覆盖 `actorId`、服务端时间、随机结果或 `DeadlineElapsed`。重复 `commandId` 返回原回执；过期标识返回结构化错误，绝不扣牌。
 
 ### 5.4 事件
 
@@ -231,7 +232,7 @@ DeckShuffled / PrivatePeekGranted
 PlayerEliminated / GameFinished
 ```
 
-事件写入成功后才广播。房间采用单写者 Actor，按 `matchId` 分片：验证命令 -> 生成事件 -> 以预期 sequence 原子追加 -> 更新快照 -> 按玩家投影视图 -> 广播。
+数据库事务提交成功后才广播。`MatchCoordinator` 对 `matchId` 行加锁形成逻辑单写者：验证命令 -> 生成事件 -> `revision + 1` -> 更新权威快照和截止时间 -> 写入幂等回执与审计事件 -> 提交 -> 按玩家投影视图并广播。领域事件 `sequence` 只用于审计；客户端同步使用独立 `revision`，全量快照允许跨 revision 恢复。
 
 ## 6. 隐藏信息、防作弊与恢复
 
@@ -240,10 +241,10 @@ PlayerEliminated / GameFinished
 - `See the Future` 只发送给施法者；拆弹插入位置只存在服务端私密事件。
 - 卡牌对客户端使用短期 opaque token，不暴露可跨区域追踪的内部 `cardId`。
 - 服务器验证所有权、时机、目标、Prompt、窗口、规则版本；客户端不提交抽牌/洗牌/偷牌结果。
-- 禁止 `Math.random()`；使用固定版本的确定性 PRNG。随机结果写入事件，恢复时重放事件而不是重跑随机数。
+- 禁止 `Math.random()`；正式牌局由服务端 CSPRNG 生成 256 位种子，再使用固定版本的确定性 PRNG。种子永不下发，随机结果写入受限事件。
 - 保存 `rulesetVersion`、卡牌目录版本、内核版本、PRNG 版本、事件 schema 版本。
-- 每局单调 `sequence`；客户端记录最后 ACK。重连发送玩家专属快照及 `lastAckSeq` 后的新视图事件。
-- 超时记录绝对 `deadline`；实例恢复时补发已经到期的系统命令。
+- 每局单调 `revision`；客户端记录最后应用的 revision。重连始终发送最新玩家专属全量快照，正确性不依赖通知历史。
+- 超时记录绝对 `deadlineAt` 与 `deadlineId`；PostgreSQL 到期扫描器使用 `FOR UPDATE SKIP LOCKED` 领取并补发内部系统命令，不能只依赖进程内 `setTimeout`。
 - 日志与报错也必须脱敏，避免打印对手牌、牌堆顺序和秘密插入位置。
 
 ## 7. 仓库结构
@@ -251,22 +252,19 @@ PlayerEliminated / GameFinished
 ```text
 exploding-kitty/
 ├─ apps/
-│  ├─ minigame/              # Cocos/微信小游戏表现层
-│  └─ server/                # WSS、认证、Room Actor、定时器
+│  ├─ minigame/              # 微信小游戏、Layout UI、Canvas2D 牌桌和平台 adapters
+│  └─ game-server/           # HTTP/WSS、认证、Coordinator 和可靠定时器
 ├─ packages/
 │  ├─ game-core/             # 纯 TS GameKernel 深模块（含 eliminated zone）
-│  ├─ protocol/              # 命令、视图事件、DTO、版本协商
-│  └─ rulesets/
-│     └─ original-2025/      # 卡牌 manifest 与规则配置
-├─ tests/
-│  ├─ rules/                 # 规则条文到场景测试
-│  ├─ properties/            # 不变量/属性测试
-│  └─ integration/           # 并发、重连、崩溃恢复
+│  ├─ protocol/              # 版本化 wire DTO、运行时 codec 和错误码
+│  ├─ session-client/        # Local/Remote GameSession、恢复和 outbox
+│  └─ presentation-model/    # 严格 ClientView 到场景模型与意图
+├─ prototype/                # React 视觉回归与浏览器试玩基准
 └─ docs/
    └─ EXPLODING_KITTENS_RULES_AND_IMPLEMENTATION.md
 ```
 
-若先做普通小程序验证，可将客户端壳改为 `apps/miniprogram`；`packages/game-core`、`packages/protocol`、`packages/rulesets` 和服务器领域逻辑可复用，但需要各自的渲染、微信生命周期、登录、Socket、资源和分包 adapter。不要在页面事件处理器中复制规则逻辑。
+页面只依赖 presentation model，不直接调用规则内核、具体 Canvas 引擎或 `wx.*`。平台能力集中在 adapter，牌桌集中在可替换的 `CardTableSurface`；不要在触摸处理器中复制规则逻辑。
 
 ## 8. 测试与验收
 
