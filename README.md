@@ -10,6 +10,7 @@
 - [已实现范围与上线前配置](docs/IMPLEMENTED_SCOPE.md)
 - [正式架构](docs/ARCHITECTURE.md)
 - [验收矩阵](docs/ACCEPTANCE.md)
+- [微信云托管部署清单](docs/WECHAT_CLOUD_RUN_DEPLOYMENT.md)
 
 ## 运行与验证
 

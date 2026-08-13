@@ -1,45 +1,40 @@
 services:
-  postgres:
-    image: postgres:17-alpine
+  mysql:
+    image: mysql:5.7
     environment:
-      POSTGRES_DB: exploding_kitty
-      POSTGRES_USER: exploding_kitty
-      POSTGRES_PASSWORD: exploding_kitty
+      MYSQL_DATABASE: exploding_kitty
+      MYSQL_USER: exploding_kitty
+      MYSQL_PASSWORD: exploding_kitty
+      MYSQL_ROOT_PASSWORD: local-root-password
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_bin"]
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - exploding-kitty-postgres:/var/lib/postgresql/data
+      - exploding-kitty-mysql:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U exploding_kitty"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uexploding_kitty -pexploding_kitty --silent"]
       interval: 3s
       timeout: 3s
-      retries: 20
-
-  migrate:
-    build:
-      context: ../..
-      dockerfile: apps/game-server/Dockerfile
-    environment:
-      DATABASE_URL: postgres://exploding_kitty:exploding_kitty@postgres:5432/exploding_kitty
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: ["node", "dist/persistence/migrate.js"]
+      retries: 30
 
   server:
     build:
       context: ../..
       dockerfile: apps/game-server/Dockerfile
     environment:
-      DATABASE_URL: postgres://exploding_kitty:exploding_kitty@postgres:5432/exploding_kitty
+      NODE_ENV: development
+      MYSQL_ADDRESS: mysql:3306
+      MYSQL_USERNAME: exploding_kitty
+      MYSQL_PASSWORD: exploding_kitty
+      MYSQL_DATABASE: exploding_kitty
       AUTH_SECRET: local-compose-auth-secret-change-before-production
       DEV_AUTH_ENABLED: "true"
       PORT: "3000"
     ports:
       - "3000:3000"
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      mysql:
+        condition: service_healthy
 
 volumes:
-  exploding-kitty-postgres:
+  exploding-kitty-mysql:

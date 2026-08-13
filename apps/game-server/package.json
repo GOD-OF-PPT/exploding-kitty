@@ -18,11 +18,10 @@
     "@exploding-kitty/protocol": "0.1.0",
     "@fastify/websocket": "^11.2.0",
     "fastify": "^5.5.0",
-    "pg": "^8.16.3"
+    "mysql2": "^3.23.3"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
-    "@types/pg": "^8.15.5",
     "@types/ws": "^8.18.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",

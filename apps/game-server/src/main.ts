@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { createPool } from "mysql2/promise";
 import { AuthService, DisabledWechatProvider, WechatCode2SessionProvider } from "./auth/authService.js";
 import { buildApp } from "./app.js";
 import { readConfig } from "./config.js";
@@ -6,15 +6,22 @@ import { DeadlineWorker } from "./deadline/deadlineWorker.js";
 import { createSafeLoggerOptions } from "./logging.js";
 import { MatchCoordinator } from "./match/matchCoordinator.js";
 import { MemoryGameStore } from "./persistence/memoryStore.js";
-import { PgGameStore } from "./persistence/pgStore.js";
+import { readMysqlConnectionOptions } from "./persistence/mysqlConfig.js";
+import { MysqlGameStore } from "./persistence/mysqlStore.js";
 import { RoomCoordinator } from "./room/roomCoordinator.js";
 import { secureIds, systemClock } from "./runtime.js";
 import { ConnectionHub } from "./transport/connectionHub.js";
 import { SessionGateway } from "./transport/sessionGateway.js";
 
 const config = readConfig();
-const store = config.databaseUrl
-  ? new PgGameStore(new Pool({ connectionString: config.databaseUrl, max: 20 }))
+const mysql = readMysqlConnectionOptions();
+const store = mysql
+  ? new MysqlGameStore(createPool({
+      ...mysql,
+      connectionLimit: 20,
+      supportBigNumbers: true,
+      bigNumberStrings: true,
+    }))
   : new MemoryGameStore();
 const wechat = config.wechatAppId && config.wechatAppSecret
   ? new WechatCode2SessionProvider(config.wechatAppId, config.wechatAppSecret)
@@ -32,6 +39,7 @@ const app = await buildApp({
   gateway,
   hub,
   devAuthEnabled: config.devAuthEnabled,
+  wechatTrustCloudHeaders: config.wechatTrustCloudHeaders,
   logger: createSafeLoggerOptions(config.logLevel),
 });
 

@@ -18,7 +18,27 @@ export interface WxAudioContext {
   destroy(): void;
 }
 
+export type WxCloudContainerResult = Readonly<{
+  statusCode: number;
+  data: unknown;
+  errMsg?: string;
+  callID?: string;
+}>;
+
+export interface WxCloudLike {
+  init(options?: { env?: string; traceUser?: boolean }): void | Promise<void>;
+  callContainer(options: {
+    config: { env: string };
+    path: string;
+    method?: string;
+    data?: unknown;
+    header?: Record<string, string>;
+    timeout?: number;
+  }): Promise<WxCloudContainerResult>;
+}
+
 export interface WxLike {
+  cloud?: WxCloudLike;
   getSystemInfoSync(): {
     windowWidth: number;
     windowHeight: number;

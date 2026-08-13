@@ -89,6 +89,42 @@ describe("wx platform adapters", () => {
     expect(requestData).toEqual({ developmentIdentity: "ffeeddccbbaa99887766554433221100", profile: { displayName: "开发玩家 1100" } });
   });
 
+  it("uses gateway identity without calling wx.login in WeChat Cloud Run", async () => {
+    const init = vi.fn();
+    const login = vi.fn();
+    const callContainer = vi.fn().mockResolvedValue({
+      statusCode: 200,
+      data: { token: "cloud-token", playerId: "wx-player" },
+    });
+    const platform = {
+      cloud: { init, callContainer },
+      login,
+      getStorageSync: () => undefined,
+      setStorageSync: vi.fn(),
+      removeStorageSync: vi.fn(),
+    } as unknown as WxLike;
+    const auth = new WxAuthAdapter(platform, {
+      kind: "cloudContainer",
+      environmentId: "prod-env",
+      serviceName: "exploding-kitty-api",
+    });
+
+    await expect(auth.signIn()).resolves.toEqual({ token: "cloud-token", playerId: "wx-player" });
+    expect(init).toHaveBeenCalledWith({ env: "prod-env", traceUser: true });
+    expect(callContainer).toHaveBeenCalledWith({
+      config: { env: "prod-env" },
+      path: "/v1/auth/wechat",
+      method: "POST",
+      data: {},
+      header: {
+        "content-type": "application/json",
+        "X-WX-SERVICE": "exploding-kitty-api",
+      },
+      timeout: 10_000,
+    });
+    expect(login).not.toHaveBeenCalled();
+  });
+
   it("migrates the old exposed development nickname without rotating its identity", () => {
     const deviceId = "0123456789abcdef0123456789abcdef";
     const values = new Map<string, unknown>([["ek.development-identity.v1", { schemaVersion: 1, deviceId, displayName: `dev:${deviceId}` }]]);

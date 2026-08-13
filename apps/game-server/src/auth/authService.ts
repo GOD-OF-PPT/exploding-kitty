@@ -13,6 +13,12 @@ export type AuthProfile = Readonly<{ displayName?: string; avatarUrl?: string }>
 
 /** 128-bit installation identifier generated and persisted by an explicitly enabled dev client. */
 export const DEVELOPMENT_IDENTITY_PATTERN = /^[0-9a-f]{32}$/;
+/**
+ * WeChat OpenIDs are opaque ASCII identifiers. Keep the accepted alphabet
+ * deliberately narrow so a trusted header cannot create ambiguous database or
+ * log values; 96 characters also leaves room for the `wx_` player-id prefix.
+ */
+export const WECHAT_OPEN_ID_PATTERN = /^[A-Za-z0-9_-]{1,96}$/;
 
 type TokenPayload = Readonly<{ playerId: string; displayName?: string; avatarUrl?: string; expiresAt: number }>;
 
@@ -55,8 +61,23 @@ export class AuthService {
   async issueWechat(code: string, profile?: AuthProfile): Promise<AuthSession> {
     if (!code.trim()) throw new ServiceError("WECHAT_CODE_REQUIRED");
     const identity = await this.wechat.exchange(code);
-    const playerId = `wx_${identity.openId}`;
-    return { playerId, token: this.#sign({ playerId, ...profile, expiresAt: this.now() + this.ttlMs }) };
+    return this.#issueWechatIdentity(identity.openId, profile);
+  }
+
+  issueTrustedWechat(openId: unknown, source: unknown, profile?: AuthProfile): AuthSession {
+    if (typeof source !== "string" || !source.trim() || source.length > 128 || /[\u0000-\u001f\u007f]/.test(source)) {
+      throw new ServiceError(
+        "WECHAT_CLOUD_SOURCE_REQUIRED",
+        "A valid trusted X-WX-SOURCE header is required",
+      );
+    }
+    if (typeof openId !== "string" || !WECHAT_OPEN_ID_PATTERN.test(openId)) {
+      throw new ServiceError(
+        "WECHAT_CLOUD_IDENTITY_REQUIRED",
+        "A valid trusted X-WX-OPENID header is required",
+      );
+    }
+    return this.#issueWechatIdentity(openId, profile);
   }
 
   authenticate(token: string): AuthContext {
@@ -81,6 +102,22 @@ export class AuthService {
   #signature(encoded: string): string {
     return createHmac("sha256", this.secret).update(encoded).digest("base64url");
   }
+
+  #issueWechatIdentity(openId: string, profile?: AuthProfile): AuthSession {
+    if (!WECHAT_OPEN_ID_PATTERN.test(openId)) throw new ServiceError("WECHAT_IDENTITY_INVALID");
+    const playerId = `wx_${openId}`;
+    const displayName = profile?.displayName?.trim();
+    const avatarUrl = profile?.avatarUrl?.trim();
+    return {
+      playerId,
+      token: this.#sign({
+        playerId,
+        ...(displayName ? { displayName } : {}),
+        ...(avatarUrl ? { avatarUrl } : {}),
+        expiresAt: this.now() + this.ttlMs,
+      }),
+    };
+  }
 }
 
 export class WechatCode2SessionProvider implements WechatIdentityProvider {
@@ -95,7 +132,9 @@ export class WechatCode2SessionProvider implements WechatIdentityProvider {
     const response = await this.fetcher(url, { signal: AbortSignal.timeout(8_000) });
     if (!response.ok) throw new ServiceError("WECHAT_AUTH_UNAVAILABLE", "WeChat authentication is unavailable", true);
     const body = await response.json() as { openid?: string; unionid?: string; errcode?: number; errmsg?: string };
-    if (!body.openid) throw new ServiceError("WECHAT_CODE_INVALID", body.errmsg || "WeChat login code is invalid");
+    if (!body.openid || !WECHAT_OPEN_ID_PATTERN.test(body.openid)) {
+      throw new ServiceError("WECHAT_CODE_INVALID", body.errmsg || "WeChat login code is invalid");
+    }
     return { openId: body.openid, unionId: body.unionid };
   }
 }

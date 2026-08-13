@@ -6,13 +6,17 @@
 
 ```powershell
 npm install
-$env:MINIGAME_API_BASE_URL = "https://game.example.com"
+$env:MINIGAME_CLOUD_ENV_ID = "微信云托管环境 ID"
+$env:MINIGAME_CLOUD_SERVICE_NAME = "exploding-kitty-api"
+$env:MINIGAME_WEBSOCKET_BASE_URL = "https://服务公网域名"
 npm --workspace @exploding-kitty/minigame run build
 ```
 
 在微信开发者工具中导入 `apps/minigame`。`project.config.json` 的 `miniprogramRoot` 已指向 `release/`，并配置小游戏公开 AppID；AppSecret 与开发者工具的每机私有配置不会进入仓库。
 
-正式构建通过 `MINIGAME_API_BASE_URL` 注入 HTTPS API 根地址；未配置时客户端显示启动失败和重试入口，不会静默进入 Demo。构建后的地址固定在产物中，生产构建忽略分享 query 中的 `server`、`dev` 和 `demo` 参数，避免外部链接重定向服务或降级认证。
+微信云托管模式通过 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`（默认 `exploding-kitty-api`）配置 HTTP 登录，客户端使用 `wx.cloud.callContainer` 调用服务。WebSocket 仍通过 `MINIGAME_WEBSOCKET_BASE_URL` 注入的公网 HTTPS 域名连接 `/v1/session`：微信云托管的 `connectContainer` 不支持携带本项目会话协议要求的 `Authorization` Header，因此不能直接替代。旧的 `MINIGAME_API_BASE_URL` 仍可用于本地或非云托管部署，并同时作为 HTTP 与 WSS 根地址。
+
+构建后的配置固定在产物中，生产构建忽略分享 query 中的 `server`、`dev` 和 `demo` 参数，避免外部链接重定向服务或降级认证。未完整配置 HTTP 登录目标与 WSS 地址时，仅微信开发者工具自动进入本地 Demo，便于首次导入预览；iOS/Android 真机仍显示明确的配置错误和重试入口，不会降级为本地规则。
 
 当前 `npm run build` 是生产模式构建，因此 `demo=1`、`dev=1` 和 `server=...` 只在 `npm run dev` 生成的开发构建中生效：
 

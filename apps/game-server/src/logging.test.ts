@@ -19,6 +19,7 @@ describe("safe Fastify request logging", () => {
       gateway: {} as AppDependencies["gateway"],
       hub: {} as AppDependencies["hub"],
       devAuthEnabled: false,
+      wechatTrustCloudHeaders: false,
       logger: createSafeLoggerOptions("info", { write: (message) => records.push(message) }),
     });
     openedApps.push(app);

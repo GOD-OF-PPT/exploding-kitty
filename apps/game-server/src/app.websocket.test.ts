@@ -76,7 +76,7 @@ describe("real Fastify WebSocket flow", () => {
     const matches = new MatchCoordinator({ store, clock, token: ids });
     const hub = new ConnectionHub();
     const gateway = new SessionGateway({ rooms, matches, store, hub });
-    const app = await buildApp({ auth, rooms, store, gateway, hub, devAuthEnabled: true });
+    const app = await buildApp({ auth, rooms, store, gateway, hub, devAuthEnabled: true, wechatTrustCloudHeaders: false });
     const deadlines = new DeadlineWorker(store, matches, clock, 1, 20, (matchId) => gateway.broadcast(matchId));
     await app.ready();
 
@@ -162,7 +162,7 @@ describe("real Fastify WebSocket flow", () => {
     const matches = new MatchCoordinator({ store, clock, token: ids });
     const hub = new ConnectionHub();
     const gateway = new SessionGateway({ rooms, matches, store, hub });
-    const app = await buildApp({ auth, rooms, store, gateway, hub, devAuthEnabled: true });
+    const app = await buildApp({ auth, rooms, store, gateway, hub, devAuthEnabled: true, wechatTrustCloudHeaders: false });
     await app.ready();
     const issue = async (identity: string) => (await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: identity } })).json<{ token: string; playerId: string }>();
     const aliceIdentity = await issue("10000000000000000000000000000001");

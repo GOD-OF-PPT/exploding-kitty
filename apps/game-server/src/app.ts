@@ -16,6 +16,7 @@ export type AppDependencies = Readonly<{
   gateway: SessionGateway;
   hub: ConnectionHub;
   devAuthEnabled: boolean;
+  wechatTrustCloudHeaders: boolean;
   logger?: FastifyServerOptions["logger"];
 }>;
 
@@ -40,7 +41,16 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     return dependencies.auth.issueDevelopment(request.body?.developmentIdentity, request.body?.profile);
   });
   app.post<{ Body: AuthBody }>("/v1/auth/wechat", async (request, reply) => {
-    try { return await dependencies.auth.issueWechat(request.body?.code ?? "", request.body?.profile); }
+    try {
+      if (dependencies.wechatTrustCloudHeaders) {
+        return dependencies.auth.issueTrustedWechat(
+          request.headers["x-wx-openid"],
+          request.headers["x-wx-source"],
+          request.body?.profile,
+        );
+      }
+      return await dependencies.auth.issueWechat(request.body?.code ?? "", request.body?.profile);
+    }
     catch (error) { return reply.code(401).send(toProblem(error)); }
   });
 

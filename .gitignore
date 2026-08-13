@@ -7,6 +7,7 @@ node_modules/
 dist/
 build/
 coverage/
+*-source.zip
 prototype/dist-live-check/
 prototype/qa/
 apps/minigame/release/

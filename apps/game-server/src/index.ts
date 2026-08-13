@@ -5,7 +5,7 @@ export { createSafeLoggerOptions, type SafeLoggerOptions } from "./logging.js";
 export { MatchCoordinator } from "./match/matchCoordinator.js";
 export { RoomCoordinator } from "./room/roomCoordinator.js";
 export { MemoryGameStore } from "./persistence/memoryStore.js";
-export { PgGameStore } from "./persistence/pgStore.js";
+export { MysqlGameStore } from "./persistence/mysqlStore.js";
 export { ConnectionHub } from "./transport/connectionHub.js";
 export { SessionGateway } from "./transport/sessionGateway.js";
 export type { GameStore, MatchTransaction } from "./persistence/store.js";

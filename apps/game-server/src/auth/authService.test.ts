@@ -31,3 +31,26 @@ describe("development authentication", () => {
     expect(auth.authenticate(session.token).displayName).toBe("开发玩家 EEFF");
   });
 });
+
+describe("trusted WeChat authentication", () => {
+  it("issues the same identity shape as code exchange without invoking a provider", () => {
+    const auth = service();
+    const session = auth.issueTrustedWechat("cloud_open-id-123", "wx-client", { displayName: "  Cloud Player  " });
+
+    expect(session.playerId).toBe("wx_cloud_open-id-123");
+    expect(auth.authenticate(session.token)).toMatchObject({
+      playerId: "wx_cloud_open-id-123",
+      displayName: "Cloud Player",
+    });
+  });
+
+  it.each([undefined, "", "has spaces", "one,two", "../openid", "a".repeat(97)])(
+    "rejects an invalid trusted OpenID (%s)",
+    (openId) => expect(() => service().issueTrustedWechat(openId, "wx-client")).toThrow("X-WX-OPENID"),
+  );
+
+  it.each([undefined, "", "   ", "invalid\nsource", "a".repeat(129)])(
+    "rejects an invalid trusted source (%s)",
+    (source) => expect(() => service().issueTrustedWechat("cloud_open-id-123", source)).toThrow("X-WX-SOURCE"),
+  );
+});
