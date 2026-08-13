@@ -10,7 +10,7 @@ $env:MINIGAME_API_BASE_URL = "https://game.example.com"
 npm --workspace @exploding-kitty/minigame run build
 ```
 
-在微信开发者工具中导入 `apps/minigame`。`project.config.json` 的 `miniprogramRoot` 已指向 `release/`；仓库使用 `touristappid` 便于结构检查，正式发布前必须替换为审核通过的小游戏 AppID。
+在微信开发者工具中导入 `apps/minigame`。`project.config.json` 的 `miniprogramRoot` 已指向 `release/`，并配置小游戏公开 AppID；AppSecret 与开发者工具的每机私有配置不会进入仓库。
 
 正式构建通过 `MINIGAME_API_BASE_URL` 注入 HTTPS API 根地址；未配置时客户端显示启动失败和重试入口，不会静默进入 Demo。构建后的地址固定在产物中，生产构建忽略分享 query 中的 `server`、`dev` 和 `demo` 参数，避免外部链接重定向服务或降级认证。
 
