@@ -8,7 +8,9 @@ COPY packages/protocol/src ./packages/protocol/src
 COPY apps/game-server/package.json apps/game-server/tsconfig.json ./apps/game-server/
 COPY apps/game-server/src ./apps/game-server/src
 COPY apps/game-server/migrations ./apps/game-server/migrations
-RUN npm ci --ignore-scripts && npm --workspace @exploding-kitty/game-core run build \
+RUN npm config set registry https://mirrors.tencent.com/npm/ \
+  && npm ci --ignore-scripts \
+  && npm --workspace @exploding-kitty/game-core run build \
   && npm --workspace @exploding-kitty/protocol run build \
   && npm --workspace @exploding-kitty/game-server run build \
   && npm prune --omit=dev
