@@ -28,4 +28,31 @@ describe("RemoteGameSession", () => {
     expect(session.getSnapshot()).toMatchObject({ revision: 5, view: { value: 5 } });
     expect((await repository.load("s"))?.payload).not.toHaveProperty("outbox");
   });
+
+  it("uses a fresh login credential for the first resume instead of a cached token", async () => {
+    const repository = new MemorySessionRepository([{
+      schemaVersion: 1,
+      mode: "remote",
+      sessionId: "s",
+      updatedAt: 1,
+      payload: { revision: 4, commandRevision: 4, view: { value: 4 }, resumeToken: "stale-token" },
+    }]);
+    const transport = new MemoryTransport<ClientEnvelope, ServerEnvelope<{ value: number }>>();
+    await RemoteGameSession.open({
+      sessionId: "s",
+      transport,
+      repository,
+      initialResumeToken: "fresh-login-token",
+    });
+
+    transport.open();
+    await flush();
+
+    expect(transport.sent[0]).toMatchObject({
+      type: "resume",
+      sessionId: "s",
+      lastRevision: 4,
+      resumeToken: "fresh-login-token",
+    });
+  });
 });

@@ -53,4 +53,41 @@ describe("trusted WeChat authentication", () => {
     "rejects an invalid trusted source (%s)",
     (source) => expect(() => service().issueTrustedWechat("cloud_open-id-123", source)).toThrow("X-WX-SOURCE"),
   );
+
+  it("binds a trusted socket token to the gateway OpenID", () => {
+    const auth = service();
+    const session = auth.issueTrustedWechat("cloud_open-id-123", "wx-client", { displayName: "Cloud Player" });
+
+    expect(auth.authenticateTrustedWechatSocket(session.token, "cloud_open-id-123", "wx-client")).toMatchObject({
+      playerId: "wx_cloud_open-id-123",
+      displayName: "Cloud Player",
+    });
+    expect(() => auth.authenticateTrustedWechatSocket(session.token, "other-openid", "wx-client")).toThrow("UNAUTHORIZED");
+  });
+
+  it("accepts a valid WeChat token when iOS high-performance mode omits OpenID", () => {
+    const auth = service();
+    const session = auth.issueTrustedWechat("cloud_open-id-123", "wx-client");
+
+    expect(auth.authenticateTrustedWechatSocket(session.token, undefined, "wx-client").playerId)
+      .toBe("wx_cloud_open-id-123");
+  });
+
+  it("does not allow a development token to stand in for a missing cloud OpenID", () => {
+    const auth = service();
+    const development = auth.issueDevelopment(identityA);
+
+    expect(() => auth.authenticateTrustedWechatSocket(development.token, undefined, "wx-client"))
+      .toThrow("UNAUTHORIZED");
+  });
+
+  it.each([
+    { openId: "invalid openid", source: "wx-client" },
+    { openId: "cloud_open-id-123", source: undefined },
+    { openId: "cloud_open-id-123", source: "" },
+  ])("rejects malformed trusted socket headers ($openId, $source)", ({ openId, source }) => {
+    const auth = service();
+    const session = auth.issueTrustedWechat("cloud_open-id-123", "wx-client");
+    expect(() => auth.authenticateTrustedWechatSocket(session.token, openId, source)).toThrow();
+  });
 });

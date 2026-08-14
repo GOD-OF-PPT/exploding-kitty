@@ -13,9 +13,9 @@
 - 全部基础牌效、Nope 响应链、组合、Attack 欠回合和秘密拆弹插回；
 - 确定性 Bot、三步规则说明、服务端权威教学局与随局内进度变化的引导提示；
 - 登录、模式、建/加房、房主/成员大厅、完整对局、私密选择、淘汰、结算、教程、规则、历史、菜单、网络和设置状态；
-- 版本化 JSON 协议、运行时校验、全量私有快照、revision 恢复和单命令 outbox；WSS 握手使用 `Authorization: Bearer <session>` Header，长期会话凭证不进入 URL；
+- 版本化 JSON 协议、运行时校验、全量私有快照、revision 恢复和单命令 outbox；微信云托管生产链路使用 `callContainer` 登录和 `connectContainer` 实时连接，Bearer 会话凭证由首个 `resume.resumeToken` 传递且不进入 URL；
 - 微信登录、存储、SocketTask、生命周期、网络、键盘、音频、振动与分享 adapter；
-- 权威房间和对局 coordinator、房间行锁与开局原子事务、房间/对局幂等回执、单调会话 revision、服务端计时以及 PostgreSQL schema；
+- 权威房间和对局 coordinator、房间行锁与开局原子事务、房间/对局幂等回执、单调会话 revision、服务端计时以及 MySQL schema；
 - 真实公开行动记录、淘汰原因与结算排名；
 - Fastify 真实 WebSocket 双身份冒烟，覆盖建/加房、准备、开局、Nope、Favor 私密赠牌、预见未来、拆弹插回、断线恢复、认输、结算、投票、重开与离房；
 - 由服务端 `serverTime/deadlineAt` 校正的回合与交互倒计时，响应窗公开原动作、目标及三张组合声明；
@@ -29,7 +29,7 @@
 
 - 真人联机只允许服务端运行完整 `GameState`；客户端不能持有牌堆顺序、对手手牌或 seed；
 - 玩家身份来自认证连接，客户端不能提交 `actorId`、服务器时间或系统超时命令；
-- 截止时间由 PostgreSQL 可恢复 worker 执行，客户端倒计时仅用于显示；
+- 截止时间由 MySQL 可恢复 worker 执行，客户端倒计时仅用于显示；
 - 每位玩家只收到自己的投影视图，牌所有权变化时 opaque token 随之轮换；
 - 重试语义为至少一次发送与幂等回执，不宣称 exactly-once；
 - 断线时客户端重连并恢复私有快照；当前没有“断线 60 秒后由 Bot 托管”功能；
@@ -39,17 +39,16 @@
 
 下面项目属于凭证、基础设施、合规或外部审批，仓库不能生成或伪造：
 
-- 微信小游戏正式 AppID 与 AppSecret；
-- HTTPS/WSS 生产域名、TLS 证书和微信合法域名配置；
-- 生产 PostgreSQL 实例、备份、监控与部署权限；
-- 微信 code2session、实名、防沉迷和隐私接口的正式联调环境；
+- 微信小游戏正式 AppID，以及该小游戏可访问的微信云托管环境；
+- 生产 MySQL 实例、备份、监控与部署权限；
+- 微信云托管可信身份头、实名、防沉迷和隐私接口的正式联调环境；
 - 小游戏备案、审核材料、隐私协议和未成年人保护配置；
 - 商业使用前的名称、商标、规则文本和美术授权结论。
 
 开发环境可使用测试 AppID、开发身份 provider、内存 store 和本地试玩 session。它们用于测试，不得作为生产安全方案。
 
-生产小游戏必须在构建时提供固定的 `MINIGAME_API_BASE_URL`；缺失配置会显示启动失败，生产构建不会从分享 query 读取服务器、`dev=1` 或 `demo=1`。显式 Demo 与开发登录只允许开发模式构建使用。
+微信云托管生产构建只需提供固定的 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`，并把小游戏基础库最低版本设为 `2.23.0`；无需生产公网地址。缺失云环境配置会显示启动失败，生产构建不会从分享 query 读取服务器、`dev=1` 或 `demo=1`。`MINIGAME_API_BASE_URL`、显式 Demo 与开发登录只允许本地或非云托管开发模式使用。
 
 已知可靠性边界：对局命令的 match 状态、回执和审计在同一事务内；房间变更使用房间事务，但 Gateway 的通用会话回执在业务事务之后写入，仍存在“房间操作已提交、会话回执尚未提交”时进程崩溃的窄窗口。因此项目只承诺至少一次发送、幂等回执和 revision 恢复，不宣称所有命令端到端 exactly-once。
 
-当前外部验收边界：本地自动测试、类型检查、构建和静态迁移检查不能替代真实环境。当前机器的 Docker daemon 不可用，因此尚无真实 PostgreSQL 运行时冒烟或重启恢复证据；微信开发者工具和 iOS/Android 真机视觉、登录、分享及 WSS 联调也尚未完成，视觉状态以 `apps/minigame/design-qa.md` 的 blocked 记录为准。正式 AppID/AppSecret、HTTPS/WSS 合法域名、生产 PostgreSQL、备案与合规配置仍由项目所有者提供。
+当前外部验收边界：本地自动测试、类型检查、构建和静态迁移检查不能替代真实环境。云托管 `/health/ready` 已验证 MySQL 连通，但尚未完成备份恢复、故障注入和实例重启演练；微信开发者工具和 iOS/Android 真机视觉、登录、分享及 `connectContainer` 联调也尚未完成，视觉状态以 `apps/minigame/design-qa.md` 的 blocked 记录为准。正式 AppID、已授权云托管环境、生产数据库、备案与合规配置仍由项目所有者提供；生产云托管公网访问应保持关闭。

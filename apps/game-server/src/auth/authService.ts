@@ -65,12 +65,7 @@ export class AuthService {
   }
 
   issueTrustedWechat(openId: unknown, source: unknown, profile?: AuthProfile): AuthSession {
-    if (typeof source !== "string" || !source.trim() || source.length > 128 || /[\u0000-\u001f\u007f]/.test(source)) {
-      throw new ServiceError(
-        "WECHAT_CLOUD_SOURCE_REQUIRED",
-        "A valid trusted X-WX-SOURCE header is required",
-      );
-    }
+    this.assertTrustedWechatSource(source);
     if (typeof openId !== "string" || !WECHAT_OPEN_ID_PATTERN.test(openId)) {
       throw new ServiceError(
         "WECHAT_CLOUD_IDENTITY_REQUIRED",
@@ -78,6 +73,36 @@ export class AuthService {
       );
     }
     return this.#issueWechatIdentity(openId, profile);
+  }
+
+  assertTrustedWechatSource(source: unknown): void {
+    if (typeof source !== "string" || !source.trim() || source.length > 128 || /[\u0000-\u001f\u007f]/.test(source)) {
+      throw new ServiceError(
+        "WECHAT_CLOUD_SOURCE_REQUIRED",
+        "A valid trusted X-WX-SOURCE header is required",
+      );
+    }
+  }
+
+  authenticateTrustedWechatSocket(token: string, openId: unknown, source: unknown): AuthContext {
+    this.assertTrustedWechatSource(source);
+    const auth = this.authenticate(token);
+    // connectContainer currently omits X-WX-OPENID on iOS high-performance+
+    // mode. In that documented case, the signed session issued over
+    // callContainer remains the identity, but development identities must
+    // never be accepted as a cloud WeChat player.
+    if (openId === undefined) {
+      if (!auth.playerId.startsWith("wx_")) throw new ServiceError("UNAUTHORIZED");
+      return auth;
+    }
+    if (typeof openId !== "string" || !WECHAT_OPEN_ID_PATTERN.test(openId)) {
+      throw new ServiceError(
+        "WECHAT_CLOUD_IDENTITY_REQUIRED",
+        "A valid trusted X-WX-OPENID header is required",
+      );
+    }
+    if (auth.playerId !== `wx_${openId}`) throw new ServiceError("UNAUTHORIZED");
+    return auth;
   }
 
   authenticate(token: string): AuthContext {

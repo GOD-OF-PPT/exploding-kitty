@@ -8,15 +8,16 @@
 npm install
 $env:MINIGAME_CLOUD_ENV_ID = "微信云托管环境 ID"
 $env:MINIGAME_CLOUD_SERVICE_NAME = "exploding-kitty-api"
-$env:MINIGAME_WEBSOCKET_BASE_URL = "https://服务公网域名"
 npm --workspace @exploding-kitty/minigame run build
 ```
 
 在微信开发者工具中导入 `apps/minigame`。`project.config.json` 的 `miniprogramRoot` 已指向 `release/`，并配置小游戏公开 AppID；AppSecret 与开发者工具的每机私有配置不会进入仓库。
 
-微信云托管模式通过 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`（默认 `exploding-kitty-api`）配置 HTTP 登录，客户端使用 `wx.cloud.callContainer` 调用服务。WebSocket 仍通过 `MINIGAME_WEBSOCKET_BASE_URL` 注入的公网 HTTPS 域名连接 `/v1/session`：微信云托管的 `connectContainer` 不支持携带本项目会话协议要求的 `Authorization` Header，因此不能直接替代。旧的 `MINIGAME_API_BASE_URL` 仍可用于本地或非云托管部署，并同时作为 HTTP 与 WSS 根地址。
+微信云托管模式通过 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`（默认 `exploding-kitty-api`）同时配置 HTTP 和 WebSocket。客户端使用 `wx.cloud.callContainer` 登录，使用 `wx.cloud.connectContainer` 连接同一服务的 `/v1/session`；生产云托管服务保持关闭公网访问，无需任何通讯域名配置。`MINIGAME_API_BASE_URL` 只保留给本地或非云托管开发链路，不是微信云托管生产构建的必需项。
 
-构建后的配置固定在产物中，生产构建忽略分享 query 中的 `server`、`dev` 和 `demo` 参数，避免外部链接重定向服务或降级认证。未完整配置 HTTP 登录目标与 WSS 地址时，仅微信开发者工具自动进入本地 Demo，便于首次导入预览；iOS/Android 真机仍显示明确的配置错误和重试入口，不会降级为本地规则。
+生产构建要求小游戏基础库最低版本为 `2.23.0`，这是 `callContainer` 的约束；`connectContainer` 自身最低为 `2.21.1`。`connectContainer` 的路由只由 `config.env`、`service` 和 `path` 决定，客户端另设 10 秒连接超时，但不依赖自定义认证 Header。登录得到的 Bearer 会话 token 只放在 Socket 打开后发出的首个 `resume.resumeToken` 中，由服务端在接受业务命令前验证，绝不拼入 URL。iOS“高性能+”模式可能不携带 `X-WX-OPENID`，此时仍由该 token 完成身份认证。
+
+构建后的配置固定在产物中，生产构建忽略分享 query 中的 `server`、`dev` 和 `demo` 参数，避免外部链接重定向服务或降级认证。未配置云托管环境 ID（或本地开发所需的直连地址）时，仅微信开发者工具自动进入本地 Demo，便于首次导入预览；iOS/Android 真机仍显示明确的配置错误和重试入口，不会降级为本地规则。
 
 当前 `npm run build` 是生产模式构建，因此 `demo=1`、`dev=1` 和 `server=...` 只在 `npm run dev` 生成的开发构建中生效：
 
@@ -25,7 +26,7 @@ npm --workspace @exploding-kitty/minigame run build
 
 开发身份持久化于微信存储键 `ek.development-identity.v1`。身份是安装级随机值，同一设备重启后稳定，不同设备互不共享；昵称仅用于展示。生产微信登录不会读取或发送该身份。开发登录依赖服务端显式开放 `/v1/auth/dev`，不得作为生产认证方案。
 
-WebSocket 固定连接 `/v1/session`，握手通过 `Authorization: Bearer <session>` Header 认证；会话凭证不会拼入 URL。三步新手说明完成后发送 `StartTutorial`，由服务端创建带 Bot 的权威教学局；客户端依据私有快照中的 `room.tutorial` 显示随进度变化的提示，不在本地裁决教学局规则。上述 Header 与教学流程仍须在微信开发者工具和真机复核。
+WebSocket 固定连接 `/v1/session`。云托管生产模式由 `connectContainer` 创建 `SocketTask`；Socket 打开后，`RemoteGameSession` 的首个 `resume` 使用 `resumeToken` 携带刚登录取得的 Bearer token，服务端认证后才处理恢复和后续命令。会话凭证不会拼入 URL。三步新手说明完成后发送 `StartTutorial`，由服务端创建带 Bot 的权威教学局；客户端依据私有快照中的 `room.tutorial` 显示随进度变化的提示，不在本地裁决教学局规则。上述私有连接、认证回退与教学流程仍须在微信开发者工具和真机复核。
 
 ## 资源
 
@@ -45,7 +46,7 @@ npm --workspace @exploding-kitty/minigame run check:assets
 - 回合、Nope 与私密选择倒计时由服务端时间和截止时间校正后显示；客户端倒计时不参与规则裁决。
 - 会话支持重连、全量私有快照和单命令 outbox；目前没有“断线 60 秒后由 Bot 托管”功能。
 - 服务端首版只能单实例部署；跨实例连接广播尚未实现。
-- 微信登录、合法域名、分享、WSS 和 iOS/Android 真机行为仍需正式 AppID 与真实环境验收。
+- 微信登录、`callContainer`/`connectContainer` 私有链路、分享和 iOS/Android 真机行为仍需正式 AppID 与已授权云托管环境验收。
 
 ## 验证
 

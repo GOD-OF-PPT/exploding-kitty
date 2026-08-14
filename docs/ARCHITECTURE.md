@@ -10,7 +10,7 @@
 
 ```text
 ScreenHost -> GameSession -> WxSocketTransport -> MatchCoordinator -> GameKernel
-                                              \-> PostgreSQL
+                                              \-> MySQL
 ```
 
 - `GameKernel` 隐藏牌效、随机、稳定状态与玩家投影；
@@ -49,13 +49,13 @@ snapshot    { sessionId, revision, snapshot, resumeToken? }
 
 首版始终推送玩家专属全量快照。快照很小，允许 revision 跳跃，能显著简化断线、乱序和通知丢失处理。网络语义是“至少一次提交 + 幂等结果”，不是 exactly-once。客户端断线后重连并恢复快照；没有按离线时长把真人替换为 Bot 的托管机制。
 
-WSS 握手在 `Authorization: Bearer <session>` Header 中携带会话凭证；URL 固定为 `/v1/session`，不使用 query 传递长期 token。Header 行为已有平台 fake adapter 与真实 Fastify WSS 自动测试，仍须在微信开发者工具、真机和生产 WSS 入口复核。
+微信云托管生产入口保持关闭公网访问。HTTP 登录通过 `wx.cloud.callContainer`，实时连接通过 `wx.cloud.connectContainer({ config: { env }, service, path: "/v1/session", timeout: 10_000 })`，无需通讯域名配置。`connectContainer` 不携带自定义认证 Header，因此登录所得 Bearer token 作为建连后的首个 `resume.resumeToken` 发送。服务端验证 token 后才绑定玩家、注册连接并处理恢复或业务命令；凭证绝不进入 URL。若 iOS“高性能+”模式没有 `X-WX-OPENID`，有效 token 仍能完成 WebSocket 身份认证。
 
 当前协议仍标记为未发布的 v1；`room.tutorial` 是该首发协议的一部分。若在正式发布 v1 后再增加任何严格必填字段，必须提升协议版本或提供双版本兼容窗口，不能在相同版本下直接改变精确 schema。
 
 ## 权威服务端
 
-服务端是 Node.js + TypeScript 模块化单体。HTTP/WSS gateway 处理认证、协议校验和连接管理；规则、随机、计时与隐藏信息全部由 `MatchCoordinator` 和 `GameKernel` 处理。生产入口仍应补充基础设施级速率限制与滥用防护。
+服务端是 Node.js + TypeScript 模块化单体。HTTP/WebSocket gateway 处理认证、协议校验和连接管理；规则、随机、计时与隐藏信息全部由 `MatchCoordinator` 和 `GameKernel` 处理。生产入口仍应补充基础设施级速率限制与滥用防护。
 
 一次玩家命令在单个数据库事务中完成：
 
@@ -66,11 +66,11 @@ WSS 握手在 `Authorization: Bearer <session>` Header 中携带会话凭证；U
 5. `revision + 1`，更新快照，写回执和可见性受控的审计事件；
 6. 提交后通知连接实例，并为每位玩家分别投影快照。
 
-PostgreSQL 是 MVP 的唯一事实源。首版运行时按单 server 实例部署；房间与牌局状态仍全部持久化，进程重启后由客户端重连恢复。Redis、Kafka、微服务和 Kubernetes 都不是首版依赖。扩展到多实例前，必须增加 PostgreSQL `LISTEN/NOTIFY`（或等价通知总线）来唤醒持有其他玩家连接的实例。
+MySQL 是 MVP 的唯一事实源。首版运行时按单 server 实例部署；房间与牌局状态仍全部持久化，进程重启后由客户端重连恢复。Redis、Kafka、微服务和 Kubernetes 都不是首版依赖。扩展到多实例前，必须增加独立的跨实例通知总线来唤醒持有其他玩家连接的实例。
 
 上面的单事务保证适用于对局内核命令：match 快照、对局回执和审计事件一起提交。房间变更本身使用房间行锁和事务，开局时 `createMatch + saveRoom` 原子提交；但 Session Gateway 的通用 `session_command_receipts` 仍在业务事务之后单独写入，进程若恰在两者之间崩溃，房间命令可能已经生效但会话回执尚未落库。首版以单实例、客户端 revision 冲突恢复和房间不变量减轻影响，不宣称该窗口具备 exactly-once；后续应把房间命令执行与会话回执纳入统一事务边界。
 
-生产进程拒绝在缺少 `DATABASE_URL`、微信 AppID/AppSecret 或至少 32 字符 `AUTH_SECRET` 时启动。小游戏生产构建固定注入 `MINIGAME_API_BASE_URL`，并忽略 query 中的调试 endpoint、Demo 和开发认证开关；开发身份与内存存储不属于生产信任边界。
+微信云托管生产进程拒绝在缺少数据库配置或至少 32 字符 `AUTH_SECRET` 时启动，并以 `WECHAT_TRUST_CLOUD_HEADERS=true` 使用网关注入的可信微信身份；该模式不需要 `WECHAT_APP_SECRET`。小游戏生产构建只注入 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`，基础库最低版本为 `2.23.0`，并忽略 query 中的调试 endpoint、Demo 和开发认证开关；开发身份、直连 API 地址与内存存储不属于生产信任边界。
 
 ## 定时器与隐藏信息
 
@@ -83,17 +83,17 @@ PostgreSQL 是 MVP 的唯一事实源。首版运行时按单 server 实例部�
 
 ## 存储和部署
 
-核心表包括 `users`、`rooms`、`room_members`、`matches`、`command_receipts` 和 `match_events`。活动局以 JSONB 快照恢复，不采用纯事件溯源；事件表用于受限回放和客服审计。
+核心表包括 `users`、`rooms`、`room_members`、`matches`、`command_receipts` 和 `match_events`。活动局以 JSON 快照恢复，不采用纯事件溯源；事件表用于受限回放和客服审计。
 
-首版生产拓扑为一个 server 实例、一个高可用 PostgreSQL 和支持 WSS 的入口。实例没有本地权威牌局状态，但连接广播目前是进程内的，因此不得在未加入跨实例通知前水平扩容。滚动发布会触发客户端短暂重连；后续先加入 PostgreSQL通知，再按指标决定是否引入 Redis presence/pub-sub。
+首版生产拓扑为一个 server 实例、一个高可用 MySQL 和关闭公网访问的微信云托管私有入口。小游戏经 `callContainer`/`connectContainer` 访问同一服务。实例没有本地权威牌局状态，但连接广播目前是进程内的，因此不得在未加入跨实例通知前水平扩容。滚动发布会触发客户端短暂重连；后续先加入独立通知总线，再按指标决定是否引入 Redis presence/pub-sub。
 
 ## 验收门槛
 
-下列条目是发布门槛，不代表当前已通过。仓库自动门禁已覆盖协议、规则、构建和内存存储链路；当前机器因 Docker daemon 不可用而未完成真实 PostgreSQL 运行时验证，微信开发者工具与真机视觉 QA 也仍为 blocked。
+下列条目是发布门槛，不代表当前已通过。仓库自动门禁已覆盖协议、规则、构建和内存存储链路；云托管已通过 MySQL 就绪检查，但备份恢复与故障演练尚未完成，微信开发者工具与真机视觉 QA 也仍为 blocked。
 
 - 微信开发者工具、iOS 和 Android 真机能完成登录、建/加房、完整一局和重连；
 - 规则长滚动、十张手牌、Nope 遮罩、键盘输入和拆弹滑杆无触摸偏移；
 - 并发 Nope、重复命令、旧 token、到期竞争和服务实例重启测试通过；
 - 微信开发者工具统计的主包留至少 20% 余量；当前清单图片已经降采样和压缩，是否需要分包以工具统计为准；
 - 低端基准机连续十局无崩溃、明显输入延迟或持续内存增长；
-- 正式发布前完成 AppID、合法域名、TLS、备案、实名/防沉迷、隐私、审核和知识产权配置。
+- 正式发布前完成 AppID、云托管环境授权、基础库最低版本 `2.23.0`、备案、实名/防沉迷、隐私、审核和知识产权配置，并确认云托管公网访问保持关闭。

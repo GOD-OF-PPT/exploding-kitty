@@ -243,6 +243,8 @@ export type RemoteGameSessionOptions<TView> = Readonly<{
   sessionId: string;
   transport: SessionTransport<ClientEnvelope, ServerEnvelope<TView>>;
   repository: SessionRepository;
+  /** Fresh credential used by the first resume after login; it supersedes any cached token. */
+  initialResumeToken?: string;
   commandId?: () => string;
   now?: () => number;
   ackTimeoutMs?: number;
@@ -276,7 +278,7 @@ export class RemoteGameSession<TView> implements GameSession<TView> {
     this.#sessionId = options.sessionId; this.#transport = options.transport; this.#repository = options.repository;
     this.#commandId = options.commandId ?? makeId; this.#now = options.now ?? Date.now; this.#ackTimeoutMs = options.ackTimeoutMs ?? 10_000;
     this.#view = payload.view; this.#revision = payload.revision; this.#commandRevision = Math.max(payload.commandRevision, payload.revision);
-    this.#resumeToken = payload.resumeToken; this.#outbox = payload.outbox;
+    this.#resumeToken = options.initialResumeToken ?? payload.resumeToken; this.#outbox = payload.outbox;
     this.#store = new ExternalStore(Object.freeze({ lifecycle: "recovering", connectivity: "connecting", view: this.#view, revision: this.#revision, ...(this.#outbox ? { pendingCommandId: this.#outbox.commandId } : {}) }));
     this.getSnapshot = this.#store.getSnapshot; this.subscribe = this.#store.subscribe;
     this.#unsubscribe = this.#transport.subscribe((event) => this.#onTransport(event));

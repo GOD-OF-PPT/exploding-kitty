@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { WebSocket } from "ws";
 import { PROTOCOL_VERSION, type ClientAction, type ServerEnvelope } from "@exploding-kitty/protocol";
 import { buildApp } from "./app.js";
@@ -239,4 +239,152 @@ function openSessionSocket(
   token: string,
 ): Promise<WebSocket> {
   return app.injectWS("/v1/session", { headers: { authorization: `Bearer ${token}` } });
+}
+
+describe("trusted WeChat Cloud Run WebSocket authentication", () => {
+  it.each([
+    { name: "gateway OpenID", includeOpenId: true },
+    { name: "iOS high-performance fallback", includeOpenId: false },
+  ])("authenticates the first resume with a session token using $name", async ({ includeOpenId }) => {
+    const harness = await cloudSocketHarness();
+    const openId = "cloud_alice-123";
+    const identity = harness.auth.issueTrustedWechat(openId, "wx-client", { displayName: "Alice" });
+    const socket = await harness.app.injectWS("/v1/session", {
+      headers: {
+        "x-wx-source": "wx-client",
+        ...(includeOpenId ? { "x-wx-openid": openId } : {}),
+      },
+    });
+    const sessionId = `wx-${identity.playerId}`;
+    const client = new WireClient(socket, sessionId);
+
+    socket.send(JSON.stringify({
+      type: "resume",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId,
+      lastRevision: 0,
+      resumeToken: identity.token,
+    }));
+
+    const snapshot = await client.waitSnapshot((value) => value.phase === "HOME");
+    expect(snapshot.viewerId).toBe(identity.playerId);
+    expect(harness.hub.hasConnections(identity.playerId)).toBe(true);
+
+    socket.close();
+    await harness.app.close();
+  });
+
+  it("rejects a token whose player does not match the gateway OpenID before mutating presence", async () => {
+    const harness = await cloudSocketHarness();
+    const identity = harness.auth.issueTrustedWechat("cloud_alice-123", "wx-client");
+    const presence = vi.spyOn(harness.rooms, "setConnected");
+    const socket = await harness.app.injectWS("/v1/session", {
+      headers: { "x-wx-source": "wx-client", "x-wx-openid": "cloud_bob-456" },
+    });
+    const closed = waitForClose(socket);
+
+    socket.send(JSON.stringify({
+      type: "resume",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId: `wx-${identity.playerId}`,
+      lastRevision: 0,
+      resumeToken: identity.token,
+    }));
+
+    await expect(closed).resolves.toMatchObject({ code: 1008 });
+    expect(harness.hub.hasConnections(identity.playerId)).toBe(false);
+    expect(presence).not.toHaveBeenCalled();
+    await harness.app.close();
+  });
+
+  it("rejects a pre-authentication resume without a token before mutating presence", async () => {
+    const harness = await cloudSocketHarness();
+    const presence = vi.spyOn(harness.rooms, "setConnected");
+    const socket = await harness.app.injectWS("/v1/session", {
+      headers: { "x-wx-source": "wx-client", "x-wx-openid": "cloud_alice-123" },
+    });
+    const closed = waitForClose(socket);
+
+    socket.send(JSON.stringify({
+      type: "resume",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId: "wx-wx_cloud_alice-123",
+      lastRevision: 0,
+    }));
+
+    await expect(closed).resolves.toMatchObject({ code: 1008 });
+    expect(presence).not.toHaveBeenCalled();
+    await harness.app.close();
+  });
+
+  it("rejects a command as the first cloud message without executing it", async () => {
+    const harness = await cloudSocketHarness();
+    const identity = harness.auth.issueTrustedWechat("cloud_alice-123", "wx-client");
+    const createRoom = vi.spyOn(harness.rooms, "create");
+    const presence = vi.spyOn(harness.rooms, "setConnected");
+    const socket = await harness.app.injectWS("/v1/session", {
+      headers: { "x-wx-source": "wx-client", "x-wx-openid": "cloud_alice-123" },
+    });
+    const closed = waitForClose(socket);
+
+    socket.send(JSON.stringify({
+      type: "command",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId: "wx-wx_cloud_alice-123",
+      commandId: "pre-auth-command",
+      expectedRevision: 0,
+      action: {
+        type: "CreateRoom",
+        settings: { maxPlayers: 2, turnSeconds: 30, responseSeconds: 5, choiceSeconds: 15, allowBots: false, rulesetVersion: "original-2025@1" },
+      },
+    }));
+    // Closing a WebSocket is asynchronous. A queued valid resume must not be
+    // able to authenticate after the first frame has already been rejected.
+    socket.send(JSON.stringify({
+      type: "resume",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId: `wx-${identity.playerId}`,
+      lastRevision: 0,
+      resumeToken: identity.token,
+    }));
+
+    await expect(closed).resolves.toMatchObject({ code: 1008 });
+    expect(createRoom).not.toHaveBeenCalled();
+    expect(presence).not.toHaveBeenCalled();
+    expect(harness.hub.hasConnections(identity.playerId)).toBe(false);
+    await harness.app.close();
+  });
+
+  it("rejects a public-style Bearer handshake without X-WX-SOURCE in cloud mode", async () => {
+    const harness = await cloudSocketHarness();
+    const identity = harness.auth.issueTrustedWechat("cloud_alice-123", "wx-client");
+    const presence = vi.spyOn(harness.rooms, "setConnected");
+    const socket = await harness.app.injectWS("/v1/session", {
+      headers: { authorization: `Bearer ${identity.token}` },
+    });
+
+    await expect(waitForClose(socket)).resolves.toMatchObject({ code: 1008 });
+    expect(harness.hub.hasConnections(identity.playerId)).toBe(false);
+    expect(presence).not.toHaveBeenCalled();
+    await harness.app.close();
+  });
+});
+
+async function cloudSocketHarness() {
+  let id = 0;
+  const clock = { now: () => 10_000 };
+  const ids = { next: (prefix: string) => `${prefix}-cloud-${++id}` };
+  const store = new MemoryGameStore();
+  const auth = new AuthService("cloud-flow-auth-secret-at-least-32-chars", new DisabledWechatProvider(), clock.now);
+  const rooms = new RoomCoordinator({ store, clock, ids, seed: () => new Uint8Array(32).fill(1) });
+  const matches = new MatchCoordinator({ store, clock, token: ids });
+  const hub = new ConnectionHub();
+  const gateway = new SessionGateway({ rooms, matches, store, hub });
+  const app = await buildApp({ auth, rooms, store, gateway, hub, devAuthEnabled: false, wechatTrustCloudHeaders: true });
+  await app.ready();
+  return { app, auth, rooms, hub };
+}
+
+function waitForClose(socket: WebSocket): Promise<{ code: number; reason: string }> {
+  return new Promise((resolve) => socket.once("close", (code, reason) => resolve({ code, reason: reason.toString() })));
 }

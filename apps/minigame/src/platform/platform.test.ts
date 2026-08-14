@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WxAuthAdapter } from "./auth";
 import { WxDevelopmentIdentityRepository, WxSessionRepository } from "./storage";
 import { WxSocketTransport, toWebSocketUrl } from "./socketTransport";
 import type { WxLike } from "./wx";
 import { WxMediaAdapter } from "./media";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("wx platform adapters", () => {
   it("plays only while sound is enabled", () => {
@@ -44,15 +48,150 @@ describe("wx platform adapters", () => {
     } as unknown as WxLike;
     const transport = new WxSocketTransport(
       platform,
-      toWebSocketUrl("https://example.test"),
+      {
+        kind: "direct",
+        url: toWebSocketUrl("https://example.test"),
+        header: { Authorization: "Bearer secret-session" },
+      },
       { encode: JSON.stringify, decode: JSON.parse },
-      { Authorization: "Bearer secret-session" },
     );
     expect(connection).toMatchObject({
       url: "wss://example.test/v1/session",
       header: { Authorization: "Bearer secret-session" },
     });
     expect(connection?.url).not.toContain("secret-session");
+    transport.dispose();
+  });
+
+  it("opens a cloud-container socket without requiring a public websocket URL", async () => {
+    const socket = socketTaskFake();
+    const connectContainer = vi.fn().mockResolvedValue({ socketTask: socket.task });
+    const connectSocket = vi.fn();
+    const platform = {
+      cloud: { connectContainer },
+      connectSocket,
+    } as unknown as WxLike;
+    const events: Array<{ type: string; message?: unknown }> = [];
+    const transport = new WxSocketTransport(
+      platform,
+      {
+        kind: "cloudContainer",
+        environmentId: "prod-env",
+        serviceName: "exploding-kitty-api",
+        path: "/v1/session",
+      },
+      { encode: JSON.stringify, decode: JSON.parse },
+    );
+    transport.subscribe((event) => events.push(event));
+
+    await flushPromises();
+    expect(connectContainer).toHaveBeenCalledWith({
+      config: { env: "prod-env" },
+      service: "exploding-kitty-api",
+      path: "/v1/session",
+      timeout: 10_000,
+    });
+    expect(connectSocket).not.toHaveBeenCalled();
+
+    socket.open();
+    socket.message(JSON.stringify({ type: "snapshot", revision: 1 }));
+    expect(events).toEqual([
+      { type: "open" },
+      { type: "message", message: { type: "snapshot", revision: 1 } },
+    ]);
+    transport.dispose();
+  });
+
+  it("retries when opening a cloud-container socket rejects", async () => {
+    vi.useFakeTimers();
+    const socket = socketTaskFake();
+    const connectContainer = vi.fn()
+      .mockRejectedValueOnce({ errMsg: "connectContainer:fail unavailable" })
+      .mockResolvedValueOnce({ socketTask: socket.task });
+    const platform = { cloud: { connectContainer } } as unknown as WxLike;
+    const events: Array<{ type: string; retrying?: boolean; reason?: string }> = [];
+    const transport = new WxSocketTransport(
+      platform,
+      {
+        kind: "cloudContainer",
+        environmentId: "prod-env",
+        serviceName: "exploding-kitty-api",
+        path: "/v1/session",
+      },
+      { encode: JSON.stringify, decode: JSON.parse },
+    );
+    transport.subscribe((event) => {
+      if (event.type === "closed") events.push(event);
+    });
+
+    await flushPromises();
+    expect(events).toEqual([{
+      type: "closed",
+      retrying: true,
+      reason: "connectContainer:fail unavailable",
+    }]);
+    expect(connectContainer).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(500);
+    await flushPromises();
+    expect(connectContainer).toHaveBeenCalledTimes(2);
+    transport.dispose();
+  });
+
+  it("closes a cloud socket that resolves after the transport was disposed", async () => {
+    const socket = socketTaskFake();
+    let resolveConnection: ((value: { socketTask: typeof socket.task }) => void) | undefined;
+    const connectContainer = vi.fn(() => new Promise<{ socketTask: typeof socket.task }>((resolve) => {
+      resolveConnection = resolve;
+    }));
+    const platform = { cloud: { connectContainer } } as unknown as WxLike;
+    const transport = new WxSocketTransport(
+      platform,
+      {
+        kind: "cloudContainer",
+        environmentId: "prod-env",
+        serviceName: "exploding-kitty-api",
+        path: "/v1/session",
+      },
+      { encode: JSON.stringify, decode: JSON.parse },
+    );
+
+    transport.dispose();
+    resolveConnection?.({ socketTask: socket.task });
+    await flushPromises();
+
+    expect(socket.close).toHaveBeenCalledWith({ code: 1000, reason: "client disposed" });
+  });
+
+  it("ignores a stale pending cloud connection after manual reconnect", async () => {
+    const first = socketTaskFake();
+    const second = socketTaskFake();
+    const resolvers: Array<(value: { socketTask: typeof first.task }) => void> = [];
+    const connectContainer = vi.fn(() => new Promise<{ socketTask: typeof first.task }>((resolve) => {
+      resolvers.push(resolve);
+    }));
+    const platform = { cloud: { connectContainer } } as unknown as WxLike;
+    const transport = new WxSocketTransport(
+      platform,
+      {
+        kind: "cloudContainer",
+        environmentId: "prod-env",
+        serviceName: "exploding-kitty-api",
+        path: "/v1/session",
+      },
+      { encode: JSON.stringify, decode: JSON.parse },
+    );
+
+    transport.reconnect();
+    expect(connectContainer).toHaveBeenCalledTimes(2);
+    resolvers[0]?.({ socketTask: first.task });
+    resolvers[1]?.({ socketTask: second.task });
+    await flushPromises();
+
+    expect(first.close).toHaveBeenCalledWith({ code: 1012, reason: "stale connection" });
+    second.open();
+    await expect(transport.send({ type: "resume" })).resolves.toBeUndefined();
+    expect(second.send).toHaveBeenCalledWith(expect.objectContaining({ data: JSON.stringify({ type: "resume" }) }));
     transport.dispose();
   });
 
@@ -136,21 +275,43 @@ describe("wx platform adapters", () => {
   it("rejects offline sends so session-client keeps one authoritative outbox", async () => {
     const socket = socketTaskFake();
     const platform = { connectSocket: () => socket.task } as unknown as WxLike;
-    const transport = new WxSocketTransport(platform, "wss://example.test/v1/session", { encode: JSON.stringify, decode: JSON.parse });
+    const transport = new WxSocketTransport(
+      platform,
+      { kind: "direct", url: "wss://example.test/v1/session" },
+      { encode: JSON.stringify, decode: JSON.parse },
+    );
     await expect(transport.send({ type: "command" })).rejects.toThrow("TRANSPORT_OFFLINE");
     transport.dispose();
   });
 });
 
 function socketTaskFake() {
-  let close: ((event: { code?: number; reason?: string }) => void) | undefined;
+  let openListener: (() => void) | undefined;
+  let messageListener: ((event: { data: string | ArrayBuffer }) => void) | undefined;
+  let closeListener: ((event: { code?: number; reason?: string }) => void) | undefined;
+  let errorListener: ((error: Record<string, unknown>) => void) | undefined;
+  const send = vi.fn((options: { success?: () => void }) => options.success?.());
+  const close = vi.fn((options?: { code?: number; reason?: string }) => closeListener?.(options ?? {}));
   const task = {
-    send: () => undefined,
-    close: (options?: { code?: number; reason?: string }) => close?.(options ?? {}),
-    onOpen: () => undefined,
-    onMessage: () => undefined,
-    onClose: (listener: typeof close) => { close = listener; },
-    onError: () => undefined,
+    send,
+    close,
+    onOpen: (listener: typeof openListener) => { openListener = listener; },
+    onMessage: (listener: typeof messageListener) => { messageListener = listener; },
+    onClose: (listener: typeof closeListener) => { closeListener = listener; },
+    onError: (listener: typeof errorListener) => { errorListener = listener; },
   };
-  return { task };
+  return {
+    task,
+    send,
+    close,
+    open: () => openListener?.(),
+    message: (data: string | ArrayBuffer) => messageListener?.({ data }),
+    closeFromServer: (event: { code?: number; reason?: string }) => closeListener?.(event),
+    error: (error: Record<string, unknown>) => errorListener?.(error),
+  };
 }
+
+const flushPromises = async (): Promise<void> => {
+  await Promise.resolve();
+  await Promise.resolve();
+};

@@ -21,7 +21,7 @@ npm run dev:server
 npm run dev:minigame
 ```
 
-小游戏正式构建需设置 `MINIGAME_API_BASE_URL`，再将 `apps/minigame` 导入微信开发者工具。`demo=1` 只对开发模式构建生效且必须显式提供；生产构建忽略调试 query，不会静默回退到 Demo、开发身份或 query 指定的服务器。
+小游戏正式构建只需设置微信云托管的 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`，再将 `apps/minigame` 导入微信开发者工具。生产链路使用 `wx.cloud.callContainer` 登录、使用 `wx.cloud.connectContainer` 建立实时会话，服务保持关闭公网访问且无需配置通讯域名。由于登录依赖 `callContainer`，小游戏基础库最低版本须设为 `2.23.0`。`demo=1` 只对开发模式构建生效且必须显式提供；生产构建忽略调试 query，不会静默回退到 Demo、开发身份或 query 指定的服务器。
 
 ```powershell
 npm test
@@ -29,7 +29,7 @@ npm run typecheck
 npm run build
 ```
 
-生产服务当前限定为单实例：连接广播仍在进程内，加入跨实例通知总线前不可水平扩容。WSS 握手通过 `Authorization: Bearer <session>` Header 认证，长期会话凭证不进入 URL。生产还必须提供 PostgreSQL、至少 32 字符的随机 `AUTH_SECRET`、微信凭据和 HTTPS/WSS；内存存储与开发认证仅用于本地开发。客户端没有“断线 60 秒后由 Bot 托管”功能。
+生产服务当前限定为单实例：连接广播仍在进程内，加入跨实例通知总线前不可水平扩容。`callContainer` 登录返回的 Bearer 会话凭证只放入 `connectContainer` 建连后的首个 `resume.resumeToken`，绝不进入 URL；服务端验证通过前不接受业务命令。生产还必须提供 MySQL、至少 32 字符的随机 `AUTH_SECRET` 和可信微信云托管身份头模式；内存存储与开发认证仅用于本地开发。客户端没有“断线 60 秒后由 Bot 托管”功能。
 
 ## 当前实现结构
 
@@ -38,7 +38,7 @@ packages/game-core/         确定性规则内核与玩家投影
 packages/protocol/          严格版本化传输协议
 packages/session-client/    全量快照、outbox 与恢复
 packages/presentation-model/产品页面模型与动作构造
-apps/game-server/           权威 Node.js/WSS/PostgreSQL 服务
+apps/game-server/           权威 Node.js/WebSocket/MySQL 服务
 apps/minigame/              微信原生小游戏客户端
 prototype/                  设计与视觉回归基准
 ```

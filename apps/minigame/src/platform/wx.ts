@@ -25,6 +25,11 @@ export type WxCloudContainerResult = Readonly<{
   callID?: string;
 }>;
 
+export type WxCloudSocketResult = Readonly<{
+  socketTask: WxSocketTask;
+  errMsg?: string;
+}>;
+
 export interface WxCloudLike {
   init(options?: { env?: string; traceUser?: boolean }): void | Promise<void>;
   callContainer(options: {
@@ -35,6 +40,16 @@ export interface WxCloudLike {
     header?: Record<string, string>;
     timeout?: number;
   }): Promise<WxCloudContainerResult>;
+  connectContainer(options: {
+    config: { env: string };
+    service: string;
+    path: string;
+    header?: Record<string, string>;
+    protocols?: string[];
+    tcpNoDelay?: boolean;
+    perMessageDeflate?: boolean;
+    timeout?: number;
+  }): Promise<WxCloudSocketResult>;
 }
 
 export interface WxLike {

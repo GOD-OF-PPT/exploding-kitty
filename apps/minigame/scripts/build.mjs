@@ -6,10 +6,11 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const release = resolve(root, "release");
 const watch = process.argv.includes("--watch");
-const apiBaseUrl = process.env.MINIGAME_API_BASE_URL ?? "";
+// Public/direct endpoints exist only for the watch-mode local development build.
+// A production bundle must never inherit a shell's stale public API setting.
+const apiBaseUrl = watch ? process.env.MINIGAME_API_BASE_URL ?? "" : "";
 const cloudEnvironmentId = process.env.MINIGAME_CLOUD_ENV_ID ?? "";
 const cloudServiceName = process.env.MINIGAME_CLOUD_SERVICE_NAME ?? "exploding-kitty-api";
-const websocketBaseUrl = process.env.MINIGAME_WEBSOCKET_BASE_URL ?? "";
 
 await mkdir(release, { recursive: true });
 if (!watch) {
@@ -32,7 +33,6 @@ const options = {
     "process.env.MINIGAME_API_BASE_URL": JSON.stringify(apiBaseUrl),
     "process.env.MINIGAME_CLOUD_ENV_ID": JSON.stringify(cloudEnvironmentId),
     "process.env.MINIGAME_CLOUD_SERVICE_NAME": JSON.stringify(cloudServiceName),
-    "process.env.MINIGAME_WEBSOCKET_BASE_URL": JSON.stringify(websocketBaseUrl),
   },
   banner: { js: "var GameGlobal = typeof GameGlobal !== 'undefined' ? GameGlobal : globalThis;" },
   logLevel: "info"

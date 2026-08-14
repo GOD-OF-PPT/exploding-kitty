@@ -8,6 +8,7 @@ import type { RawData } from "ws";
 import type { GameStore } from "./persistence/store.js";
 import type { ConnectionHub } from "./transport/connectionHub.js";
 import type { SessionGateway } from "./transport/sessionGateway.js";
+import type { AuthContext } from "./model.js";
 
 export type AppDependencies = Readonly<{
   auth: AuthService;
@@ -55,50 +56,101 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   });
 
   app.get("/v1/session", { websocket: true }, (socket, request) => {
-    let auth;
-    try { auth = dependencies.auth.authenticate(readBearer(request.headers.authorization)); }
-    catch { socket.close(1008, "unauthorized"); return; }
-
-    let activeSessionId = `bootstrap_${auth.playerId}`;
-    let removeConnection = dependencies.hub.add({
-      playerId: auth.playerId,
-      sessionId: activeSessionId,
-      send: (envelope) => { if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(envelope)); },
-    });
+    let auth: AuthContext | undefined;
+    let activeSessionId: string | undefined;
+    let removeConnection: (() => void) | undefined;
+    let authenticationTimer: ReturnType<typeof setTimeout> | undefined;
+    let connectionTerminated = false;
     let commandCount = 0;
     let windowStartedAt = Date.now();
     let messageQueue: Promise<void> = Promise.resolve();
 
-    void dependencies.rooms.setConnected(auth, true).then((room) => room && dependencies.gateway.broadcast(room.id));
+    const bindConnection = (context: AuthContext, sessionId: string): void => {
+      const removePreviousConnection = removeConnection;
+      activeSessionId = sessionId;
+      removeConnection = dependencies.hub.add({
+        playerId: context.playerId,
+        sessionId,
+        send: (envelope) => { if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(envelope)); },
+      });
+      // Register the replacement first so a bootstrap -> room/match rebind
+      // never makes the player appear to have no live connection.
+      removePreviousConnection?.();
+    };
+    const authenticateConnection = (context: AuthContext, sessionId: string): void => {
+      auth = context;
+      if (authenticationTimer) clearTimeout(authenticationTimer);
+      authenticationTimer = undefined;
+      bindConnection(context, sessionId);
+      void dependencies.rooms.setConnected(context, true)
+        .then((room) => room && dependencies.gateway.broadcast(room.id));
+    };
+
+    if (dependencies.wechatTrustCloudHeaders) {
+      try { dependencies.auth.assertTrustedWechatSource(request.headers["x-wx-source"]); }
+      catch { socket.close(1008, "unauthorized"); return; }
+      authenticationTimer = setTimeout(() => {
+        if (!auth && socket.readyState === socket.OPEN) {
+          connectionTerminated = true;
+          socket.close(1008, "authentication timeout");
+        }
+      }, 8_000);
+    } else {
+      try {
+        const directAuth = dependencies.auth.authenticate(readBearer(request.headers.authorization));
+        authenticateConnection(directAuth, `bootstrap_${directAuth.playerId}`);
+      } catch { socket.close(1008, "unauthorized"); return; }
+    }
+
     socket.on("message", (data: RawData, isBinary: boolean) => {
       messageQueue = messageQueue.then(() => handleMessage(data, isBinary)).catch(() => undefined);
     });
     const handleMessage = async (data: RawData, isBinary: boolean): Promise<void> => {
       try {
+        if (connectionTerminated) return;
         if (isBinary) throw new ProtocolDecodeError("$", "UTF-8 JSON text");
         const now = Date.now();
         if (now - windowStartedAt >= 1_000) { windowStartedAt = now; commandCount = 0; }
         if (++commandCount > 30) throw new ServiceError("RATE_LIMITED", "Too many commands", true);
         const envelope = parseClientEnvelope(JSON.parse(data.toString("utf8")) as unknown);
+        if (!auth) {
+          if (!dependencies.wechatTrustCloudHeaders || envelope.type !== "resume" || !envelope.resumeToken) {
+            connectionTerminated = true;
+            socket.close(1008, "unauthorized");
+            return;
+          }
+          try {
+            authenticateConnection(
+              dependencies.auth.authenticateTrustedWechatSocket(
+                envelope.resumeToken,
+                request.headers["x-wx-openid"],
+                request.headers["x-wx-source"],
+              ),
+              envelope.sessionId,
+            );
+          } catch {
+            connectionTerminated = true;
+            socket.close(1008, "unauthorized");
+            return;
+          }
+        }
+        const authenticated = auth;
+        if (!authenticated || !activeSessionId) {
+          connectionTerminated = true;
+          socket.close(1008, "unauthorized");
+          return;
+        }
         if (envelope.sessionId !== activeSessionId) {
-          activeSessionId = envelope.sessionId;
-          const removePreviousConnection = removeConnection;
-          removeConnection = dependencies.hub.add({
-            playerId: auth.playerId,
-            sessionId: activeSessionId,
-            send: (message) => { if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message)); },
-          });
-          // Register the replacement first so a bootstrap -> room/match rebind
-          // never makes the player appear to have no live connection.
-          removePreviousConnection();
+          bindConnection(authenticated, envelope.sessionId);
         }
         if (envelope.type === "resume") {
-          socket.send(JSON.stringify(await dependencies.gateway.resume(auth, envelope.sessionId)));
+          socket.send(JSON.stringify(await dependencies.gateway.resume(authenticated, envelope.sessionId)));
         } else {
-          socket.send(JSON.stringify(await dependencies.gateway.command(auth, envelope)));
+          socket.send(JSON.stringify(await dependencies.gateway.command(authenticated, envelope)));
         }
       } catch (error) {
         if (error instanceof SyntaxError || error instanceof ProtocolDecodeError) {
+          connectionTerminated = true;
           socket.close(1008, "invalid protocol message");
           return;
         }
@@ -106,17 +158,22 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         // acknowledged by SessionGateway; failures while resuming require a clean
         // reconnect so the client can retry its persisted resume/outbox sequence.
         void toProblem(error);
+        connectionTerminated = true;
         if (socket.readyState === socket.OPEN) socket.close(1011, "session operation failed");
       }
     };
     socket.on("close", () => {
-      removeConnection();
-      if (dependencies.hub.hasConnections(auth.playerId)) return;
-      void dependencies.rooms.setConnected(auth, false).then(async (room) => {
+      connectionTerminated = true;
+      if (authenticationTimer) clearTimeout(authenticationTimer);
+      authenticationTimer = undefined;
+      removeConnection?.();
+      const authenticated = auth;
+      if (!authenticated || dependencies.hub.hasConnections(authenticated.playerId)) return;
+      void dependencies.rooms.setConnected(authenticated, false).then(async (room) => {
         // A replacement socket may have arrived while the room transaction was
         // waiting. Restore presence rather than letting an older close win.
-        if (dependencies.hub.hasConnections(auth.playerId)) {
-          const restored = await dependencies.rooms.setConnected(auth, true);
+        if (dependencies.hub.hasConnections(authenticated.playerId)) {
+          const restored = await dependencies.rooms.setConnected(authenticated, true);
           if (restored) await dependencies.gateway.broadcast(restored.id);
           return;
         }

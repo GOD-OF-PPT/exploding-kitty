@@ -14,7 +14,7 @@
 - 微信原生小游戏 + TypeScript + `minigame-canvas-engine`：Flex 风格 UI、触摸、滚动和九宫格资源；牌桌高频动画封装在局部 Canvas2D 表面；
 - Node.js + TypeScript 模块化单体：WSS、认证、房间、权威规则、计时和重连；
 - 纯 TypeScript `game-core`：确定性状态机，不依赖微信、渲染器或网络；
-- PostgreSQL：权威快照、命令回执、审计事件和可恢复截止时间；Redis 只在连接路由成为实测瓶颈后引入；
+- MySQL：权威快照、命令回执、审计事件和可恢复截止时间；Redis 只在连接路由成为实测瓶颈后引入；
 - React/Vite 原型继续作为交互和视觉回归基准，不进入小游戏生产包。
 
 不采用 Cocos Creator 作为首版前置依赖。当前产品是 UI 密集的 2D 回合制卡牌游戏，不需要物理、地图、3D 或完整场景编辑器；轻量 Canvas UI 足以覆盖首版。若真机 PoC 证明牌桌动画无法达到目标，再只替换 `CardTableSurface` 的渲染 adapter，不改规则、协议、会话或页面模型。
@@ -244,7 +244,7 @@ PlayerEliminated / GameFinished
 - 禁止 `Math.random()`；正式牌局由服务端 CSPRNG 生成 256 位种子，再使用固定版本的确定性 PRNG。种子永不下发，随机结果写入受限事件。
 - 保存 `rulesetVersion`、卡牌目录版本、内核版本、PRNG 版本、事件 schema 版本。
 - 每局单调 `revision`；客户端记录最后应用的 revision。重连始终发送最新玩家专属全量快照，正确性不依赖通知历史。
-- 超时记录绝对 `deadlineAt` 与 `deadlineId`；PostgreSQL 到期扫描器使用 `FOR UPDATE SKIP LOCKED` 领取并补发内部系统命令，不能只依赖进程内 `setTimeout`。
+- 超时记录绝对 `deadlineAt` 与 `deadlineId`；MySQL 到期扫描器使用 `FOR UPDATE SKIP LOCKED` 领取并补发内部系统命令，不能只依赖进程内 `setTimeout`。
 - 日志与报错也必须脱敏，避免打印对手牌、牌堆顺序和秘密插入位置。
 
 ## 7. 仓库结构
