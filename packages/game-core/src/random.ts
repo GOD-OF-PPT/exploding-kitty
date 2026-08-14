@@ -1,4 +1,4 @@
-import type { DeterministicRandomState } from "./types";
+import type { DeterministicRandomState } from "./types.js";
 
 const SHA256_INITIAL = [
   0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,

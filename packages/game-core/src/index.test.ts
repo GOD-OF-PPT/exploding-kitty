@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyCommand, createBotCommand, createMatch, legalActions, projectView, type Card, type GameState } from "./index";
+import { applyCommand, createBotCommand, createMatch, legalActions, projectView, type Card, type GameState } from "./index.js";
 
 function cardCount(state: GameState): number {
   return state.deck.length

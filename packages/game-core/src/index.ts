@@ -1,5 +1,5 @@
-import { createFullDeck } from "./deck";
-import { nextRandom, seedFrom, shuffle } from "./random";
+import { createFullDeck } from "./deck.js";
+import { nextRandom, seedFrom, shuffle } from "./random.js";
 import {
   RULESET_VERSION,
   KERNEL_VERSION,
@@ -18,10 +18,10 @@ import {
   type PlayerView,
   type ResponseWindow,
   type TurnBatch,
-} from "./types";
+} from "./types.js";
 
-export * from "./types";
-export { CARD_COUNTS } from "./deck";
+export * from "./types.js";
+export { CARD_COUNTS } from "./deck.js";
 
 const SINGLE_ACTIONS = new Set<CardType>(["ATTACK", "FAVOR", "SHUFFLE", "SKIP", "SEE_FUTURE"]);
 // Must retain every event from the largest server-side bot batch so incremental audit projection

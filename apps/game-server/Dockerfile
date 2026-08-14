@@ -13,7 +13,8 @@ RUN npm config set registry https://mirrors.tencent.com/npm/ \
   && npm --workspace @exploding-kitty/game-core run build \
   && npm --workspace @exploding-kitty/protocol run build \
   && npm --workspace @exploding-kitty/game-server run build \
-  && npm prune --omit=dev
+  && npm prune --omit=dev \
+  && node --input-type=module -e "await Promise.all([import('./packages/game-core/dist/index.js'), import('./packages/protocol/dist/index.js'), import('./apps/game-server/dist/index.js')])"
 
 FROM node:24-alpine
 ENV NODE_ENV=production

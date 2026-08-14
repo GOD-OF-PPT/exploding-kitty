@@ -1,4 +1,4 @@
-import type { Card, CardType } from "./types";
+import type { Card, CardType } from "./types.js";
 
 export const CARD_COUNTS: Readonly<Record<CardType, number>> = {
   EXPLODING_KITTEN: 4,

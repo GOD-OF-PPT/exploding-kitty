@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ProtocolDecodeError, matchSnapshotCodec, parseClientEnvelope, parseServerEnvelope } from "./index";
+import { ProtocolDecodeError, matchSnapshotCodec, parseClientEnvelope, parseServerEnvelope } from "./index.js";
 
 const matchSnapshot = () => ({
   phase: "MATCH",
