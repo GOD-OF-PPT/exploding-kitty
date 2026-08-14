@@ -1,0 +1,450 @@
+{
+  "schemaVersion": 1,
+  "fixtureSet": "renderer-registry-25-v1",
+  "sourceBaseCommit": "adcd2b75b7e931c2743cf308dc0554cfcc48dcf6",
+  "capturedAt": "2026-08-14T12:43:15+08:00",
+  "renderer": "apps/minigame/src/ui/rendering/rendererRegistry.ts",
+  "captureTool": "Codex in-app Browser CDP Page.captureScreenshot(format=png)",
+  "pathTemplates": {
+    "current": "apps/minigame/visual-preview/evidence/current/canvas-<screen>-<viewport>.png",
+    "comparisons": "apps/minigame/visual-preview/evidence/comparisons/compare-<screen>-prototype-vs-canvas-390x844.png",
+    "references": "prototype/audit/current/after/implementation-<reference-screen>-390x844-final.png"
+  },
+  "viewports": [
+    {
+      "key": "390x844",
+      "logicalHeight": 844,
+      "density": "tall"
+    },
+    {
+      "key": "372x749",
+      "logicalHeight": 785.241935,
+      "density": "compact"
+    },
+    {
+      "key": "389x584",
+      "logicalHeight": 585.501285,
+      "density": "short"
+    }
+  ],
+  "counts": {
+    "current": 41,
+    "comparisons": 25,
+    "references": 25
+  },
+  "current": [
+    {
+      "screen": "attack",
+      "viewport": "372x749",
+      "sha256": "90a5dc20f43dc041dad6744beac3cfdae5b931d1c347749983c2c0347f86c961"
+    },
+    {
+      "screen": "attack",
+      "viewport": "389x584",
+      "sha256": "eae09a86112fcdbe849b900ad219c7d69aaa066a1268d855c30a1ea99546e3d4"
+    },
+    {
+      "screen": "attack",
+      "viewport": "390x844",
+      "sha256": "258d989f3076981d6d9dcbba90cbd1b457f7a42c10e9cfbcb90c23feffd20ffe"
+    },
+    {
+      "screen": "card-detail",
+      "viewport": "390x844",
+      "sha256": "3985b242ce12e01b3f0ec71b44f61440dd5dd30fa4b74ee3ff9b4036326cb27a"
+    },
+    {
+      "screen": "create",
+      "viewport": "372x749",
+      "sha256": "d63476ed8c58cf83a4b54f3ea60f6d258b9ecb1e3cd1e867dbe186497772a394"
+    },
+    {
+      "screen": "create",
+      "viewport": "389x584",
+      "sha256": "1d0c7fc2f457c7db8ba062bc5aeab0b3b4c5a060acdd4d5c89367307590b5042"
+    },
+    {
+      "screen": "create",
+      "viewport": "390x844",
+      "sha256": "93fbd6a4527f435650d97531bba69bc7d4ac39479780795e83aad8440c762c1b"
+    },
+    {
+      "screen": "defuse",
+      "viewport": "372x749",
+      "sha256": "327d80abfae62e767eb0af52721c9f3610986157f287bc2efab3ca4d4f885bfb"
+    },
+    {
+      "screen": "defuse",
+      "viewport": "389x584",
+      "sha256": "252a41356a575322e7b2676d055865d346d522ca5178676d452ad4622c209c40"
+    },
+    {
+      "screen": "defuse",
+      "viewport": "390x844",
+      "sha256": "3e2dc96fcff233a14959f15ae94a73c2e5082db0bf7e75eade5a3354beef487f"
+    },
+    {
+      "screen": "eliminated",
+      "viewport": "390x844",
+      "sha256": "5ddca14c94020459446b9e141bf73be1b8ce6b1704aa1f5de0a892f677091fb8"
+    },
+    {
+      "screen": "explosion",
+      "viewport": "390x844",
+      "sha256": "6361eccd4a3f0a5ea722cdb8f2adfc83d8ed8f3aefa69608d38057fe7dd764a1"
+    },
+    {
+      "screen": "favor",
+      "viewport": "390x844",
+      "sha256": "eac304a528e0ef2724159f8fee00f9d5a09274324d97ba6c53d337535bfabb70"
+    },
+    {
+      "screen": "future",
+      "viewport": "390x844",
+      "sha256": "c5e5969fc70959e3cfe583cdc62ad85c33b3f09eda040c4536f7d0374925b319"
+    },
+    {
+      "screen": "game",
+      "viewport": "390x844",
+      "sha256": "398f868b4196687276238adc5ac54a295cfeeb24afcecae507d2d88e21e4207f"
+    },
+    {
+      "screen": "game-menu",
+      "viewport": "390x844",
+      "sha256": "c64129a6fe7a0e66c652d1e37a4e2e7b0a7ea6e07fefd465520b2955ce9fdc6d"
+    },
+    {
+      "screen": "give-card",
+      "viewport": "390x844",
+      "sha256": "720c0553e5869832312db590ef171ce32bd7fc0577e2f5fa4b836f583bfc38ea"
+    },
+    {
+      "screen": "history",
+      "viewport": "390x844",
+      "sha256": "091d4f8e9377a5ae25d0f512ffec1f1db700a0cf3854781b63e1d0a1bfda91ea"
+    },
+    {
+      "screen": "home",
+      "viewport": "372x749",
+      "sha256": "134be1b755d7f1605be3c6667f9eff97a024dfd2ebe4100963cbeca3a92699ac"
+    },
+    {
+      "screen": "home",
+      "viewport": "389x584",
+      "sha256": "556400814e60dce2ad7d0d34acd57984028ab56cfa99388938f7999d6af5a6d1"
+    },
+    {
+      "screen": "home",
+      "viewport": "390x844",
+      "sha256": "646bf7abd66771f40808d5da22b9ce5456e6fad020857e412de1e93ecca6c1cc"
+    },
+    {
+      "screen": "join",
+      "viewport": "390x844",
+      "sha256": "ac7c02592ad96c2aa0572c469ba3f5be79a13a61818debfda67084d7ef52ef77"
+    },
+    {
+      "screen": "lobby-host",
+      "viewport": "372x749",
+      "sha256": "7621f2322aae47e19ea054e3d549dfb32f6f6c947468b43b6724c0b6cba03002"
+    },
+    {
+      "screen": "lobby-host",
+      "viewport": "389x584",
+      "sha256": "deceda80662ccd08f3435ba0765a1e7b3357cee9a6f8c7c6a43500d20df14cfb"
+    },
+    {
+      "screen": "lobby-host",
+      "viewport": "390x844",
+      "sha256": "77dcb8a2276b27699e2954fec74cc778337a10afdb6f602789e268e0424a1593"
+    },
+    {
+      "screen": "lobby-member",
+      "viewport": "390x844",
+      "sha256": "1dd5f3683bbdaf84709df953dcb798aaeed7a040524313dbada9a72994e02ce9"
+    },
+    {
+      "screen": "login",
+      "viewport": "390x844",
+      "sha256": "4b24b07dd61c01a487e52fd727abc3ba11a9829db1db7cc5324874a70003908a"
+    },
+    {
+      "screen": "network",
+      "viewport": "390x844",
+      "sha256": "5c5236e79c744138c60866828f7b6c5eb7121c2c31180db9e45d1aeac806bd00"
+    },
+    {
+      "screen": "other-turn",
+      "viewport": "390x844",
+      "sha256": "503c43b940c28d3d7eb5e06f1b63ea1e7ce73398fda482a9799339d61e63bad4"
+    },
+    {
+      "screen": "play-mode",
+      "viewport": "390x844",
+      "sha256": "7957226d81293ebf5788657aecbb933df514532372a9f5995b0029f85d3a243f"
+    },
+    {
+      "screen": "response",
+      "viewport": "390x844",
+      "sha256": "794979946339e9a344ce399d3069ef70dcafe3a5db3705ef3cbf78c430d89f75"
+    },
+    {
+      "screen": "result",
+      "viewport": "372x749",
+      "sha256": "211b36a7e6460e16895ec8b8f9a56ffaf5c8df09f181c156c8955e99b865efc5"
+    },
+    {
+      "screen": "result",
+      "viewport": "389x584",
+      "sha256": "e63c64c443644e28067cda79cf1e4c44b3f6d9fc2adf766d755c880ef2c6f8da"
+    },
+    {
+      "screen": "result",
+      "viewport": "390x844",
+      "sha256": "bb5fdd5b6cd36d6eac356214d426d5e4bf831ae9a8756f620cff5640af1dc7c6"
+    },
+    {
+      "screen": "rules",
+      "viewport": "372x749",
+      "sha256": "4ddc71b1947317fcec54877342506a35b1cc999acc3e4b5c7807020ab1039699"
+    },
+    {
+      "screen": "rules",
+      "viewport": "389x584",
+      "sha256": "99ce16bc11f48cda6ee772885dd9a851287d3d62c77e0f7037db3ec8bed3ec6a"
+    },
+    {
+      "screen": "rules",
+      "viewport": "390x844",
+      "sha256": "575771c8f8b19d1e36adc330e94fa56228aad913d4225c1e5154c235e752f27a"
+    },
+    {
+      "screen": "settings",
+      "viewport": "372x749",
+      "sha256": "2ca25672b84f5fc2e1f5f4a662a8a539786a828a710d59f68911ee0578d5d96e"
+    },
+    {
+      "screen": "settings",
+      "viewport": "389x584",
+      "sha256": "1c3d4a09f5e8336ff5ca2a158b26492bf80262f771618f9edf7512d1639050c8"
+    },
+    {
+      "screen": "settings",
+      "viewport": "390x844",
+      "sha256": "41de6e26942e30acae5e339df67cf1b3698a41679e20ee6d2d77c475f19c72f3"
+    },
+    {
+      "screen": "tutorial",
+      "viewport": "390x844",
+      "sha256": "05a3c09671b70f39bd0e631f77147a50d068894ea10f253c2cca32a1194ed33c"
+    }
+  ],
+  "comparisons": [
+    {
+      "screen": "attack",
+      "sha256": "91b55438f96f917152f9d5658d8f48862c73d96e5830829c0c54041f21bd8360"
+    },
+    {
+      "screen": "card-detail",
+      "sha256": "d295687394b1a90d373ac3dc16fd80c10ee751e969e8c83e1ef248df925a4717"
+    },
+    {
+      "screen": "create",
+      "sha256": "690b3edbe2411eee9493a21b1d2c5aa99fb304c597aaaf3b2d93c67d8d4cf79c"
+    },
+    {
+      "screen": "defuse",
+      "sha256": "5cc3b2bd0299c1b6c7de8cde1610728a68b5a036755627ab22613730512d43a6"
+    },
+    {
+      "screen": "eliminated",
+      "sha256": "8a5f0edb8b587ff80f17743ad4c4d88e1db2deac2c8b3def177003bf27070a04"
+    },
+    {
+      "screen": "explosion",
+      "sha256": "ce9808e8c3b63a158258a57f0ec64ddaf78725eb2f894758d65586ad246d8fe9"
+    },
+    {
+      "screen": "favor",
+      "sha256": "945df0aeff23f21965f8684c1a6846a6beb2d8e470fbaf9ef27aedba0508f76a"
+    },
+    {
+      "screen": "future",
+      "sha256": "89cd708cba4ec9df0ab7e0ef7cd34bdca7a65daa9126ec3fab07089f1e1c2a33"
+    },
+    {
+      "screen": "game-menu",
+      "sha256": "26fc7a81754b84d6b56a343553e7191234173f146e6a4787d2d766483574cfb0"
+    },
+    {
+      "screen": "game",
+      "sha256": "807eaf9d8901952416658d11fc4f7c13ebe760bc8be4e624927983bae444e8eb"
+    },
+    {
+      "screen": "give-card",
+      "sha256": "9b2f9451ef88afc7ed71ed0ad0ddcc2ba7ec032596480930864a2b048990e5fa"
+    },
+    {
+      "screen": "history",
+      "sha256": "629589df7c2ccea6fff777b1f25814d442933593c916e3be659279066b09ec8b"
+    },
+    {
+      "screen": "home",
+      "sha256": "e56fbbc23313139fc501957d46465e7448f904425d55681b5d2a7cb8aa3a7e43"
+    },
+    {
+      "screen": "join",
+      "sha256": "6f10038f26293526741da66777fb29ed4a9672cc85a3c333970e2559df5b0f14"
+    },
+    {
+      "screen": "lobby-host",
+      "sha256": "7ae12f6897d40009a556cdceb622855484dff38ca6021d401ed5a964059635fd"
+    },
+    {
+      "screen": "lobby-member",
+      "sha256": "45d7b11d35aa62b73be9e51f5e0cb1e593cd5b9a4ce9b49e729c963dccca79c3"
+    },
+    {
+      "screen": "login",
+      "sha256": "200184fbc90dbe6a4751a26267ce0ea978649ee6a184e3824127ebb098816934"
+    },
+    {
+      "screen": "network",
+      "sha256": "2e63ecd707d34fc42c020d384f570331a94caded7cca57196defc7a3a144d981"
+    },
+    {
+      "screen": "other-turn",
+      "sha256": "f6e4729d8f1d9786c1c6707a28c4c2fef744e6c6dbd8b548f62ca1f7daf0bb97"
+    },
+    {
+      "screen": "play-mode",
+      "sha256": "03f36b2a1b5b2ab3945c323689754bc11e432b033cce93f764706d81666c4f6d"
+    },
+    {
+      "screen": "response",
+      "sha256": "fa3b10ebdfea23d605f7bb35372903c62491c85551a75d39e4a8ed82781f06f3"
+    },
+    {
+      "screen": "result",
+      "sha256": "d5ead00dc860cadcc1210fddb3598a03bfa5a2516a3a6da60a395afda6c8d73e"
+    },
+    {
+      "screen": "rules",
+      "sha256": "52fb7abe73ec8bf8be3bcc2f598e4586d23b03cff01476e901d6c54e0a04873c"
+    },
+    {
+      "screen": "settings",
+      "sha256": "365976b74a5f134e37f193a4a4293f500e3cfb6156ba636d0b3885c609499438"
+    },
+    {
+      "screen": "tutorial",
+      "sha256": "adabb41875dec87b6d0cfa48045c131cb47c0c6c0efeb650951ed430f678b857"
+    }
+  ],
+  "references": {
+    "declaredExtension": "png",
+    "detectedFormat": "jpeg",
+    "items": [
+      {
+        "screen": "attack",
+        "sha256": "1848473aaf9b94612df6f009caef4225a8c643dce476c3673473d01257883989"
+      },
+      {
+        "screen": "card-detail",
+        "sha256": "39ca467564c79ad0612883765e44cd77aa791e8fb13b97b72e7444349fcc3242"
+      },
+      {
+        "screen": "create",
+        "sha256": "a8b0cadb7d51ea0f045b8291d29cfacbbba2eec10f582af75d25f7edf07a5304"
+      },
+      {
+        "screen": "defuse",
+        "sha256": "86675c9069aa8543ac7da79c7ba4e1cb4d77dbc52562b768fb3b856c71106035"
+      },
+      {
+        "screen": "eliminated",
+        "sha256": "0792821afb3c2a83a368f8755a6a8471a7b40138eac5b1a6765a1798b5066411"
+      },
+      {
+        "screen": "explosion",
+        "sha256": "adf58395a42e75f2a43133245b29f674bf2037476d8a1c90cbbae2af26cf8815"
+      },
+      {
+        "screen": "favor",
+        "sha256": "bccee67671bca4553633a9090ffa83f0674e514bedbecb50719278b16e262dde"
+      },
+      {
+        "screen": "future",
+        "sha256": "e353bc5c40db3986eb5e61e56fe0a3ed0eae8754e3df746a1d38faa031d27716"
+      },
+      {
+        "screen": "game",
+        "sha256": "0089ffc626cf1d1eaaafee826285ebfcf19905427e3aebbb2ccb12558fe6547c"
+      },
+      {
+        "screen": "game-menu",
+        "sha256": "f9649e7f347ced3e712d50f494bd253edaad5a4e8595180d1773b7567301ef16"
+      },
+      {
+        "screen": "give-card",
+        "sha256": "26a32055e91a84c5043126555d38a0dbaf404c307e099100b2179cf66b396fb5"
+      },
+      {
+        "screen": "history",
+        "sha256": "ab95ec5649b52084c3e9dc11cb30841f6a778083f6baeb85a59ba1fb4a2214fa"
+      },
+      {
+        "screen": "home",
+        "sha256": "1160f9442d81f91b5e6402b0647510d087979f9afb5ccd13498a91e652dfe55e"
+      },
+      {
+        "screen": "join",
+        "sha256": "b6be3357ee58c33c15d8ad798c981ed3edcaa0c74033e9cc20f038368518ccd0"
+      },
+      {
+        "screen": "lobby-host",
+        "sha256": "851968a68b1fa53f49d39164175a50fa0760633a3af12d8cffa2cc3bc6cb32e3"
+      },
+      {
+        "screen": "lobby-member",
+        "sha256": "9e7bd3fa97370a20ad5626ac00b0ca0b5017c7676d44956ff7fb73edf2b1b363"
+      },
+      {
+        "screen": "login",
+        "sha256": "114bee935a85680125822a46970b1e32703fa2db9f982e6a278bd4092e869578"
+      },
+      {
+        "screen": "network",
+        "sha256": "dd106f5d50d23bacffba92845a6e34164ea95f86ab8e210e17e4cad3c4e25d48"
+      },
+      {
+        "screen": "other-turn",
+        "sha256": "ca2c97dd279e2f3f32380960d01c0ffef53bd7d299d32bc8bbca3385881cf8ab"
+      },
+      {
+        "screen": "play-mode",
+        "sha256": "28e76546e51b85afebc908cefd927c9c662a0485686d494d5cac1b28413a626b"
+      },
+      {
+        "screen": "response",
+        "sha256": "c83175878e180dd9784e2d9f6928a953d73fa669c5c046d5ffd5a7da8b47c9e2"
+      },
+      {
+        "screen": "result",
+        "sha256": "cb9e7af42aa7b4284b8071588ba0b1a416cfc815cde3108eae2d4d83a6666353"
+      },
+      {
+        "screen": "rules",
+        "sha256": "02284b78c264b7460934a8d2790abfb38e91fd00c1ac8de80177f7b6c7bad1bc"
+      },
+      {
+        "screen": "settings",
+        "sha256": "548b2872cd402e802cc77cc2a37b107042d1195c63dd6add3a21e31e41307c1d"
+      },
+      {
+        "screen": "tutorial",
+        "sha256": "da486c0e266a9434939bb4ad3d7da5450bcd75d49c47bc5c19aed60bb282e745"
+      }
+    ]
+  }
+}
