@@ -98,6 +98,12 @@ describe("responsive scene styles", () => {
     expect(sheetBottom + 8).toBeLessThanOrEqual(options.height - dockHeight);
   });
 
+  it.each(DEVICES)("anchors response actions independently of root flex flow at $name", (device) => {
+    const { styles } = scene(device);
+    expect(styles.actionDockLinks).toMatchObject({ position: "absolute" });
+    expect(number(styles.actionDockLinks, "bottom")).toBeGreaterThanOrEqual(0);
+  });
+
   it.each(DEVICES)("lets the network body yield space to the fixed CTA at $name", (device) => {
     const { styles } = scene(device);
     expect(styles.networkBody).toMatchObject({ minHeight: 0, flex: 1 });
@@ -132,6 +138,14 @@ describe("responsive scene styles", () => {
       expect(number(styles.actionDock, "paddingBottom")).toBeGreaterThanOrEqual(
         options.safeBottom + 12 + footerHeight,
       );
+    }
+  });
+
+  it("uses only transforms supported by the canvas layout engine for active feedback", () => {
+    const { styles } = scene(DEVICES[0]!);
+    for (const className of ["iconButton", "actionButton", "rowInteractive"]) {
+      const active = (styles[className] as Record<string, unknown>)[":active"] as Record<string, unknown>;
+      expect.soft(active.transform, className).toBe("scale(0.97, 0.97)");
     }
   });
 });

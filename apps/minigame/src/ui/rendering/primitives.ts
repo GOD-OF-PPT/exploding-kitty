@@ -97,11 +97,12 @@ export function cards(
   const selected = new Set(selectedTokens);
   return `<view class="cardList cardList${capitalize(variant)}">${values.map((card, index) => {
     const selectedClass = selected.has(card.token) ? " cardSelected" : "";
+    const imageClass = variant === "ordered" ? "cardImage orderedCardImage" : "cardImage";
     const order = variant === "ordered" ? `<text class="cardOrder" value="${index + 1}"></text>` : "";
     const copy = variant === "ordered"
       ? `<view class="orderedCardCopy"><text class="orderedCardName" value="${escapeMarkup(card.name)}"></text><text class="orderedCardDetail" value="${escapeMarkup(index === 0 ? "下一张" : `再过 ${index} 张`)}"></text></view>`
       : `<text class="cardName" value="${escapeMarkup(card.name)}"></text>`;
-    return `<button id="card-${index}" class="cardItem cardItem${capitalize(variant)}${selectedClass}">${order}${fitImage(card.image, "cardImage", "cover", "center top")}${copy}</button>`;
+    return `<button id="card-${index}" class="cardItem cardItem${capitalize(variant)}${selectedClass}">${order}${fitImage(card.image, imageClass, "cover", "center top")}${copy}</button>`;
   }).join("")}</view>`;
 }
 

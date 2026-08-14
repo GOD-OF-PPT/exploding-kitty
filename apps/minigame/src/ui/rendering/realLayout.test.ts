@@ -163,6 +163,63 @@ describe("real short-screen layout", () => {
     for (const index of [0, 1]) expect.soft(bottom(elementById(`action-${index}`))).toBeLessThanOrEqual(HEIGHT);
   });
 
+  it.each([
+    { name: "390 x 585", options: OPTIONS },
+    {
+      name: "390 x 844",
+      options: { ...OPTIONS, height: 844, safeTop: 47, safeBottom: 34 },
+    },
+  ])("keeps response actions clear of title and countdown at $name", ({ options }) => {
+    layout({
+      id: "response",
+      title: "要取消这次行动吗？",
+      subtitle: "一名玩家打出了攻击牌，目标是你。再次否决会让原动作重新生效。",
+      actions: [action("nope", "red"), action("pass", "cream")],
+    }, options);
+
+    const protectedContent = [firstByClass("responseTitle"), firstByClass("countdown")];
+    const controls = [elementById("action-0"), elementById("action-1")];
+    for (const content of protectedContent) {
+      for (const control of controls) expect.soft(overlaps(content, control)).toBe(false);
+    }
+    for (const control of controls) expect.soft(bottom(control)).toBeLessThanOrEqual(options.height);
+    expect(bottom(firstByClass("actionDockLinks"))).toBe(options.height);
+  });
+
+  it.each([
+    { name: "390 x 585", options: OPTIONS },
+    {
+      name: "390 x 844",
+      options: { ...OPTIONS, height: 844, safeTop: 47, safeBottom: 34 },
+    },
+  ])("contains ordered-card images inside their $name rows", ({ options }) => {
+    layout({
+      id: "future",
+      title: "future",
+      cards: [0, 1, 2].map((index) => ({
+        token: `card-${index}`,
+        type: "ATTACK" as const,
+        name: `card ${index}`,
+        image: `assets/cards/card-${index}.png`,
+        playable: false,
+        singlePlayable: false,
+      })),
+      actions: [action("done")],
+    }, options);
+
+    const rows = allByClass("cardItemOrdered");
+    const images = allByClass("orderedCardImage");
+    expect(images).toHaveLength(rows.length);
+    rows.forEach((row, index) => {
+      const image = images[index]!;
+      expect.soft(image.layoutBox.absoluteX).toBeGreaterThanOrEqual(row.layoutBox.absoluteX);
+      expect.soft(rightEdge(image)).toBeLessThanOrEqual(rightEdge(row));
+      expect.soft(image.layoutBox.absoluteY).toBeGreaterThanOrEqual(row.layoutBox.absoluteY);
+      expect.soft(bottom(image)).toBeLessThanOrEqual(bottom(row));
+      if (rows[index + 1]) expect.soft(bottom(image)).toBeLessThanOrEqual(rows[index + 1]!.layoutBox.absoluteY);
+    });
+  });
+
   it("keeps all four lobby grid actions visible and gives the orphan its own row", () => {
     layout({
       id: "lobby-host",
@@ -189,14 +246,14 @@ describe("real short-screen layout", () => {
   });
 });
 
-function layout(model: ScreenModel): void {
-  const scene = renderScene(model, OPTIONS);
+function layout(model: ScreenModel, options: RenderSceneOptions = OPTIONS): void {
+  const scene = renderScene(model, options);
   // FitImage and View have identical layout semantics; replacing the tag keeps
   // this regression focused on the real engine's reflow without loading assets.
   const template = scene.template.replace(/<fitimage([^>]*)><\/fitimage>/g, "<view$1></view>");
   Layout.init(template, scene.styles);
-  Layout.updateViewPort({ x: 0, y: 0, width: WIDTH, height: HEIGHT });
-  Layout.layout(context());
+  Layout.updateViewPort({ x: 0, y: 0, width: WIDTH, height: options.height });
+  Layout.layout(context(options.height));
 }
 
 function screen(id: "rules" | "history" | "card-detail", values: readonly ScreenRow[]): ScreenModel {
@@ -234,13 +291,28 @@ function firstByClass(className: string): LayoutElement {
   return element;
 }
 
+function allByClass(className: string): LayoutElement[] {
+  return Layout.getElementsByClassName<LayoutElement>(className).filter((element): element is LayoutElement => Boolean(element));
+}
+
 function bottom(element: LayoutElement): number {
   return element.layoutBox.absoluteY + element.layoutBox.height;
 }
 
-function context(): CanvasRenderingContext2D {
+function rightEdge(element: LayoutElement): number {
+  return element.layoutBox.absoluteX + element.layoutBox.width;
+}
+
+function overlaps(left: LayoutElement, right: LayoutElement): boolean {
+  return left.layoutBox.absoluteX < rightEdge(right)
+    && rightEdge(left) > right.layoutBox.absoluteX
+    && left.layoutBox.absoluteY < bottom(right)
+    && bottom(left) > right.layoutBox.absoluteY;
+}
+
+function context(height = HEIGHT): CanvasRenderingContext2D {
   const target = {
-    canvas: { width: WIDTH, height: HEIGHT },
+    canvas: { width: WIDTH, height },
     measureText: (value: string) => ({ width: [...String(value)].length * 10 }),
   };
   return new Proxy(target, {
