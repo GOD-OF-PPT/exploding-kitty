@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
-  "fixtureSet": "sha256:22bc37da5a31cf27ce40e3cb1bc0f075f2ed427f9c6c645d69c5ea3006d41a7b",
-  "sourceBaseCommit": "81963bf05c0bddab36fc6103b0ed42dfc24755d0",
+  "fixtureSet": "sha256:99e62389a01bf6919a66c8c2f312821a2ee4e0a0e8cd1df74be432dad44357bc",
+  "sourceBaseCommit": "9d40d934b1c38bb49d3ebd2615b2c16868de34e9",
   "pathTemplates": {
     "current": "apps/minigame/visual-preview/evidence/current/canvas-<screen>-<viewport>.png",
     "density": "apps/minigame/visual-preview/evidence/density/canvas-<screen>-<viewport>-dpr<dpr>.png",
@@ -30,18 +30,18 @@
       3
     ],
     "sourceSnapshotAlgorithm": "sha256-bundle-null-input-fingerprint-v1",
-    "previewBundleSha256": "48324743745759954939b60e4dc436fdcbd9a40780c47225dc2224e576a8ba96",
-    "inputFingerprintSha256": "22bc37da5a31cf27ce40e3cb1bc0f075f2ed427f9c6c645d69c5ea3006d41a7b",
-    "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256"
+    "previewBundleSha256": "54e2cf63a146933dd97390948d2ad1494ef3d6d91caec8b733a5219f3aaf1cb0",
+    "inputFingerprintSha256": "99e62389a01bf6919a66c8c2f312821a2ee4e0a0e8cd1df74be432dad44357bc",
+    "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc"
   },
   "previewBundle": {
     "file": "apps/minigame/visual-preview/dist/main.js",
     "algorithm": "sha256-bytes-v1",
-    "sha256": "48324743745759954939b60e4dc436fdcbd9a40780c47225dc2224e576a8ba96"
+    "sha256": "54e2cf63a146933dd97390948d2ad1494ef3d6d91caec8b733a5219f3aaf1cb0"
   },
   "inputFingerprint": {
     "algorithm": "sha256-path-null-digest-lf-v1",
-    "sha256": "22bc37da5a31cf27ce40e3cb1bc0f075f2ed427f9c6c645d69c5ea3006d41a7b",
+    "sha256": "99e62389a01bf6919a66c8c2f312821a2ee4e0a0e8cd1df74be432dad44357bc",
     "files": [
       {
         "file": "apps/minigame/assets.manifest.json",
@@ -301,7 +301,7 @@
       },
       {
         "file": "apps/minigame/src/ui/cardTableSurface.ts",
-        "sha256": "7250b6eb5d9bf9c3feb3c231b3e12bf9e99676fdd0fcc9637856a402a5b4ed79"
+        "sha256": "e873f8a1432945025f0916ebfa65c49f3b553b5c902ff7e50355d2b424956f43"
       },
       {
         "file": "apps/minigame/src/ui/copy.ts",
@@ -605,7 +605,7 @@
       },
       {
         "file": "apps/minigame/visual-preview/dist/main.js",
-        "sha256": "48324743745759954939b60e4dc436fdcbd9a40780c47225dc2224e576a8ba96"
+        "sha256": "54e2cf63a146933dd97390948d2ad1494ef3d6d91caec8b733a5219f3aaf1cb0"
       },
       {
         "file": "apps/minigame/visual-preview/dist/references/implementation-attack-390x844-final.png",
@@ -938,7 +938,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-login-390x844.png",
       "sha256": "3573e533c6d8d70699c10b2a8712490aa511bf9179ebe2eb78f97031581ca571",
       "pngByteSha256": "3573e533c6d8d70699c10b2a8712490aa511bf9179ebe2eb78f97031581ca571",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1001,7 +1001,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-home-390x844.png",
       "sha256": "394479f3591b4030e95192c8f9e1f228705b27ae3ffa7a6c371a40b967c10bcf",
       "pngByteSha256": "394479f3591b4030e95192c8f9e1f228705b27ae3ffa7a6c371a40b967c10bcf",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1064,7 +1064,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-play-mode-390x844.png",
       "sha256": "a75d35c2f6f081000180a29fcb1f4bdd173ce43b34bc5e83e0978e8f091a6c7d",
       "pngByteSha256": "a75d35c2f6f081000180a29fcb1f4bdd173ce43b34bc5e83e0978e8f091a6c7d",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1127,7 +1127,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-create-390x844.png",
       "sha256": "ea698ca93aab9f2925fbb0fe546c8d36c588532acdfeba22684ce5bdc6c8695c",
       "pngByteSha256": "ea698ca93aab9f2925fbb0fe546c8d36c588532acdfeba22684ce5bdc6c8695c",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1190,7 +1190,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-join-390x844.png",
       "sha256": "7a612132ab02b3b2819364c649e6bf5b6fa39b5d60046ee037cfd8bdca5e3ab2",
       "pngByteSha256": "7a612132ab02b3b2819364c649e6bf5b6fa39b5d60046ee037cfd8bdca5e3ab2",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1253,7 +1253,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-lobby-host-390x844.png",
       "sha256": "e5341cb9a491db2fdd62d7c0a9fec7b5c4d011f45e5e155817598787303eda99",
       "pngByteSha256": "e5341cb9a491db2fdd62d7c0a9fec7b5c4d011f45e5e155817598787303eda99",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1316,7 +1316,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-lobby-member-390x844.png",
       "sha256": "a1c56cdd7fd2c23eaf733aad4be66082301cafaa743f619d09c69f75be784f80",
       "pngByteSha256": "a1c56cdd7fd2c23eaf733aad4be66082301cafaa743f619d09c69f75be784f80",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1379,7 +1379,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-game-390x844.png",
       "sha256": "75e4ec520a466ed017f4874ddb43ed14adef07d035d90e737c02966be3e34feb",
       "pngByteSha256": "75e4ec520a466ed017f4874ddb43ed14adef07d035d90e737c02966be3e34feb",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1442,7 +1442,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-other-turn-390x844.png",
       "sha256": "33e6a8d9c3453b63de3b0a93762273d8c4a8c221689e6c52b97715f9455a8343",
       "pngByteSha256": "33e6a8d9c3453b63de3b0a93762273d8c4a8c221689e6c52b97715f9455a8343",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1505,7 +1505,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-attack-390x844.png",
       "sha256": "b7066012d70baa1e3d3f6eaf5ba8ed782499bba6a284a416b4a5eecef8e871e2",
       "pngByteSha256": "b7066012d70baa1e3d3f6eaf5ba8ed782499bba6a284a416b4a5eecef8e871e2",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1568,7 +1568,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-response-390x844.png",
       "sha256": "ef4ce1ac75db373f839150745a4c83a4a0e8f0945dd73dc77ff2ef24d863350b",
       "pngByteSha256": "ef4ce1ac75db373f839150745a4c83a4a0e8f0945dd73dc77ff2ef24d863350b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1631,7 +1631,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-favor-390x844.png",
       "sha256": "f85fcf3fe89acda70850651c10efddb455fd9312f48a202e1c08c19fe31967bd",
       "pngByteSha256": "f85fcf3fe89acda70850651c10efddb455fd9312f48a202e1c08c19fe31967bd",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1694,7 +1694,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-give-card-390x844.png",
       "sha256": "dd882553dac0e9ccc97ab1241b8f6f80fd2aa5af98cf395be67c14a9524d84bc",
       "pngByteSha256": "dd882553dac0e9ccc97ab1241b8f6f80fd2aa5af98cf395be67c14a9524d84bc",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1757,7 +1757,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-future-390x844.png",
       "sha256": "dfd013df858ec30b741e948831e2cce4f19237b2ab09bf153e9b1bc40ba4eff0",
       "pngByteSha256": "dfd013df858ec30b741e948831e2cce4f19237b2ab09bf153e9b1bc40ba4eff0",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1820,7 +1820,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-explosion-390x844.png",
       "sha256": "af39f6965c311b0a0efdf03c859d472523b8c795d68192130a17cb0f4a6bb729",
       "pngByteSha256": "af39f6965c311b0a0efdf03c859d472523b8c795d68192130a17cb0f4a6bb729",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1883,7 +1883,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-defuse-390x844.png",
       "sha256": "f6e0ffa63fdc7c229f240401f93f36559e09d3b02bab0f4c0dc2351e8c9fe6f8",
       "pngByteSha256": "f6e0ffa63fdc7c229f240401f93f36559e09d3b02bab0f4c0dc2351e8c9fe6f8",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -1946,7 +1946,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-eliminated-390x844.png",
       "sha256": "b9f119261b2c9aa89e4e85c75c5a5b74758d678f1aa76172adaec8344f089170",
       "pngByteSha256": "b9f119261b2c9aa89e4e85c75c5a5b74758d678f1aa76172adaec8344f089170",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2009,7 +2009,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-result-390x844.png",
       "sha256": "1862e5d839d46139abe3b63c7ccaa89af62c621402462578676d1be55b40dd12",
       "pngByteSha256": "1862e5d839d46139abe3b63c7ccaa89af62c621402462578676d1be55b40dd12",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2072,7 +2072,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-tutorial-390x844.png",
       "sha256": "874b48ec23ca7823037efd0b05af73676161c4cbce8f44f2cf2f3c44d1cfdd66",
       "pngByteSha256": "874b48ec23ca7823037efd0b05af73676161c4cbce8f44f2cf2f3c44d1cfdd66",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2135,7 +2135,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-rules-390x844.png",
       "sha256": "a6866cbba7038774f20d4eb6b8648ad8fb0c332605d0ef9f77df13f46d3fac74",
       "pngByteSha256": "a6866cbba7038774f20d4eb6b8648ad8fb0c332605d0ef9f77df13f46d3fac74",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2198,7 +2198,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-card-detail-390x844.png",
       "sha256": "e3be5895dc2bd6cc38dba5e073ad4b25c724535bc5d83d4586867aa2e5338b75",
       "pngByteSha256": "e3be5895dc2bd6cc38dba5e073ad4b25c724535bc5d83d4586867aa2e5338b75",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2261,7 +2261,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-history-390x844.png",
       "sha256": "21d791d8405f844a9aab917ba11b24f3a3ad94123c79569245823678f25aa2e0",
       "pngByteSha256": "21d791d8405f844a9aab917ba11b24f3a3ad94123c79569245823678f25aa2e0",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2324,7 +2324,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-game-menu-390x844.png",
       "sha256": "193491388d24af609cb929a1b1f014e5b0b3f1f969156e11be602cce6900b7df",
       "pngByteSha256": "193491388d24af609cb929a1b1f014e5b0b3f1f969156e11be602cce6900b7df",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2387,7 +2387,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-network-390x844.png",
       "sha256": "74e0a4aa5b75f742fa6539163ab94424d652dd6b022852d8b9868b25eeeff161",
       "pngByteSha256": "74e0a4aa5b75f742fa6539163ab94424d652dd6b022852d8b9868b25eeeff161",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2450,7 +2450,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-settings-390x844.png",
       "sha256": "c5f630453d3b80768db1e2c1c087e9db0f5bec56d10bc26c04fa74f2d1646fe8",
       "pngByteSha256": "c5f630453d3b80768db1e2c1c087e9db0f5bec56d10bc26c04fa74f2d1646fe8",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 260,
@@ -2513,7 +2513,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-home-372x749.png",
       "sha256": "e677f75e0c8ad48907310efd21a0156f3d804d7570eb93be9db20d9b23749899",
       "pngByteSha256": "e677f75e0c8ad48907310efd21a0156f3d804d7570eb93be9db20d9b23749899",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -2576,7 +2576,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-home-389x584.png",
       "sha256": "cdc0482e2e0acb7f6498e9331f4186a6367f209e6b2425818f2f0f8f7ad4d6f4",
       "pngByteSha256": "cdc0482e2e0acb7f6498e9331f4186a6367f209e6b2425818f2f0f8f7ad4d6f4",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -2639,7 +2639,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-create-372x749.png",
       "sha256": "277a1e46bc5079162b23dbdf9dd8aaa7d452641c65e45cb3830c5b11a11e789c",
       "pngByteSha256": "277a1e46bc5079162b23dbdf9dd8aaa7d452641c65e45cb3830c5b11a11e789c",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -2702,7 +2702,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-create-389x584.png",
       "sha256": "151462471bc4bbdcfbbda3fe47a85644e2d13ef9e818dd2f2119890260a96408",
       "pngByteSha256": "151462471bc4bbdcfbbda3fe47a85644e2d13ef9e818dd2f2119890260a96408",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -2765,7 +2765,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-lobby-host-372x749.png",
       "sha256": "d5f2af4304c26ac8fb36fbf56b60957f6d2f284071c6377363f5463b604126bd",
       "pngByteSha256": "d5f2af4304c26ac8fb36fbf56b60957f6d2f284071c6377363f5463b604126bd",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -2828,7 +2828,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-lobby-host-389x584.png",
       "sha256": "e40acd508c925ce9e575f00aa668e5aeb5bc3e3b9a1341566e6756143e4dbd6a",
       "pngByteSha256": "e40acd508c925ce9e575f00aa668e5aeb5bc3e3b9a1341566e6756143e4dbd6a",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -2891,7 +2891,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-attack-372x749.png",
       "sha256": "6def3ca90153058f2155f44e3c5f529e2fe7a35ce116a1ea93e1e577406c9a34",
       "pngByteSha256": "6def3ca90153058f2155f44e3c5f529e2fe7a35ce116a1ea93e1e577406c9a34",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -2954,7 +2954,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-attack-389x584.png",
       "sha256": "94f6f644a5c60c35470f2d27dd949eefacd935be7a25e6111345ea5e81587672",
       "pngByteSha256": "94f6f644a5c60c35470f2d27dd949eefacd935be7a25e6111345ea5e81587672",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -3017,7 +3017,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-defuse-372x749.png",
       "sha256": "a55343a1a3a8ee7e8ae48910e2e14f361b8f872a672caf95531cc79b2f42fb66",
       "pngByteSha256": "a55343a1a3a8ee7e8ae48910e2e14f361b8f872a672caf95531cc79b2f42fb66",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -3080,7 +3080,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-defuse-389x584.png",
       "sha256": "4695948fd1bd7bbce6adbed15a521a733547c19880c3bdcde98890bc6ed28a1b",
       "pngByteSha256": "4695948fd1bd7bbce6adbed15a521a733547c19880c3bdcde98890bc6ed28a1b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -3143,7 +3143,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-result-372x749.png",
       "sha256": "f169008be6185c8374cca9c5f35b5ad820472bd0a4c280964635ddfb7b793c9b",
       "pngByteSha256": "f169008be6185c8374cca9c5f35b5ad820472bd0a4c280964635ddfb7b793c9b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -3206,7 +3206,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-result-389x584.png",
       "sha256": "66136d88e44756179870ce5c1af9bd07654a68d5999dbc8cdd52be31789becd4",
       "pngByteSha256": "66136d88e44756179870ce5c1af9bd07654a68d5999dbc8cdd52be31789becd4",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -3269,7 +3269,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-rules-372x749.png",
       "sha256": "c460f9369a7869fac20a63f602dc9892e8d4423dd1d48ea1fe1aa11a4e61eb21",
       "pngByteSha256": "c460f9369a7869fac20a63f602dc9892e8d4423dd1d48ea1fe1aa11a4e61eb21",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -3332,7 +3332,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-rules-389x584.png",
       "sha256": "20ce3137c6f4743c081523a913331a74d44dfb8e6ec616c035dea068f17866d3",
       "pngByteSha256": "20ce3137c6f4743c081523a913331a74d44dfb8e6ec616c035dea068f17866d3",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -3395,7 +3395,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-settings-372x749.png",
       "sha256": "34fdd7e740d933656f0705ee3e301395e3172a2c7a57d50d25fe2e6e921ad800",
       "pngByteSha256": "34fdd7e740d933656f0705ee3e301395e3172a2c7a57d50d25fe2e6e921ad800",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -3458,7 +3458,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-settings-389x584.png",
       "sha256": "ba384c8276aa276e54520458983b67aa5578e2f3dc73953532d9911ace35e6a2",
       "pngByteSha256": "ba384c8276aa276e54520458983b67aa5578e2f3dc73953532d9911ace35e6a2",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -3521,7 +3521,7 @@
       "file": "apps/minigame/visual-preview/evidence/current/canvas-network-372x749.png",
       "sha256": "dd79c7b50a058dddfba7768de9fdd7d9fa98f92b6da4950eb8e9bced17a7d69b",
       "pngByteSha256": "dd79c7b50a058dddfba7768de9fdd7d9fa98f92b6da4950eb8e9bced17a7d69b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -3586,7 +3586,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-login-390x844-dpr2.png",
       "sha256": "0223cd1011e48eddd24d7d9f8454c1473c202af1d1a22b93e7f46709ae952399",
       "pngByteSha256": "0223cd1011e48eddd24d7d9f8454c1473c202af1d1a22b93e7f46709ae952399",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -3649,7 +3649,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-login-390x844-dpr3.png",
       "sha256": "58b3b892a41076a9545dc4f51fdb0adf7478634fd3323760469ad4838d190055",
       "pngByteSha256": "58b3b892a41076a9545dc4f51fdb0adf7478634fd3323760469ad4838d190055",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -3712,7 +3712,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-home-390x844-dpr2.png",
       "sha256": "1fb3cf373d9a08b24d8dfe4819b0172b6bdf3bf20544830ffd1f94cd992d0a0a",
       "pngByteSha256": "1fb3cf373d9a08b24d8dfe4819b0172b6bdf3bf20544830ffd1f94cd992d0a0a",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -3775,7 +3775,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-home-390x844-dpr3.png",
       "sha256": "2887e3a860f7fbd78f56131d4a17ea49dab862554fd3b3c060a89508f5350fe0",
       "pngByteSha256": "2887e3a860f7fbd78f56131d4a17ea49dab862554fd3b3c060a89508f5350fe0",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -3838,7 +3838,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-play-mode-390x844-dpr2.png",
       "sha256": "cb6768cb8a75d0c91255d697392b059311d00ee136bed25a0dc14cb7e011e789",
       "pngByteSha256": "cb6768cb8a75d0c91255d697392b059311d00ee136bed25a0dc14cb7e011e789",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -3901,7 +3901,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-play-mode-390x844-dpr3.png",
       "sha256": "b0ff2e61da6cc65b68c6ea7e124637d6c7498e5e3f87b96207397eb461b6ca4a",
       "pngByteSha256": "b0ff2e61da6cc65b68c6ea7e124637d6c7498e5e3f87b96207397eb461b6ca4a",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -3964,7 +3964,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-create-390x844-dpr2.png",
       "sha256": "82a5882889d5e3403acff1bfab2beb6bcc4ed2476ffa71ae8a3e0a5d83710360",
       "pngByteSha256": "82a5882889d5e3403acff1bfab2beb6bcc4ed2476ffa71ae8a3e0a5d83710360",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4027,7 +4027,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-create-390x844-dpr3.png",
       "sha256": "b051d2a28f1d4ed58268f9a27d53f031c38ce5c453a89bbfeca8ccdce6d8246f",
       "pngByteSha256": "b051d2a28f1d4ed58268f9a27d53f031c38ce5c453a89bbfeca8ccdce6d8246f",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4090,7 +4090,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-join-390x844-dpr2.png",
       "sha256": "ba8bba837b2d5baa916a9f2ab5c6017ecc576b3c1071b7492b4dc7a0362d29e4",
       "pngByteSha256": "ba8bba837b2d5baa916a9f2ab5c6017ecc576b3c1071b7492b4dc7a0362d29e4",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4153,7 +4153,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-join-390x844-dpr3.png",
       "sha256": "98100d1511fd401dbb0ca6970a3ca3e37676c60f3995bf19d8de0d9792982ea1",
       "pngByteSha256": "98100d1511fd401dbb0ca6970a3ca3e37676c60f3995bf19d8de0d9792982ea1",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4216,7 +4216,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-lobby-host-390x844-dpr2.png",
       "sha256": "a1459ff6163df530b51f3de6f4e4000ffb3aa9b7e9a0be83c86b2de88eca49a1",
       "pngByteSha256": "a1459ff6163df530b51f3de6f4e4000ffb3aa9b7e9a0be83c86b2de88eca49a1",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4279,7 +4279,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-lobby-host-390x844-dpr3.png",
       "sha256": "b8d19b49ef63ceddf824e963ffb262c25cd3e72fdd7305f5fb6e7f0ac46caa39",
       "pngByteSha256": "b8d19b49ef63ceddf824e963ffb262c25cd3e72fdd7305f5fb6e7f0ac46caa39",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4342,7 +4342,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-lobby-member-390x844-dpr2.png",
       "sha256": "b7813d64444a36406695b00d7114470fbe84918f59c73a8f2ac6b494bbf30d28",
       "pngByteSha256": "b7813d64444a36406695b00d7114470fbe84918f59c73a8f2ac6b494bbf30d28",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4405,7 +4405,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-lobby-member-390x844-dpr3.png",
       "sha256": "bff62b45d9dc3de00f160dbeb721bcc0ddded6a17a981eff4575aa6fabb027e4",
       "pngByteSha256": "bff62b45d9dc3de00f160dbeb721bcc0ddded6a17a981eff4575aa6fabb027e4",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4468,7 +4468,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-game-390x844-dpr2.png",
       "sha256": "0d04df88d5571830e2bf238db73fa8549d686d84da9a2778aa8132839f908ba3",
       "pngByteSha256": "0d04df88d5571830e2bf238db73fa8549d686d84da9a2778aa8132839f908ba3",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4531,7 +4531,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-game-390x844-dpr3.png",
       "sha256": "6deeb619162c968fb7555c39bc08540a6517987d48eb712f6c4094056b87aa7b",
       "pngByteSha256": "6deeb619162c968fb7555c39bc08540a6517987d48eb712f6c4094056b87aa7b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4594,7 +4594,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-other-turn-390x844-dpr2.png",
       "sha256": "8b9f962b947a6006561bb728309adfd37f56be311952c4f4f8e620c7d4fa315e",
       "pngByteSha256": "8b9f962b947a6006561bb728309adfd37f56be311952c4f4f8e620c7d4fa315e",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4657,7 +4657,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-other-turn-390x844-dpr3.png",
       "sha256": "4f70db2f3f2333be2c6b66371856b3732ccd4788bfddffc6cd1062b2ed0dfe5c",
       "pngByteSha256": "4f70db2f3f2333be2c6b66371856b3732ccd4788bfddffc6cd1062b2ed0dfe5c",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4720,7 +4720,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-attack-390x844-dpr2.png",
       "sha256": "919dc1be7e65ab3880d89548782cadb86696830ff2ab294c31d69bafe6e89e28",
       "pngByteSha256": "919dc1be7e65ab3880d89548782cadb86696830ff2ab294c31d69bafe6e89e28",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4783,7 +4783,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-attack-390x844-dpr3.png",
       "sha256": "f07e7bf13ea4b9e2396ca6c1218738d84a81417ca488f13d1f26ee48f5bed4a2",
       "pngByteSha256": "f07e7bf13ea4b9e2396ca6c1218738d84a81417ca488f13d1f26ee48f5bed4a2",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4846,7 +4846,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-response-390x844-dpr2.png",
       "sha256": "d3d253ae44986714c4e98f5068aaf9bb4436e65b38b41fc64142b8fdf60c59c9",
       "pngByteSha256": "d3d253ae44986714c4e98f5068aaf9bb4436e65b38b41fc64142b8fdf60c59c9",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -4909,7 +4909,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-response-390x844-dpr3.png",
       "sha256": "b83b0d119e58a3a7032fc16e1461190df6feaa83c983a7d46531c284a5849174",
       "pngByteSha256": "b83b0d119e58a3a7032fc16e1461190df6feaa83c983a7d46531c284a5849174",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -4972,7 +4972,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-favor-390x844-dpr2.png",
       "sha256": "a3cd8e11d34f4ad9094f49cba057a93276a0315b9e00f75538135f0a03c7df9b",
       "pngByteSha256": "a3cd8e11d34f4ad9094f49cba057a93276a0315b9e00f75538135f0a03c7df9b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5035,7 +5035,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-favor-390x844-dpr3.png",
       "sha256": "4430bc99753c417a8d35f8ef82d5ae8ce39e487dc448626665c0316a8ff80c00",
       "pngByteSha256": "4430bc99753c417a8d35f8ef82d5ae8ce39e487dc448626665c0316a8ff80c00",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5098,7 +5098,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-give-card-390x844-dpr2.png",
       "sha256": "4069b344d610fa581cda8ffd1d8257dc6a25939e4893acdf4e9267e1a274d897",
       "pngByteSha256": "4069b344d610fa581cda8ffd1d8257dc6a25939e4893acdf4e9267e1a274d897",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5161,7 +5161,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-give-card-390x844-dpr3.png",
       "sha256": "476224d4b6f68fd56f478db495eb63ada0beb4e416babf7cd02c21a8b20e3604",
       "pngByteSha256": "476224d4b6f68fd56f478db495eb63ada0beb4e416babf7cd02c21a8b20e3604",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5224,7 +5224,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-future-390x844-dpr2.png",
       "sha256": "9bcaf1c11efa4efa78119091c51d04150dda60b8202753668bb03190a3d833eb",
       "pngByteSha256": "9bcaf1c11efa4efa78119091c51d04150dda60b8202753668bb03190a3d833eb",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5287,7 +5287,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-future-390x844-dpr3.png",
       "sha256": "5c25f4ec31f8b0f6835d4a774764d15adf517825c90c08c131329cb385f4f4d3",
       "pngByteSha256": "5c25f4ec31f8b0f6835d4a774764d15adf517825c90c08c131329cb385f4f4d3",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5350,7 +5350,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-explosion-390x844-dpr2.png",
       "sha256": "9ea2b36fb038b046b2fe83745ac254ff91f39efac8b1a695c9ed9453bac58392",
       "pngByteSha256": "9ea2b36fb038b046b2fe83745ac254ff91f39efac8b1a695c9ed9453bac58392",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5413,7 +5413,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-explosion-390x844-dpr3.png",
       "sha256": "2626f6df6634530ac080de2b9ac28e0acfc626a911b07d5dacfa6001efa9bc2d",
       "pngByteSha256": "2626f6df6634530ac080de2b9ac28e0acfc626a911b07d5dacfa6001efa9bc2d",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5476,7 +5476,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-defuse-390x844-dpr2.png",
       "sha256": "9cee132ba599bc2e04953ce7786b12eceea21a0c6c875c68c02d6a9848cb0891",
       "pngByteSha256": "9cee132ba599bc2e04953ce7786b12eceea21a0c6c875c68c02d6a9848cb0891",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5539,7 +5539,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-defuse-390x844-dpr3.png",
       "sha256": "169a1f9cab25cf7e6262a490dcd36d790aaaa868c697cde68ee23d243b3c54c5",
       "pngByteSha256": "169a1f9cab25cf7e6262a490dcd36d790aaaa868c697cde68ee23d243b3c54c5",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5602,7 +5602,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-eliminated-390x844-dpr2.png",
       "sha256": "e921aff8370895b3ed8bd7284698cb9fdb90b6134134e0bec5573d98441bcf1c",
       "pngByteSha256": "e921aff8370895b3ed8bd7284698cb9fdb90b6134134e0bec5573d98441bcf1c",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5665,7 +5665,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-eliminated-390x844-dpr3.png",
       "sha256": "05168d5dd3a88cb3140d9ebb593ce3fc7cc5d1c514c5b9d8b80a6807cf6c9ada",
       "pngByteSha256": "05168d5dd3a88cb3140d9ebb593ce3fc7cc5d1c514c5b9d8b80a6807cf6c9ada",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5728,7 +5728,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-result-390x844-dpr2.png",
       "sha256": "ecbffb07736decb76daebd9093caecdaf56fb45ba26308744f019fc6c8e639c7",
       "pngByteSha256": "ecbffb07736decb76daebd9093caecdaf56fb45ba26308744f019fc6c8e639c7",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5791,7 +5791,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-result-390x844-dpr3.png",
       "sha256": "6a843db43842548d3c1a9d7ac786f620742159e9937769f86f3b6930634a61ba",
       "pngByteSha256": "6a843db43842548d3c1a9d7ac786f620742159e9937769f86f3b6930634a61ba",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5854,7 +5854,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-tutorial-390x844-dpr2.png",
       "sha256": "d8103ebb9be14aacfbe9e2c7d9c8d1c77b74f2c27ca9c250067f27419d141efa",
       "pngByteSha256": "d8103ebb9be14aacfbe9e2c7d9c8d1c77b74f2c27ca9c250067f27419d141efa",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -5917,7 +5917,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-tutorial-390x844-dpr3.png",
       "sha256": "8f4495ae919609b4988cc4b1495127f0cf0bf0a82d88dd3727a4513fe9a53d5f",
       "pngByteSha256": "8f4495ae919609b4988cc4b1495127f0cf0bf0a82d88dd3727a4513fe9a53d5f",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -5980,7 +5980,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-rules-390x844-dpr2.png",
       "sha256": "bbe854c33e74476b8357acd368bb7a99219df9a25b9912fab91feb7ab701c02c",
       "pngByteSha256": "bbe854c33e74476b8357acd368bb7a99219df9a25b9912fab91feb7ab701c02c",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -6043,7 +6043,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-rules-390x844-dpr3.png",
       "sha256": "196e8367145024ec7d80e62616638c942ce43edf95675ef621dab5bd2020fdcb",
       "pngByteSha256": "196e8367145024ec7d80e62616638c942ce43edf95675ef621dab5bd2020fdcb",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -6106,7 +6106,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-card-detail-390x844-dpr2.png",
       "sha256": "39dcca08a196cb03e6b345f7e36e71d949f7d1950933d027da57cb85793604bd",
       "pngByteSha256": "39dcca08a196cb03e6b345f7e36e71d949f7d1950933d027da57cb85793604bd",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -6169,7 +6169,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-card-detail-390x844-dpr3.png",
       "sha256": "6eef4eb3a6247ee6966e6f38f111a4cb096a37a486e408dea031a3eb79c1da4b",
       "pngByteSha256": "6eef4eb3a6247ee6966e6f38f111a4cb096a37a486e408dea031a3eb79c1da4b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -6232,7 +6232,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-history-390x844-dpr2.png",
       "sha256": "a086439cbe49904badc39349ea7e7aebd275a387c9a18f76ac8ef414ec44fdf3",
       "pngByteSha256": "a086439cbe49904badc39349ea7e7aebd275a387c9a18f76ac8ef414ec44fdf3",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -6295,7 +6295,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-history-390x844-dpr3.png",
       "sha256": "483280c19bfff7a67fc5c256035bc57c4e9ad8110c7a8b42caaf7a695eb3eccf",
       "pngByteSha256": "483280c19bfff7a67fc5c256035bc57c4e9ad8110c7a8b42caaf7a695eb3eccf",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -6358,7 +6358,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-game-menu-390x844-dpr2.png",
       "sha256": "73a6297229a8be2d121c55a2f4fd681c9e9db2e3bf64198d89b22f44f50901c0",
       "pngByteSha256": "73a6297229a8be2d121c55a2f4fd681c9e9db2e3bf64198d89b22f44f50901c0",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -6421,7 +6421,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-game-menu-390x844-dpr3.png",
       "sha256": "cf9c8be3a02e72024a3987b8df11cfc70656e1016f8e70ccb9b3dff7b8472423",
       "pngByteSha256": "cf9c8be3a02e72024a3987b8df11cfc70656e1016f8e70ccb9b3dff7b8472423",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -6484,7 +6484,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-network-390x844-dpr2.png",
       "sha256": "53852ac93ecd7de546c8d429d4261f51a3e980e60d9e0ca52866a45cf7143501",
       "pngByteSha256": "53852ac93ecd7de546c8d429d4261f51a3e980e60d9e0ca52866a45cf7143501",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -6547,7 +6547,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-network-390x844-dpr3.png",
       "sha256": "59af4b79f60f352d8baf2b0c750a9cb6f288ba2e1319a1f05e91217c3e12fed6",
       "pngByteSha256": "59af4b79f60f352d8baf2b0c750a9cb6f288ba2e1319a1f05e91217c3e12fed6",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -6610,7 +6610,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-settings-390x844-dpr2.png",
       "sha256": "b6ea06651a8e9423b49682131a0b31b1e11650cfb8d2e59bc26a25ee1620beb5",
       "pngByteSha256": "b6ea06651a8e9423b49682131a0b31b1e11650cfb8d2e59bc26a25ee1620beb5",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1104,
@@ -6673,7 +6673,7 @@
       "file": "apps/minigame/visual-preview/evidence/density/canvas-settings-390x844-dpr3.png",
       "sha256": "17b42ef661d54e709d7b45f07f07cf97068801627eea7e278559ffaa484a2c9f",
       "pngByteSha256": "17b42ef661d54e709d7b45f07f07cf97068801627eea7e278559ffaa484a2c9f",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 1948,
@@ -6729,12 +6729,11 @@
       "pixelHash": "800434c109b67f9b35e88f6661e91474b1fa568d2c8855d3cd4804d659ee7489",
       "sampledHashes": [
         "9f69f5ea1c18f01cbdce1d7c0362416d6ae172a1279e2869ad567ef1d07134e4",
-        "d2c74dabc560dc5e80140db67090fe4375a5d23eca36919761fa7a67cb2cc7e0",
-        "00e74ff588cc4f1e92d60d5f49bb5212391c98d86991765d06748615d1429305",
-        "9a0c9180ced402f2cd7d682c87895e9bc74fce3e90411b27e44e670d7eb58ddb",
-        "3153d8e2bb05b06a05f07d260479f317bfe247c79a02a5e21f4715f1172c7523",
-        "91533a26f95e0d96d41e458bfbfe589acad3a372b245f56cb14045adc849e386",
-        "03e57fbe3cdb0ce0ee99f690a7f580de4118b83cb9ef19735b46f260b6ead4d9",
+        "d43db737e32e4ea78eef2ef4110a19641f3b08abf88e6e70f6be77c591660f20",
+        "1bf1d49b88e45ad5d711cc8b923c337df6e7ee12967a9f81f5c446ae4b0a4dc3",
+        "a841e3b09fa015afda29a012a82850c50b09dd04109f8a62686ba4cd53a6e697",
+        "2014036ee054e5d3b71f42c8ccfade9133b2e758b34d4a18901c336ef39aa065",
+        "769ea221c144d138a583d1e759d42726a092bff8694f99c5dcf01b19a36e6b6b",
         "800434c109b67f9b35e88f6661e91474b1fa568d2c8855d3cd4804d659ee7489",
         "800434c109b67f9b35e88f6661e91474b1fa568d2c8855d3cd4804d659ee7489",
         "800434c109b67f9b35e88f6661e91474b1fa568d2c8855d3cd4804d659ee7489"
@@ -6753,7 +6752,7 @@
       "file": "apps/minigame/visual-preview/evidence/focus/focus-network-scroll-end-372x749.png",
       "sha256": "5f831aff23c2d7bd8e11d789aba0d4c8706466d97feb6b473db59214fbd6fe1f",
       "pngByteSha256": "5f831aff23c2d7bd8e11d789aba0d4c8706466d97feb6b473db59214fbd6fe1f",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 165,
@@ -6816,11 +6815,10 @@
       "sampledHashes": [
         "d274aa2c8c1126b1cadd828c6db642e6bfcfe2203f7ad3f9012a2bc21c3e7a18",
         "f7ea0b9462dfdda724ca9b4463d865a9d69412e56f5c66f156eec03c98425785",
-        "af348f2be49276c63598e9108cad60d8402c528e6bb679c773394f49f2c01874",
-        "2260b707d40b60febd316a4f1edc8a67fcd56b99c460236b3b558fa1e0263a62",
-        "c8d96a6465d71e88e1acfcc0d3942dfbace62f1ee5b45c26991f91decc6778c4",
-        "6ed4f7fddf6d781f3bfd40d96f195dc99cb3f2f921dc127e125b7d865669f696",
-        "540b0d53f2172b37409229037d8952b39c8e9c00e10475840fa75dc37b66a69f",
+        "abbb82c84772a4c8c23f66de9ea662723ba636c28333321a3d27938fd61c9f9f",
+        "ae77d69d32c949a5879ef309b8429700079f794435c486625d47f81f493dbf5b",
+        "faba6cf0208e16bcec62d4f9bc01caeabd535fb0954a28b415a3a3f4c184504a",
+        "89b14971996e60aaee85040629d0b6ec88423ee56d3edbff7915351cf36904ef",
         "732e8b4dea5febd3591eefc06216a26902a7c265174fb6ac6e7b7136291a30d8",
         "732e8b4dea5febd3591eefc06216a26902a7c265174fb6ac6e7b7136291a30d8",
         "732e8b4dea5febd3591eefc06216a26902a7c265174fb6ac6e7b7136291a30d8"
@@ -6839,7 +6837,7 @@
       "file": "apps/minigame/visual-preview/evidence/focus/focus-rules-scroll-end-389x584.png",
       "sha256": "356df5443cb7ac2a764b046dbf712e4a432459080eb58fa34a51cfb742889616",
       "pngByteSha256": "356df5443cb7ac2a764b046dbf712e4a432459080eb58fa34a51cfb742889616",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 292,
         "overlap": 292,
@@ -6913,7 +6911,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-login-prototype-vs-canvas-390x844.png",
       "sha256": "7d7152ebe4ab46eda14c5c94059ae3320196845a0e3f40ff1607e7d560ab12d2",
       "pngByteSha256": "7d7152ebe4ab46eda14c5c94059ae3320196845a0e3f40ff1607e7d560ab12d2",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -6991,7 +6989,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-home-prototype-vs-canvas-390x844.png",
       "sha256": "857b223cd6b49044cc89cbe8fb7c0401bb1bd6e6b520341b3716bc6e2c8e8d7c",
       "pngByteSha256": "857b223cd6b49044cc89cbe8fb7c0401bb1bd6e6b520341b3716bc6e2c8e8d7c",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7069,7 +7067,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-play-mode-prototype-vs-canvas-390x844.png",
       "sha256": "f24c28853d50be18af783701b5b6e93de4267bef8cd94492b6e0eae5c82143c0",
       "pngByteSha256": "f24c28853d50be18af783701b5b6e93de4267bef8cd94492b6e0eae5c82143c0",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7147,7 +7145,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-create-prototype-vs-canvas-390x844.png",
       "sha256": "c48666c0547a0307aaac31baac54ddf87730a5486ce778b52ba72ccf604d76e3",
       "pngByteSha256": "c48666c0547a0307aaac31baac54ddf87730a5486ce778b52ba72ccf604d76e3",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7225,7 +7223,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-join-prototype-vs-canvas-390x844.png",
       "sha256": "951f31d086d2b215a084f2e8b32a6d6081953b7d61596bb33e1c90061dc2d5ed",
       "pngByteSha256": "951f31d086d2b215a084f2e8b32a6d6081953b7d61596bb33e1c90061dc2d5ed",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7303,7 +7301,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-lobby-host-prototype-vs-canvas-390x844.png",
       "sha256": "7bc1fa804985ea339a322e9fc78c6303ed637a821382831ff32114f29dae54dd",
       "pngByteSha256": "7bc1fa804985ea339a322e9fc78c6303ed637a821382831ff32114f29dae54dd",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7381,7 +7379,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-lobby-member-prototype-vs-canvas-390x844.png",
       "sha256": "6fcf081ffe9a1e0156230db005e60c782570c45ad4fb6c9bb1af8003522c8f89",
       "pngByteSha256": "6fcf081ffe9a1e0156230db005e60c782570c45ad4fb6c9bb1af8003522c8f89",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7459,7 +7457,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-game-prototype-vs-canvas-390x844.png",
       "sha256": "07ffce2dcbf4c7edd7406bfcc8dc415491621f38c9b6575d8ebe5085bc797cf4",
       "pngByteSha256": "07ffce2dcbf4c7edd7406bfcc8dc415491621f38c9b6575d8ebe5085bc797cf4",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7537,7 +7535,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-other-turn-prototype-vs-canvas-390x844.png",
       "sha256": "57baef189d59e3c4746abc2cd11e576e98b5b1c9afb56980e6e90c42130d5483",
       "pngByteSha256": "57baef189d59e3c4746abc2cd11e576e98b5b1c9afb56980e6e90c42130d5483",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7615,7 +7613,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-attack-prototype-vs-canvas-390x844.png",
       "sha256": "5483cdb3204f5c7fe755ef1a71d022d7a40592d2c77c66122c4c6e42618a6cfe",
       "pngByteSha256": "5483cdb3204f5c7fe755ef1a71d022d7a40592d2c77c66122c4c6e42618a6cfe",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7693,7 +7691,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-response-prototype-vs-canvas-390x844.png",
       "sha256": "c5d7de5775ebb2ab6ffb0b12d8532d413724d859a2d2e71ab2a0a8fa0ecaf48b",
       "pngByteSha256": "c5d7de5775ebb2ab6ffb0b12d8532d413724d859a2d2e71ab2a0a8fa0ecaf48b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7771,7 +7769,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-favor-prototype-vs-canvas-390x844.png",
       "sha256": "41ad100116e0f8c2ad9650b792b0f61637b1de4fca7cf9912fcf71b7c78da456",
       "pngByteSha256": "41ad100116e0f8c2ad9650b792b0f61637b1de4fca7cf9912fcf71b7c78da456",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7849,7 +7847,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-give-card-prototype-vs-canvas-390x844.png",
       "sha256": "1306f3edfd8ae720846aac2d8df6258410c703f6362db1754e7e12a2986cc9e7",
       "pngByteSha256": "1306f3edfd8ae720846aac2d8df6258410c703f6362db1754e7e12a2986cc9e7",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -7927,7 +7925,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-future-prototype-vs-canvas-390x844.png",
       "sha256": "1319af895bedd2acdad8ffd4510eb0f1f5834735ab0d405c99f361933c5e651a",
       "pngByteSha256": "1319af895bedd2acdad8ffd4510eb0f1f5834735ab0d405c99f361933c5e651a",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8005,7 +8003,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-explosion-prototype-vs-canvas-390x844.png",
       "sha256": "c862378cb9e255b036a4dc6b892e7f1a01612d137dc69baf1098552565a0a3c9",
       "pngByteSha256": "c862378cb9e255b036a4dc6b892e7f1a01612d137dc69baf1098552565a0a3c9",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8083,7 +8081,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-defuse-prototype-vs-canvas-390x844.png",
       "sha256": "e3a3aee8ea9fbf113a83c1065ee6ad3cbb1e1984342c113691976377b4b28ff2",
       "pngByteSha256": "e3a3aee8ea9fbf113a83c1065ee6ad3cbb1e1984342c113691976377b4b28ff2",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8161,7 +8159,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-eliminated-prototype-vs-canvas-390x844.png",
       "sha256": "b51400fa81ab603b63e3aee7cbcb9e5012dd8194b3914c8cdd5ec3d97eb4950b",
       "pngByteSha256": "b51400fa81ab603b63e3aee7cbcb9e5012dd8194b3914c8cdd5ec3d97eb4950b",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8239,7 +8237,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-result-prototype-vs-canvas-390x844.png",
       "sha256": "b227699680629b8fc0d7829a576b6743e6d0c2e098a045ea8129b4be9c779e8c",
       "pngByteSha256": "b227699680629b8fc0d7829a576b6743e6d0c2e098a045ea8129b4be9c779e8c",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8317,7 +8315,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-tutorial-prototype-vs-canvas-390x844.png",
       "sha256": "ab3f4f4c05c337402261b19b4a62b3dbc03ba18c2fead5e33985ebfd5039be74",
       "pngByteSha256": "ab3f4f4c05c337402261b19b4a62b3dbc03ba18c2fead5e33985ebfd5039be74",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8395,7 +8393,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-rules-prototype-vs-canvas-390x844.png",
       "sha256": "1740302d6e7562b9e1ba86f2ee9e3ba78b5cc3df64a04888c58a198e05d5f14d",
       "pngByteSha256": "1740302d6e7562b9e1ba86f2ee9e3ba78b5cc3df64a04888c58a198e05d5f14d",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8473,7 +8471,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-card-detail-prototype-vs-canvas-390x844.png",
       "sha256": "1a4512b70e90412ebc93e7b0e60de4c98237d4b4aeda3718b04af99496c16ba7",
       "pngByteSha256": "1a4512b70e90412ebc93e7b0e60de4c98237d4b4aeda3718b04af99496c16ba7",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8551,7 +8549,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-history-prototype-vs-canvas-390x844.png",
       "sha256": "6779a141af27e460df6a87262f650cd85104b85930bceca8b23ca18eabba1f84",
       "pngByteSha256": "6779a141af27e460df6a87262f650cd85104b85930bceca8b23ca18eabba1f84",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8629,7 +8627,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-game-menu-prototype-vs-canvas-390x844.png",
       "sha256": "a8a6751a73a6c674f6d48e1613a17da59ad5159f8f3b49157717542e253bf2dd",
       "pngByteSha256": "a8a6751a73a6c674f6d48e1613a17da59ad5159f8f3b49157717542e253bf2dd",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8707,7 +8705,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-network-prototype-vs-canvas-390x844.png",
       "sha256": "b6a0f8358633cc54d7e2391f88af1220635ece3467e9039c753c3dbe18c3d107",
       "pngByteSha256": "b6a0f8358633cc54d7e2391f88af1220635ece3467e9039c753c3dbe18c3d107",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,
@@ -8785,7 +8783,7 @@
       "file": "apps/minigame/visual-preview/evidence/comparisons/compare-settings-prototype-vs-canvas-390x844.png",
       "sha256": "32536a079af0ec4dd3dbab5fcf1f21e9fee13e46814c162ba4e7b93f9a3332e1",
       "pngByteSha256": "32536a079af0ec4dd3dbab5fcf1f21e9fee13e46814c162ba4e7b93f9a3332e1",
-      "sourceSnapshotSha256": "f13c0d0a551ddee5659de1b49144cbe797015690136300422f263c9c095e1256",
+      "sourceSnapshotSha256": "2b454838a5b721c2d2adde82e1202fb364c4c42933f2baff96cdf4a5dd59d9bc",
       "antiRepeat": {
         "shift": 584,
         "overlap": 380,

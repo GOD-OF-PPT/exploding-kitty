@@ -198,6 +198,46 @@ describe("CardTableSurface", () => {
     }
   });
 
+  it("keeps a larger ultra-short hand complete and clear of the draw instruction", () => {
+    const hand = tenCardHand();
+    const height = 335;
+    const harness = createHarness(state({ width: 368, height, hand, turnsOwed: 3 }));
+    const latest = (value: string) => harness.texts.filter((text) => text.value === value).at(-1);
+    const burst = harness.pathFills.find((fill) => fill.color === "#ffc928");
+    const handZone = harness.fills.find((fill) => fill.color === ""
+      && fill.destination[0] === 0
+      && fill.destination[2] === 368
+      && fill.destination[1] > 0);
+
+    expect(burst, "draw instruction").toBeDefined();
+    expect(handZone, "hand zone").toBeDefined();
+    if (burst && handZone) {
+      expect(
+        burst.destination[1] + burst.destination[3],
+        "draw instruction clears the hand zone",
+      ).toBeLessThanOrEqual(handZone.destination[1]);
+      for (const label of ["牌堆", "18", "弃牌堆"] as const) {
+        const text = latest(label);
+        expect(text, `${label} text`).toBeDefined();
+        if (!text) continue;
+        const baseline = transformPoint(text.transform, text.x, text.y).y;
+        const descent = fontPixelSize(text.font) * 0.2;
+        expect(baseline + descent, `${label} clears draw instruction`).toBeLessThanOrEqual(
+          burst.destination[1] - 2,
+        );
+      }
+    }
+
+    for (const draw of harness.draws.filter(({ source }) => hand.some((card) => card.image === source))) {
+      const frame = largestFrameStroke(harness.strokes, draw);
+      expect(frame, `${draw.source} card frame`).toBeDefined();
+      if (!frame?.destination) continue;
+      const bounds = transformedStrokeBounds(frame);
+      expect(bounds.top, `${draw.source} frame top`).toBeGreaterThanOrEqual(-0.001);
+      expect(bounds.bottom, `${draw.source} frame bottom`).toBeLessThanOrEqual(height + 0.001);
+    }
+  });
+
   it("keeps semantic cards complete, canonical, aspect-correct, and dense at DPR3", () => {
     const harness = createHarness(state({ renderScale: 3 }));
     const pile = harness.draws.find((draw) => draw.source === "assets/cards/card-back.png");

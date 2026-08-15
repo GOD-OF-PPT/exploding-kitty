@@ -253,7 +253,7 @@ export class CardTableSurface {
       bannerY = 0;
       pileY = 45 * tableScale;
       burstY = 205 * tableScale;
-      pileLabelGap = (ultraShortDenseHand ? 12 : 17) * tableScale;
+      pileLabelGap = (ultraShortDenseHand ? (splitSix ? 12 : 10) : 17) * tableScale;
     } else if (handTop < referenceTableHeight) {
       const progress = (handTop - compactTableHeight) / Math.max(1, referenceTableHeight - compactTableHeight);
       bannerY = 11 * scale * progress;
