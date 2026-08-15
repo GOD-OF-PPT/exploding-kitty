@@ -1,4 +1,4 @@
-﻿import Layout, { type Canvas as LayoutCanvas, type Element as LayoutElement } from "minigame-canvas-engine";
+﻿import Layout, { type Canvas as LayoutCanvas, type Element as LayoutElement } from "./layoutEngine";
 import type { ClientAction } from "@exploding-kitty/protocol";
 import {
   DECLARABLE_CARD_TYPES,
@@ -6,14 +6,22 @@ import {
   materializeProductAction,
   selectionCanExtend,
 } from "@exploding-kitty/presentation-model";
-import type { WxKeyboardAdapter, WxMediaAdapter, WxShareAdapter, WxLike } from "../platform";
+import type {
+  WxDeviceOrientationEvent,
+  WxKeyboardAdapter,
+  WxLike,
+  WxMediaAdapter,
+  WxShareAdapter,
+  WxWindowResizeEvent,
+} from "../platform";
 import type { GameSession, RawProductView, ScreenAction, ScreenId, ScreenModel } from "./model";
 import { normalizeProductView, type ProductViewModel } from "./normalize";
 import { buildScreen, deriveScreen } from "./sceneRegistry";
 import { CardTableSurface } from "./cardTableSurface";
-import { UI_STYLE } from "./theme";
 import { applyLayoutTransform, extractCssPoint, resolveCanvasMetrics, sizeDisplayCanvas, type CanvasMetrics } from "./canvasMetrics";
 import { AuthoritativeSoundPlayer, SOUND_ASSETS } from "./soundEffects";
+import { registerFitImage } from "./rendering/fitImage";
+import { renderScene } from "./rendering/rendererRegistry";
 
 type ScreenHostOptions = Readonly<{
   wx: WxLike;
@@ -25,10 +33,19 @@ type ScreenHostOptions = Readonly<{
   canvas?: HTMLCanvasElement;
 }>;
 
+type ScrollElement = LayoutElement & Readonly<{
+  scrollTop: number;
+  scrollTo(left?: number, top?: number, animate?: boolean): void;
+}>;
+
+type TableSize = Readonly<{ width: number; height: number }>;
+
+const DEFAULT_TABLE_SIZE: TableSize = { width: 368, height: 520 };
+
 export class ScreenHost {
   private readonly canvas: HTMLCanvasElement;
   private readonly context: CanvasRenderingContext2D;
-  private readonly metrics: CanvasMetrics;
+  private metrics: CanvasMetrics;
   private readonly navigation: ScreenId[] = [];
   private override: ScreenId | null = null;
   private selectedTokens: string[] = [];
@@ -40,7 +57,11 @@ export class ScreenHost {
   private joinCode: string;
   private roomDraft = { maxPlayers: 4, turnSeconds: 45, allowBots: true };
   private tableSurface: CardTableSurface | null = null;
+  private lastTableSize: TableSize | null = null;
+  private unsubscribeTableInvalidation: (() => void) | null = null;
   private unsubscribe: (() => void) | null = null;
+  private started = false;
+  private starting = false;
   private disposed = false;
   private error: string | null = null;
   private sending = false;
@@ -50,46 +71,66 @@ export class ScreenHost {
   private timer: ReturnType<typeof setInterval> | null = null;
   private clockAnchor = { serverAt: Date.now(), localAt: Date.now() };
   private readonly authoritySounds: AuthoritativeSoundPlayer;
+  private readonly displayFont: string;
+  private readonly scrollPositions = new Map<ScreenId, number>();
+  private lastRenderedId: ScreenId | null = null;
+  private windowResizeSubscribed = false;
+  private orientationSubscribed = false;
+  private readonly handleDisplayChange = (event?: WxWindowResizeEvent | WxDeviceOrientationEvent) => this.refreshDisplayMetrics(event);
 
   constructor(private readonly options: ScreenHostOptions) {
     this.joinCode = options.initialJoinCode ?? "";
     this.invitationPending = /^\d{6}$/.test(this.joinCode);
-    this.metrics = resolveCanvasMetrics(options.wx.getSystemInfoSync());
+    this.metrics = resolveCanvasMetrics(options.wx.getSystemInfoSync(), readCapsuleRect(options.wx));
     this.canvas = options.canvas ?? options.wx.createCanvas();
     sizeDisplayCanvas(this.canvas, this.metrics);
     const context = this.canvas.getContext("2d");
     if (!context) throw new Error("CANVAS_2D_UNAVAILABLE");
     this.context = context;
     this.authoritySounds = new AuthoritativeSoundPlayer(options.media);
+    this.displayFont = loadDisplayFont(options.wx);
+    registerFitImage(Layout);
   }
 
   start(): void {
-    this.handleLaunchQuery(this.options.wx.getLaunchOptionsSync?.().query);
-    const initial = this.currentView();
-    this.lastRevision = this.options.session.getSnapshot().revision ?? -1;
-    this.anchorServerClock(initial);
-    this.authoritySounds.prime(soundView(initial));
-    this.unsubscribe = this.options.session.subscribe(() => {
-      const current = this.currentView();
-      this.anchorServerClock(current);
-      this.authoritySounds.consume(soundView(current));
-      const revision = this.options.session.getSnapshot().revision ?? -1;
-      if (revision !== this.lastRevision) {
-        this.lastRevision = revision;
-        this.clearSelection();
-        this.override = null;
-        this.navigation.length = 0;
-        if (!current.eliminated) this.spectating = false;
-      }
+    if (this.disposed || this.started || this.starting) return;
+    this.starting = true;
+    try {
+      this.subscribeDisplayChanges();
+      this.handleLaunchQuery(this.options.wx.getLaunchOptionsSync?.().query);
+      const initial = this.currentView();
+      this.lastRevision = this.options.session.getSnapshot().revision ?? -1;
+      this.anchorServerClock(initial);
+      this.authoritySounds.prime(soundView(initial));
+      this.unsubscribe = this.options.session.subscribe(() => {
+        const current = this.currentView();
+        this.anchorServerClock(current);
+        this.authoritySounds.consume(soundView(current));
+        const revision = this.options.session.getSnapshot().revision ?? -1;
+        if (revision !== this.lastRevision) {
+          this.lastRevision = revision;
+          this.clearSelection();
+          this.override = null;
+          this.navigation.length = 0;
+          if (!current.eliminated) this.spectating = false;
+        }
+        this.openInvitationIfReady();
+        this.render();
+      });
+      this.timer = setInterval(() => {
+        const view = this.currentView();
+        const id = this.resolveId(view);
+        if (LIVE_CLOCK_SCREENS.has(id) && (view.game.deadline || Number.isFinite(Number(view.pending?.deadline)))) this.render();
+      }, 1_000);
       this.openInvitationIfReady();
       this.render();
-    });
-    this.openInvitationIfReady();
-    this.render();
-    this.timer = setInterval(() => {
-      const view = this.currentView();
-      if (view.game.deadline || Number.isFinite(Number(view.pending?.deadline))) this.render();
-    }, 1_000);
+      this.started = true;
+    } catch (error) {
+      this.releaseRuntimeResources();
+      throw error;
+    } finally {
+      this.starting = false;
+    }
   }
 
   handleLaunchQuery(query?: Record<string, string>): void {
@@ -105,10 +146,11 @@ export class ScreenHost {
   }
 
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
-    this.unsubscribe?.();
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
+    this.started = false;
+    this.starting = false;
+    this.releaseRuntimeResources();
     Layout.clearAll();
     this.options.keyboard.close();
   }
@@ -142,52 +184,48 @@ export class ScreenHost {
     const view = this.currentView();
     const id = this.resolveId(view);
     const model = buildScreen(id, this.sceneContext(view));
+    const previousScroll = Layout.getElementById("scene-scroll") as ScrollElement | null;
+    if (previousScroll && this.lastRenderedId) this.scrollPositions.set(this.lastRenderedId, previousScroll.scrollTop);
+    this.unsubscribeTableInvalidation?.();
+    this.unsubscribeTableInvalidation = null;
     this.context.setTransform(1, 0, 0, 1, 0, 0);
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     Layout.clear();
-    Layout.init(this.template(model), {
-      ...UI_STYLE,
-      topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
-      actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
+    const rendered = renderScene(model, {
+      height: this.metrics.logicalHeight,
+      safeTop: this.metrics.safeInsets.top,
+      safeBottom: this.metrics.safeInsets.bottom,
+      capsule: this.metrics.capsuleRect,
+      canGoBack: Boolean(this.navigation.length || this.override),
+      selectedTokens: this.selectedTokens,
+      error: this.error,
+      viewerId: view.viewerId,
+      displayFont: this.displayFont,
     });
+    Layout.init(rendered.template, rendered.styles);
     applyLayoutTransform(this.context, this.metrics);
     Layout.updateViewPort(this.metrics.viewport);
     Layout.layout(this.context);
+    const nextScroll = Layout.getElementById("scene-scroll") as ScrollElement | null;
+    const savedScrollTop = this.scrollPositions.get(id) ?? 0;
+    if (nextScroll && savedScrollTop > 0) nextScroll.scrollTo(0, savedScrollTop, false);
+    this.lastRenderedId = id;
     this.bind(model, view);
-  }
-
-  private template(model: ScreenModel): string {
-    const header = `<view class="header"><button id="back" class="back" value="${this.navigation.length || this.override ? "‹" : ""}"></button><view class="headerCopy"><text class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
-    const subtitle = model.subtitle ? `<text class="subtitle" value="${escape(model.subtitle)}"></text>` : "";
-    const hero = model.heroImage || model.heroLabel ? `<view class="hero">${model.heroImage ? `<image class="heroImage" src="${escape(model.heroImage)}"></image>` : ""}${model.heroLabel ? `<text class="heroLabel" value="${escape(model.heroLabel)}"></text>` : ""}</view>` : "";
-    const players = model.players ? this.playersTemplate(model.players) : "";
-    const table = model.table ? `${this.playersTemplate(model.table.players.filter((player) => player.id !== this.currentView().viewerId))}<canvas id="tableCanvas" class="tableCanvas" width="358" height="520"></canvas>` : "";
-    const cards = model.cards ? `<view class="cardGrid">${model.cards.map((card, index) => `<button id="card-${index}" class="cardItem${this.selectedTokens.includes(card.token) ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image><text class="cardName" value="${escape(card.name)}"></text></button>`).join("")}</view>` : "";
-    const rows = model.rows?.length ? `<view class="rowList">${model.rows.map((row, index) => `<button id="row-${index}" class="row">${row.image ? `<image class="rowImage" src="${escape(row.image)}"></image>` : ""}<view class="rowCopy"><text class="rowTitle" value="${escape(row.title)}"></text><text class="rowDetail" value="${escape(row.detail ?? "")}"></text></view>${row.badge ? `<text class="badge" value="${escape(row.badge)}"></text>` : ""}</button>`).join("")}</view>` : "";
-    const content = `${subtitle}${hero}${players}${table}${cards}${rows}`;
-    const body = model.scroll ? `<scrollview class="scroll" scrollY="true">${content}</scrollview>` : `<view class="body">${content}</view>`;
-    const actions = `<view class="actionDock">${(model.actions ?? []).slice(0, 4).map((action, index) => `<button id="action-${index}" class="button button${capitalize(action.tone ?? "yellow")}" value="${escape(action.label)}"></button>`).join("")}</view>`;
-    const error = this.error ? `<text id="error" class="error" value="${escape(this.error)}"></text>` : "";
-    return `<view class="app"><view class="topSafe"></view>${header}${body}${actions}${error}</view>`;
-  }
-
-  private playersTemplate(players: readonly { id: string; name: string; avatar?: string }[]): string {
-    return `<view class="players">${players.slice(0, 5).map((player) => `<view class="player"><image class="avatar" src="${escape(player.avatar ?? "assets/cats/player.png")}"></image><text class="playerName" value="${escape(player.name)}"></text></view>`).join("")}</view>`;
   }
 
   private bind(model: ScreenModel, view: ProductViewModel): void {
     const back = Layout.getElementById("back");
-    if (back && (this.navigation.length || this.override)) back.on("click", () => this.goBack());
-    model.actions?.slice(0, 4).forEach((action, index) => Layout.getElementById(`action-${index}`)?.on("click", () => void this.perform(action, view)));
+    if (back && (this.navigation.length || this.override)) bindClickTree(back, () => this.goBack());
+    model.actions?.forEach((action, index) => bindClickTree(Layout.getElementById(`action-${index}`), () => void this.perform(action, view)));
     model.rows?.forEach((row, index) => {
       const element = Layout.getElementById(`row-${index}`);
-      if (row.action) element?.on("click", () => {
+      if (row.action) bindClickTree(element, () => {
         if (model.id === "rules") this.selectedCard = cardIndexForRule(row.id);
         void this.perform(row.action!, view);
       });
-      else if (row.id === "room-code") element?.on("click", () => void this.editRoomCode());
+      else if (row.id === "room-code") bindClickTree(element, () => void this.editRoomCode());
     });
-    model.cards?.forEach((card, index) => Layout.getElementById(`card-${index}`)?.on("click", () => {
+    model.cards?.forEach((card, index) => bindClickTree(Layout.getElementById(`card-${index}`), () => {
       if (model.id !== "give-card") return;
       const allowed = view.legalActionDetails.some((action) => action.type === "ChooseCard" && action.cardTokens?.includes(card.token));
       if (!allowed) {
@@ -207,16 +245,30 @@ export class ScreenHost {
   private attachTable(model: ScreenModel, view: ProductViewModel): void {
     const component = Layout.getElementById("tableCanvas") as LayoutCanvas | null;
     if (!component || !model.table) return;
-    const state = { width: 358, height: 520, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens };
-    this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
+    const width = validLayoutSize(component.layoutBox.width)
+      ?? this.lastTableSize?.width
+      ?? DEFAULT_TABLE_SIZE.width;
+    const height = validLayoutSize(component.layoutBox.height)
+      ?? this.lastTableSize?.height
+      ?? DEFAULT_TABLE_SIZE.height;
+    this.lastTableSize = { width, height };
+    const state = { width, height, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, turnsOwed: model.table.turnsOwed, waitingLabel: model.subtitle ?? model.title, selectedTokens: this.selectedTokens, fontFamily: this.displayFont };
+    this.unsubscribeTableInvalidation?.();
+    this.unsubscribeTableInvalidation = null;
+    if (this.tableSurface) this.tableSurface.update(state);
+    else this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
+    this.unsubscribeTableInvalidation = this.tableSurface.subscribeInvalidation(() => {
+      if (this.disposed || component.canvas !== this.tableSurface?.element) return;
+      component.update();
+    });
     component.canvas = this.tableSurface.element;
     component.update();
     component.on("click", (event: unknown) => {
       const touch = extractCssPoint(event);
       if (!touch || !this.tableSurface) return;
       const rect = Layout.getElementViewportRect(component as unknown as LayoutElement);
-      const x = (touch.x - rect.left) * (358 / rect.width);
-      const y = (touch.y - rect.top) * (520 / rect.height);
+      const x = (touch.x - rect.left) * (width / rect.width);
+      const y = (touch.y - rect.top) * (height / rect.height);
       const card = this.tableSurface.cardAt(x, y);
       if (!card) return;
       try {
@@ -230,6 +282,80 @@ export class ScreenHost {
       this.render();
     });
     void view;
+  }
+
+  private subscribeDisplayChanges(): void {
+    const { wx } = this.options;
+    if (!this.windowResizeSubscribed && wx.onWindowResize && wx.offWindowResize) {
+      try {
+        wx.onWindowResize(this.handleDisplayChange);
+        this.windowResizeSubscribed = true;
+      } catch { /* Older runtimes can expose a stub that throws. */ }
+    }
+    if (!this.orientationSubscribed && wx.onDeviceOrientationChange && wx.offDeviceOrientationChange) {
+      try {
+        wx.onDeviceOrientationChange(this.handleDisplayChange);
+        this.orientationSubscribed = true;
+      } catch { /* Window resize remains sufficient when orientation events are unavailable. */ }
+    }
+  }
+
+  private unsubscribeDisplayChanges(): void {
+    const { wx } = this.options;
+    if (this.windowResizeSubscribed) {
+      try { wx.offWindowResize?.(this.handleDisplayChange); }
+      catch { /* Disposal must continue even when the platform rejects unbinding. */ }
+      this.windowResizeSubscribed = false;
+    }
+    if (this.orientationSubscribed) {
+      try { wx.offDeviceOrientationChange?.(this.handleDisplayChange); }
+      catch { /* Disposal must continue even when the platform rejects unbinding. */ }
+      this.orientationSubscribed = false;
+    }
+  }
+
+  private releaseRuntimeResources(): void {
+    const unsubscribeTableInvalidation = this.unsubscribeTableInvalidation;
+    this.unsubscribeTableInvalidation = null;
+    try { unsubscribeTableInvalidation?.(); }
+    catch { /* Keep releasing the remaining resources. */ }
+
+    const unsubscribe = this.unsubscribe;
+    this.unsubscribe = null;
+    try { unsubscribe?.(); }
+    catch { /* Keep releasing the remaining resources. */ }
+
+    const timer = this.timer;
+    this.timer = null;
+    if (timer !== null) {
+      try { clearInterval(timer); }
+      catch { /* Keep releasing the remaining resources. */ }
+    }
+    this.unsubscribeDisplayChanges();
+  }
+
+  private refreshDisplayMetrics(event?: WxWindowResizeEvent | WxDeviceOrientationEvent): void {
+    if (this.disposed) return;
+    let next: CanvasMetrics;
+    try {
+      const snapshot = readSystemInfo(this.options.wx);
+      const eventSize = readResizeSize(event);
+      next = resolveCanvasMetrics({
+        ...snapshot,
+        windowWidth: eventSize.windowWidth
+          ?? positiveDisplayValue(snapshot.windowWidth)
+          ?? this.metrics.cssWidth,
+        windowHeight: eventSize.windowHeight
+          ?? positiveDisplayValue(snapshot.windowHeight)
+          ?? this.metrics.cssHeight,
+        pixelRatio: positiveDisplayValue(snapshot.pixelRatio) ?? this.metrics.pixelRatio,
+      }, readCapsuleRect(this.options.wx));
+    } catch {
+      return;
+    }
+    this.metrics = next;
+    sizeDisplayCanvas(this.canvas, next);
+    this.render();
   }
 
   private async perform(action: ScreenAction, view: ProductViewModel): Promise<void> {
@@ -268,7 +394,10 @@ export class ScreenHost {
       }
       if (action.intent.type === "CycleInsertionPosition") {
         const deckSize = insertionDeckSize(view);
-        this.insertionPosition = (this.insertionPosition + 1) % (deckSize + 1);
+        const positionCount = deckSize + 1;
+        const rawDelta = Number(action.intent.delta ?? 1);
+        const delta = Number.isFinite(rawDelta) && rawDelta < 0 ? -1 : 1;
+        this.insertionPosition = (this.insertionPosition + delta + positionCount) % positionCount;
         this.render(); return;
       }
       if (action.intent.type === "ShareRoom") {
@@ -393,6 +522,10 @@ export class ScreenHost {
   }
 }
 
+function validLayoutSize(value: number): number | null {
+  return Number.isFinite(value) && value > 0 ? Math.max(1, Math.round(value)) : null;
+}
+
 function insertionDeckSize(view: ProductViewModel): number {
   const pendingSize = Number(view.pending?.kind === "DEFUSE_INSERTION" ? view.pending.deckSize : Number.NaN);
   return Number.isSafeInteger(pendingSize) && pendingSize >= 0 ? pendingSize : view.game.drawPileCount;
@@ -412,8 +545,54 @@ const RULE_INDEX: Readonly<Record<string, number>> = {
   shuffle: 6, skip: 7, future: 8, cats: 9, combos: 10, platform: 11,
 };
 
-function escape(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+const LIVE_CLOCK_SCREENS = new Set<ScreenId>(["game", "other-turn", "attack", "response", "give-card", "defuse"]);
+
+function readCapsuleRect(wx: WxLike) {
+  try { return wx.getMenuButtonBoundingClientRect?.() ?? null; }
+  catch { return null; }
 }
 
-function capitalize(value: string): string { return value.charAt(0).toUpperCase() + value.slice(1); }
+function readSystemInfo(wx: WxLike): Partial<ReturnType<WxLike["getSystemInfoSync"]>> {
+  try {
+    return wx.getSystemInfoSync() ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function readResizeSize(event?: WxWindowResizeEvent | WxDeviceOrientationEvent): WxWindowResizeEvent {
+  if (!event || typeof event !== "object") return {};
+  const resize = event as WxWindowResizeEvent;
+  return {
+    windowWidth: positiveDisplayValue(resize.windowWidth)
+      ?? positiveDisplayValue(resize.size?.windowWidth)
+      ?? undefined,
+    windowHeight: positiveDisplayValue(resize.windowHeight)
+      ?? positiveDisplayValue(resize.size?.windowHeight)
+      ?? undefined,
+  };
+}
+
+function positiveDisplayValue(value: unknown): number | null {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+}
+
+function loadDisplayFont(wx: WxLike): string {
+  try {
+    const family = wx.loadFont?.("assets/fonts/zcool-kuaile-minigame-subset.ttf");
+    if (family) return family;
+  } catch { /* Use the system face when the packaged font cannot be loaded. */ }
+  return "sans-serif";
+}
+
+/**
+ * The canvas layout engine dispatches to the deepest hit element and does not
+ * bubble clicks to a parent button. Binding the complete visual subtree makes
+ * its icon, label and artwork share the same 44px+ interaction target.
+ */
+function bindClickTree(element: LayoutElement | null, listener: () => void): void {
+  if (!element) return;
+  element.on("click", listener);
+  for (const child of element.children) bindClickTree(child, listener);
+}

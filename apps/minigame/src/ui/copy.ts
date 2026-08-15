@@ -27,7 +27,7 @@ export const RULE_ROWS = [
   { id: "danger", title: "危险猫 × 4", detail: "抽到后立刻处理：拆弹，或者淘汰。", image: "assets/cards/danger.png" },
   { id: "defuse", title: "拆弹 × 6", detail: "化解危险，并秘密放回牌堆。", image: "assets/cards/defuse.png" },
   { id: "nope", title: "否决 × 5", detail: "取消上一张可否决的动作牌。", image: "assets/cards/card-back.png" },
-  { id: "attack", title: "攻击 × 4", detail: "结束你的回合，让下一位承担两个回合。", image: "assets/cards/attack.png" },
+  { id: "attack", title: "攻击 × 4", detail: "结束回合，让下一位承担两个回合。", image: "assets/cards/attack.png" },
   { id: "favor", title: "帮忙 × 4", detail: "指定玩家秘密交给你一张手牌。", image: "assets/cards/reverse.png" },
   { id: "shuffle", title: "洗牌 × 4", detail: "立刻打乱抽牌堆。", image: "assets/cards/shuffle.png" },
   { id: "skip", title: "跳过 × 4", detail: "不抽牌，完成一个欠回合。", image: "assets/cards/skip.png" },
