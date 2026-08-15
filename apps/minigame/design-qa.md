@@ -83,7 +83,7 @@
 ## 短屏、交互与 DPR 复核
 
 - 17 个窄/短屏 initial 场景逐张通过；八家族在 `372x749` 和 `389x584` 的最低矩阵完整保留，未被额外探针替代。
-- `attack@389x584` 仍完整呈现四名对手、牌堆/弃牌、欠回合信息、3x2 六张手牌与底部操作，没有幽灵命中或不可见 selected owner。
+- `attack@389x584` 仍完整呈现四名对手、牌堆/弃牌、欠回合信息、单排六张完整手牌与底部操作；更高视口继续使用 3x2 排列，没有幽灵命中或不可见 selected owner。
 - `network@372x749` initial 与 scroll-end 的字节和 RGBA 均不同，末卡完整，固定重试操作不遮安全区。
 - `rules@389x584` scroll-end 到达真实 `maxScrollTop`，末条规则与底部留白完整。
 - 25 个标准场景均有独立 DPR2 和 DPR3 backing-store 证据。verifier 同时拒绝 nearest-neighbor 或预乘 Alpha bilinear 的机械放大结果，资源清晰度不由 DPR1 单图签署。

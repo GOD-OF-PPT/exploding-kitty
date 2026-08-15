@@ -151,7 +151,7 @@ describe("CardTableSurface", () => {
     expect(banner?.destination[3], "turn banner height").toBeGreaterThanOrEqual(30);
     expect(burst?.destination[2], "draw instruction width").toBeGreaterThanOrEqual(190);
     expect(burst?.destination[3], "draw instruction height").toBeGreaterThanOrEqual(44);
-    expect(handZone?.destination[1], "central table height").toBeGreaterThanOrEqual(200);
+    expect(handZone?.destination[1], "central table height").toBeGreaterThanOrEqual(190);
     expect(
       (burst?.destination[1] ?? Number.POSITIVE_INFINITY) + (burst?.destination[3] ?? 0),
       "draw instruction clears the hand zone",
@@ -254,7 +254,7 @@ describe("CardTableSurface", () => {
   });
 
   it.each(SIX_CARD_HAND_CASES)(
-    "shows six cards as two labelled rows with truthful 44px ownership at $sizeLabel with $selectionLabel",
+    "shows six complete cards in responsive rows with truthful 44px ownership at $sizeLabel with $selectionLabel",
     ({ selectedIndex, width, height }) => {
     const hand = sixCardHand();
     const selectedToken = selectedIndex === null ? undefined : hand[selectedIndex]!.token;
@@ -270,13 +270,27 @@ describe("CardTableSurface", () => {
       const row = Math.round(draw.transform.f);
       rows.set(row, [...(rows.get(row) ?? []), draw]);
     }
-    expect([...rows.values()].map((draws) => draws.length).sort()).toEqual([3, 3]);
+    const ultraShort = height <= 360 * (width / 358);
+    expect([...rows.values()].map((draws) => draws.length).sort()).toEqual(
+      ultraShort ? [6] : [3, 3],
+    );
     for (const draws of rows.values()) {
       const centers = draws.map((draw) => draw.transform.e).sort((left, right) => left - right);
-      expect(centers[1]! - centers[0]!).toBeGreaterThan(90);
-      expect(centers[2]! - centers[1]!).toBeGreaterThan(90);
+      for (let index = 1; index < centers.length; index += 1) {
+        expect(centers[index]! - centers[index - 1]!).toBeGreaterThan(
+          ultraShort ? 44 : 90,
+        );
+      }
     }
     expectCardFrameRowsDoNotOverlap(cardDraws, harness.strokes);
+    for (const draw of cardDraws) {
+      const frame = largestFrameStroke(harness.strokes, draw);
+      expect(frame, `${draw.source} card frame`).toBeDefined();
+      if (!frame?.destination) continue;
+      const bounds = transformedStrokeBounds(frame);
+      expect(bounds.top, `${draw.source} frame top`).toBeGreaterThanOrEqual(-0.001);
+      expect(bounds.bottom, `${draw.source} frame bottom`).toBeLessThanOrEqual(height + 0.001);
+    }
 
     const hitOwners = Array.from({ length: height }, (_, y) => Array.from(
       { length: width },

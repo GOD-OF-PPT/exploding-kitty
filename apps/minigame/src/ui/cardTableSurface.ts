@@ -21,17 +21,20 @@ const HAND_HEIGHT = 335;
 const COMPACT_TABLE_HEIGHT = 264;
 const MIN_HAND_VISIBLE = 190;
 const ULTRA_SHORT_SURFACE_HEIGHT = 360;
-const ULTRA_SHORT_DENSE_HAND_VISIBLE = 127;
+const ULTRA_SHORT_SIX_HAND_VISIBLE = 127;
+const ULTRA_SHORT_DENSE_HAND_VISIBLE = 141;
 const ULTRA_SHORT_BURST_WIDTH = 188;
 const CARD_WIDTH = 92.4;
 const CARD_HEIGHT = 132;
 const COMPACT_DENSE_HAND_THRESHOLD = 334;
 const COMPACT_DENSE_CARD_WIDTH = 56;
-const ULTRA_SHORT_DENSE_CARD_WIDTH = 50;
+const ULTRA_SHORT_SIX_CARD_WIDTH = 50;
+const ULTRA_SHORT_DENSE_CARD_WIDTH = 44;
 const DENSE_ROW_GAP = 6;
 const DENSE_COMPACT_TOP_OFFSET = 22;
 const DENSE_FULL_TOP_OFFSET = 60;
-const ULTRA_SHORT_TOP_OFFSET = 10;
+const ULTRA_SHORT_SIX_TOP_OFFSET = 22;
+const ULTRA_SHORT_DENSE_TOP_OFFSET = 8;
 const MIN_CARD_TOUCH_SIZE = 44;
 const DENSE_HAND_ROW_LENGTH = 5;
 const SIX_CARD_ROW_LENGTH = 3;
@@ -223,13 +226,17 @@ export class CardTableSurface {
   private tableLayout(): TableLayout {
     const { width, height, hand } = this.state;
     const scale = Math.max(0, width / REFERENCE_WIDTH);
+    const splitSix = hand.length === 6;
     const denseHand = hand.length === 6 || hand.length > DENSE_HAND_ROW_LENGTH;
     const ultraShortDenseHand = denseHand && height <= ULTRA_SHORT_SURFACE_HEIGHT * scale;
     const compactTableHeight = COMPACT_TABLE_HEIGHT * scale;
     const referenceTableHeight = (REFERENCE_HEIGHT - HAND_HEIGHT) * scale;
     const naturalHandTop = height - HAND_HEIGHT * scale;
     const minimumHandVisible = ultraShortDenseHand
-      ? Math.max(120, ULTRA_SHORT_DENSE_HAND_VISIBLE * scale)
+      ? Math.max(
+          120,
+          (splitSix ? ULTRA_SHORT_SIX_HAND_VISIBLE : ULTRA_SHORT_DENSE_HAND_VISIBLE) * scale,
+        )
       : MIN_HAND_VISIBLE * scale;
     const latestHandTop = Math.max(0, height - minimumHandVisible);
     const handTop = Math.max(0, Math.min(Math.max(naturalHandTop, compactTableHeight), latestHandTop));
@@ -266,7 +273,12 @@ export class CardTableSurface {
     const burstWidth = ultraShortDenseHand
       ? Math.max(195 * tableScale, ULTRA_SHORT_BURST_WIDTH * scale)
       : 195 * tableScale;
-    const burstHeight = 59 * tableScale;
+    const burstHeight = ultraShortDenseHand
+      ? Math.max(MIN_CARD_TOUCH_SIZE, 59 * tableScale)
+      : 59 * tableScale;
+    const fittedBurstY = ultraShortDenseHand
+      ? Math.min(burstY, Math.max(0, handTop - burstHeight - 0.75 * scale))
+      : burstY;
 
     return {
       scale,
@@ -295,7 +307,7 @@ export class CardTableSurface {
       },
       drawBurst: {
         x: (width - burstWidth) / 2,
-        y: burstY,
+        y: fittedBurstY,
         width: burstWidth,
         height: burstHeight,
       },
@@ -423,7 +435,7 @@ export class CardTableSurface {
       ctx.fillText("完成 1 回合", centerX, centerY + 8, Math.max(1, rect.width - 14));
     } else {
       const activeFontSize = turnsOwed > 1 ? 20 : 26;
-      const minimumFontSize = myTurn ? (turnsOwed > 1 ? 13 : 16) : 12;
+      const minimumFontSize = myTurn ? (turnsOwed > 1 ? 15 : 16) : 12;
       this.setFont(Math.max(minimumFontSize, (myTurn ? activeFontSize : 15) * scale), 700, true);
       ctx.fillText(label, centerX, centerY + scale, Math.max(1, rect.width - 14));
     }
@@ -550,9 +562,10 @@ export class CardTableSurface {
     const { width, height, hand, selectedTokens = [] } = this.state;
     if (hand.length === 0) return [];
     const selected = new Set(selectedTokens);
-    // Six cards use two clearly labelled rows; denser hands use unrotated rows
-    // of at most five. Both modes keep painted and hit ownership aligned over
-    // a full 44px square even while a card is selected.
+    // Six cards use two clearly labelled rows except on ultra-short screens,
+    // where one compact row keeps every card complete. Denser hands use
+    // unrotated rows of at most five. All modes keep painted and hit ownership
+    // aligned over a full 44px square even while a card is selected.
     const splitSix = hand.length === 6;
     const denseHand = hand.length > 6 || splitSix;
     const availableHandHeight = Math.max(0, height - layout.handTop);
@@ -561,16 +574,18 @@ export class CardTableSurface {
     let cardHeight = CARD_HEIGHT * layout.scale;
     let denseTopOffset = DENSE_FULL_TOP_OFFSET * layout.scale;
     let denseRowGap = DENSE_ROW_GAP * layout.scale;
+    const ultraShortSingleRow = splitSix && layout.ultraShortDenseHand;
     if (denseHand && layout.ultraShortDenseHand) {
       cardWidth = Math.max(
-        ULTRA_SHORT_DENSE_CARD_WIDTH * layout.scale,
+        (ultraShortSingleRow ? ULTRA_SHORT_SIX_CARD_WIDTH : ULTRA_SHORT_DENSE_CARD_WIDTH) * layout.scale,
         MIN_CARD_TOUCH_SIZE + 2 * layout.scale,
       );
       cardHeight = cardWidth / canonicalAspect;
-      denseTopOffset = ULTRA_SHORT_TOP_OFFSET * layout.scale;
-      // On the production 368x335 surface the second row intentionally
-      // continues below the viewport, but it never overlaps the first row and
-      // retains a truthful 44px visible/tappable ownership strip.
+      denseTopOffset = (
+        ultraShortSingleRow ? ULTRA_SHORT_SIX_TOP_OFFSET : ULTRA_SHORT_DENSE_TOP_OFFSET
+      ) * layout.scale;
+      // Larger ultra-short hands retain two reduced rows; the extra reserve
+      // keeps their complete frames above the Canvas boundary.
       denseRowGap = 0;
     } else if (denseHand && layout.compactDenseHand) {
       const preferredTop = DENSE_COMPACT_TOP_OFFSET * layout.scale;
@@ -595,10 +610,16 @@ export class CardTableSurface {
           3 * layout.scale,
           Math.max(layout.scale, (cardWidth - MIN_CARD_TOUCH_SIZE) / 2),
         );
+    const hitInset = Math.min(
+      DENSE_HIT_INSET * layout.scale,
+      Math.max(0, (cardWidth - MIN_CARD_TOUCH_SIZE) / 2),
+    );
     const top = denseHand
       ? layout.handTop + denseTopOffset
       : Math.max(height - 205 * layout.scale, layout.handTop + 65 * layout.scale);
-    const rowLengthLimit = splitSix ? SIX_CARD_ROW_LENGTH : DENSE_HAND_ROW_LENGTH;
+    const rowLengthLimit = ultraShortSingleRow
+      ? hand.length
+      : splitSix ? SIX_CARD_ROW_LENGTH : DENSE_HAND_ROW_LENGTH;
     const rowCount = denseHand ? Math.ceil(hand.length / rowLengthLimit) : 1;
     const baseRowLength = Math.floor(hand.length / rowCount);
     const longerRows = hand.length % rowCount;
@@ -642,8 +663,8 @@ export class CardTableSurface {
           artworkInset,
           hitTarget: denseHand ? {
             x: index === rowLength - 1
-              ? x + cardWidth - DENSE_HIT_INSET * layout.scale - MIN_CARD_TOUCH_SIZE
-              : x + DENSE_HIT_INSET * layout.scale,
+              ? x + cardWidth - hitInset - MIN_CARD_TOUCH_SIZE
+              : x + hitInset,
             y: Math.min(
               rowTop + Math.max(
                 artworkInset + 2 * layout.scale,
