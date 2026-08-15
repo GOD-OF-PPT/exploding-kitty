@@ -30,7 +30,7 @@ WebSocket 固定连接 `/v1/session`。云托管生产模式由 `connectContaine
 
 ## 资源
 
-正式小游戏素材位于 `apps/minigame/assets/`。图片由原型原创素材机械降采样和 PNG 压缩生成，4 个短 WAV 提示音由仓库脚本确定性生成；单一 TTF 子集从工作区锁定的 `@fontsource/zcool-kuaile/files/zcool-kuaile-chinese-simplified-400-normal.woff2` 生成，保留 `ZCOOL KuaiLe` 设计字体语义，并随包分发 `fonts/OFL-1.1.txt`，原型源图不被修改。`assets.manifest.json` 只列出运行时真实引用和许可所需的 56 个文件，构建会生成提示音、复制素材到 `release/assets/`，并检查总量、单文件预算、素材 SHA-256 与 TTF `cmap` 生产字形覆盖。字体门禁会构建全部生产 screen model 与受控视觉 fixture，再依据真实 renderer style 只收集确实由 `DISPLAY_FONT` 绘制的文本；BODY_FONT 说明文案不会被盲目纳入。
+正式小游戏素材位于 `apps/minigame/assets/`。图片由原型原创素材机械降采样和 PNG 压缩生成，4 个短 WAV 提示音由仓库脚本确定性生成；单一 TTF 子集从工作区锁定的 `@fontsource/zcool-kuaile/files/zcool-kuaile-chinese-simplified-400-normal.woff2` 生成，保留 `ZCOOL KuaiLe` 设计字体语义，并随包分发 `fonts/OFL-1.1.txt`，原型源图不被修改。`assets.manifest.json` 只列出运行时真实引用和许可所需的 58 个文件，构建会生成提示音、复制素材到 `release/assets/`，并检查总量、单文件预算、素材 SHA-256 与 TTF `cmap` 生产字形覆盖。字体门禁会构建全部生产 screen model 与受控视觉 fixture，再依据真实 renderer style 只收集确实由 `DISPLAY_FONT` 绘制的文本；BODY_FONT 说明文案不会被盲目纳入。
 
 ```powershell
 # 只有更新原型源素材时才需要重新生成小游戏副本；需要 ImageMagick
@@ -40,7 +40,7 @@ npm --workspace @exploding-kitty/minigame run assets:subset-font
 npm --workspace @exploding-kitty/minigame run check:assets
 ```
 
-当前素材总量为 2,498,492 字节，其中提示音共 21,224 字节，单一 TTF 子集为 48,328 字节，SHA-256 为 `d95d1aab13d4fca64bb8f1853f5c44c364d9df044caf9378456473dacea4914e`。实测 `cmap` 覆盖全部 281 个 renderer 必需字符（包括“地”、“常”、“固”、“（”、“）”），缺失为 0；素材总量低于 3,800,000 字节目标，最大文件为 308,250 字节，当前生产 `release/` 为 2,782,196 字节。生产构建会压缩脚本并移除 source map，资源检查同时要求整个 `release/` 在 4 MiB 基准下至少保留 20% 余量。正式上传前仍需在微信开发者工具中确认平台统计口径和主包限制。
+当前素材总量为 2,878,337 字节，其中提示音共 21,224 字节，单一 TTF 子集为 48,328 字节，SHA-256 为 `d95d1aab13d4fca64bb8f1853f5c44c364d9df044caf9378456473dacea4914e`。实测 `cmap` 覆盖全部 281 个 renderer 必需字符（包括“地”、“常”、“固”、“（”、“）”），缺失为 0；素材总量低于 3,800,000 字节目标，最大文件为 761,532 字节，当前生产 `release/` 为 3,163,080 字节。生产构建会压缩脚本并移除 source map，资源检查同时要求整个 `release/` 在 4 MiB 基准下至少保留 20% 余量。正式上传前仍需在微信开发者工具中确认平台统计口径和主包限制。
 
 ## 已知边界
 
