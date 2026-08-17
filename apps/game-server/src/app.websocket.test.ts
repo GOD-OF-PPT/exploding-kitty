@@ -274,6 +274,51 @@ describe("trusted WeChat Cloud Run WebSocket authentication", () => {
     await harness.app.close();
   });
 
+  it("authenticates the signed WeChat resume token when connectContainer omits gateway identity headers", async () => {
+    const harness = await cloudSocketHarness();
+    const identity = harness.auth.issueTrustedWechat("cloud_alice-123", "wx-client", { displayName: "Alice" });
+    const socket = await harness.app.injectWS("/v1/session");
+    const sessionId = `wx-${identity.playerId}`;
+    const client = new WireClient(socket, sessionId);
+
+    socket.send(JSON.stringify({
+      type: "resume",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId,
+      lastRevision: 0,
+      resumeToken: identity.token,
+    }));
+
+    const snapshot = await client.waitSnapshot((value) => value.phase === "HOME");
+    expect(snapshot.viewerId).toBe(identity.playerId);
+    expect(harness.hub.hasConnections(identity.playerId)).toBe(true);
+
+    socket.close();
+    await harness.app.close();
+  });
+
+  it("rejects a forged resume token when connectContainer omits gateway identity headers", async () => {
+    const harness = await cloudSocketHarness();
+    const identity = harness.auth.issueTrustedWechat("cloud_alice-123", "wx-client");
+    const presence = vi.spyOn(harness.rooms, "setConnected");
+    const socket = await harness.app.injectWS("/v1/session");
+    const closed = waitForClose(socket);
+    const forgedToken = `${identity.token.slice(0, -1)}${identity.token.endsWith("a") ? "b" : "a"}`;
+
+    socket.send(JSON.stringify({
+      type: "resume",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId: `wx-${identity.playerId}`,
+      lastRevision: 0,
+      resumeToken: forgedToken,
+    }));
+
+    await expect(closed).resolves.toMatchObject({ code: 1008 });
+    expect(harness.hub.hasConnections(identity.playerId)).toBe(false);
+    expect(presence).not.toHaveBeenCalled();
+    await harness.app.close();
+  });
+
   it("rejects a token whose player does not match the gateway OpenID before mutating presence", async () => {
     const harness = await cloudSocketHarness();
     const identity = harness.auth.issueTrustedWechat("cloud_alice-123", "wx-client");
@@ -355,15 +400,23 @@ describe("trusted WeChat Cloud Run WebSocket authentication", () => {
     await harness.app.close();
   });
 
-  it("rejects a public-style Bearer handshake without X-WX-SOURCE in cloud mode", async () => {
+  it("does not accept a public-style Bearer header in place of the first cloud resume token", async () => {
     const harness = await cloudSocketHarness();
     const identity = harness.auth.issueTrustedWechat("cloud_alice-123", "wx-client");
     const presence = vi.spyOn(harness.rooms, "setConnected");
     const socket = await harness.app.injectWS("/v1/session", {
       headers: { authorization: `Bearer ${identity.token}` },
     });
+    const closed = waitForClose(socket);
 
-    await expect(waitForClose(socket)).resolves.toMatchObject({ code: 1008 });
+    socket.send(JSON.stringify({
+      type: "resume",
+      protocolVersion: PROTOCOL_VERSION,
+      sessionId: `wx-${identity.playerId}`,
+      lastRevision: 0,
+    }));
+
+    await expect(closed).resolves.toMatchObject({ code: 1008 });
     expect(harness.hub.hasConnections(identity.playerId)).toBe(false);
     expect(presence).not.toHaveBeenCalled();
     await harness.app.close();

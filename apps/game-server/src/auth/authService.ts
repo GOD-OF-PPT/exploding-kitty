@@ -85,16 +85,18 @@ export class AuthService {
   }
 
   authenticateTrustedWechatSocket(token: string, openId: unknown, source: unknown): AuthContext {
-    this.assertTrustedWechatSource(source);
+    // The private connectContainer gateway may omit identity headers on some
+    // device/runtime combinations. The signed token issued by callContainer
+    // remains the WebSocket trust anchor; validate gateway headers whenever
+    // they are present, but do not require them a second time.
+    if (source !== undefined) this.assertTrustedWechatSource(source);
     const auth = this.authenticate(token);
+    if (!auth.playerId.startsWith("wx_")) throw new ServiceError("UNAUTHORIZED");
     // connectContainer currently omits X-WX-OPENID on iOS high-performance+
     // mode. In that documented case, the signed session issued over
     // callContainer remains the identity, but development identities must
     // never be accepted as a cloud WeChat player.
-    if (openId === undefined) {
-      if (!auth.playerId.startsWith("wx_")) throw new ServiceError("UNAUTHORIZED");
-      return auth;
-    }
+    if (openId === undefined) return auth;
     if (typeof openId !== "string" || !WECHAT_OPEN_ID_PATTERN.test(openId)) {
       throw new ServiceError(
         "WECHAT_CLOUD_IDENTITY_REQUIRED",

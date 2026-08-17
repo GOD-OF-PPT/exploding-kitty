@@ -65,11 +65,15 @@ describe("trusted WeChat authentication", () => {
     expect(() => auth.authenticateTrustedWechatSocket(session.token, "other-openid", "wx-client")).toThrow("UNAUTHORIZED");
   });
 
-  it("accepts a valid WeChat token when iOS high-performance mode omits OpenID", () => {
+  it.each([
+    { openId: undefined, source: "wx-client" },
+    { openId: "cloud_open-id-123", source: undefined },
+    { openId: undefined, source: undefined },
+  ])("accepts a valid WeChat token when connectContainer omits optional gateway headers", ({ openId, source }) => {
     const auth = service();
     const session = auth.issueTrustedWechat("cloud_open-id-123", "wx-client");
 
-    expect(auth.authenticateTrustedWechatSocket(session.token, undefined, "wx-client").playerId)
+    expect(auth.authenticateTrustedWechatSocket(session.token, openId, source).playerId)
       .toBe("wx_cloud_open-id-123");
   });
 
@@ -83,7 +87,6 @@ describe("trusted WeChat authentication", () => {
 
   it.each([
     { openId: "invalid openid", source: "wx-client" },
-    { openId: "cloud_open-id-123", source: undefined },
     { openId: "cloud_open-id-123", source: "" },
   ])("rejects malformed trusted socket headers ($openId, $source)", ({ openId, source }) => {
     const auth = service();

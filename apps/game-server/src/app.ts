@@ -87,8 +87,6 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     };
 
     if (dependencies.wechatTrustCloudHeaders) {
-      try { dependencies.auth.assertTrustedWechatSource(request.headers["x-wx-source"]); }
-      catch { socket.close(1008, "unauthorized"); return; }
       authenticationTimer = setTimeout(() => {
         if (!auth && socket.readyState === socket.OPEN) {
           connectionTerminated = true;
