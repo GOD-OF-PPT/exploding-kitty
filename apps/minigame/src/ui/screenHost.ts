@@ -1,4 +1,4 @@
-﻿import Layout, { type Canvas as LayoutCanvas, type Element as LayoutElement } from "minigame-canvas-engine";
+﻿import Layout, { type Canvas as LayoutCanvas, type Element as LayoutElement } from "./layoutEngine";
 import type { ClientAction } from "@exploding-kitty/protocol";
 import {
   DECLARABLE_CARD_TYPES,
