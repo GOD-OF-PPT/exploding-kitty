@@ -10,11 +10,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "test": "vitest run && npm --workspace prototype test",
+    "test": "npm --workspace @exploding-kitty/minigame run test:build-environment && npm --workspace @exploding-kitty/minigame run test:runtime-config-bundle && vitest run && npm --workspace prototype test",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:minigame": "npm --workspace @exploding-kitty/minigame run dev",
     "dev:server": "npm --workspace @exploding-kitty/game-server run dev",
     "build:minigame": "npm --workspace @exploding-kitty/minigame run build",
+    "build:minigame:preview": "npm --workspace @exploding-kitty/minigame run build:preview",
     "build:server": "npm --workspace @exploding-kitty/game-server run build"
   },
   "devDependencies": {

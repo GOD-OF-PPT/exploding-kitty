@@ -30,17 +30,17 @@ export const miniGameServerCodec = createJsonCodec<ClientEnvelope, ServerEnvelop
 );
 
 function developmentRuntime(): boolean {
-  return typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+  return process.env.NODE_ENV !== "production";
 }
 
 export function readRuntimeConfig(wx: WxLike): RuntimeConfig {
   const query = wx.getLaunchOptionsSync?.().query ?? {};
   const allowDebugQuery = developmentRuntime();
-  const configuredApi = allowDebugQuery && typeof process !== "undefined"
+  const configuredApi = allowDebugQuery
     ? process.env.MINIGAME_API_BASE_URL || undefined
     : undefined;
-  const configuredCloudEnvironment = typeof process !== "undefined" ? process.env.MINIGAME_CLOUD_ENV_ID || undefined : undefined;
-  const configuredCloudService = typeof process !== "undefined" ? process.env.MINIGAME_CLOUD_SERVICE_NAME || undefined : undefined;
+  const configuredCloudEnvironment = process.env.MINIGAME_CLOUD_ENV_ID || undefined;
+  const configuredCloudService = process.env.MINIGAME_CLOUD_SERVICE_NAME || undefined;
   // Share/deep-link query data is untrusted. Runtime endpoint overrides and development auth
   // are useful in the developer tools, but must never redirect or downgrade a production build.
   const debugServer = allowDebugQuery && query.server ? decodeURIComponent(query.server) : undefined;

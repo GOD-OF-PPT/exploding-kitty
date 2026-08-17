@@ -4,6 +4,20 @@
 
 ## 构建与导入
 
+客户端不使用 Taro 或 Vite，而是直接调用 esbuild。客户端构建变量统一使用 `MINIGAME_` 前缀，并按以下顺序加载 `apps/minigame` 下的文件（后者覆盖前者，当前 shell 环境变量优先级最高）：
+
+- development：`.env`、`.env.local`、`.env.development`、`.env.development.local`；
+- preview：`.env`、`.env.local`、`.env.preview`、`.env.preview.local`；
+- production：`.env`、`.env.local`、`.env.production`、`.env.production.local`。
+
+仓库已经在 `.env.preview` 和 `.env.production` 中固定已部署的微信云托管环境 `prod-d0g8qcwrb047789af` 与服务 `exploding-kitty-api`；这些路由标识不是密钥。preview 与 production 构建还会精确校验这一二元组，因此 shell 或 `.env.local` 若覆盖成其他目标，构建会直接失败。真机预览直接执行：
+
+```powershell
+npm run build:minigame:preview
+```
+
+preview 与 production 包只接受微信云托管目标：
+
 ```powershell
 npm install
 $env:MINIGAME_CLOUD_ENV_ID = "微信云托管环境 ID"
@@ -11,9 +25,11 @@ $env:MINIGAME_CLOUD_SERVICE_NAME = "exploding-kitty-api"
 npm --workspace @exploding-kitty/minigame run build
 ```
 
+preview 或 production 缺少微信云托管目标时构建会立即失败，不再生成只能在启动阶段报 `MINIGAME_AUTH_ENDPOINT_REQUIRED` 的微信包。这两种模式同时关闭 query 参数带来的服务地址、开发鉴权和 Demo 覆盖；只有 development 模式允许 `MINIGAME_API_BASE_URL` 直连。每次构建还会在 `release/build-config.json` 记录非敏感的模式和路由目标，`check:bundle` 会反查 `release/game.js` 是否实际包含同一配置。
+
 在微信开发者工具中导入 `apps/minigame`。`project.config.json` 的 `miniprogramRoot` 已指向 `release/`，并配置小游戏公开 AppID；AppSecret 与开发者工具的每机私有配置不会进入仓库。
 
-微信云托管模式通过 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`（默认 `exploding-kitty-api`）同时配置 HTTP 和 WebSocket。客户端使用 `wx.cloud.callContainer` 登录，使用 `wx.cloud.connectContainer` 连接同一服务的 `/v1/session`；生产云托管服务保持关闭公网访问，无需任何通讯域名配置。`MINIGAME_API_BASE_URL` 只保留给本地或非云托管开发链路，不是微信云托管生产构建的必需项。
+微信云托管模式通过 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`（默认 `exploding-kitty-api`）同时配置 HTTP 和 WebSocket。客户端使用 `wx.cloud.callContainer` 登录，使用 `wx.cloud.connectContainer` 连接同一服务的 `/v1/session`；生产云托管服务保持关闭公网访问，无需任何通讯域名配置。`MINIGAME_API_BASE_URL` 只保留给 development 的本地或非云托管开发链路，不会进入 preview 或 production 包。
 
 生产构建要求小游戏基础库最低版本为 `2.23.0`，这是 `callContainer` 的约束；`connectContainer` 自身最低为 `2.21.1`。`connectContainer` 的路由只由 `config.env`、`service` 和 `path` 决定，客户端另设 10 秒连接超时，但不依赖自定义认证 Header。登录得到的 Bearer 会话 token 只放在 Socket 打开后发出的首个 `resume.resumeToken` 中，由服务端在接受业务命令前验证，绝不拼入 URL。iOS“高性能+”模式可能不携带 `X-WX-OPENID`，此时仍由该 token 完成身份认证。
 
