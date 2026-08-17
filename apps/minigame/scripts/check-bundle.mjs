@@ -38,10 +38,20 @@ if (typeof layout?.clear !== "function" || typeof layout?.clearAll !== "function
 layout.clearAll();
 
 const releaseSource = await readFile(resolve(root, "release/game.js"), "utf8");
+const buildConfig = JSON.parse(await readFile(resolve(root, "release/build-config.json"), "utf8"));
 if (!releaseSource.includes("LAYOUT_ENGINE_EXPORT_INVALID")) {
   throw new Error("MINIGAME_BUNDLE_LAYOUT_ADAPTER_MISSING");
 }
 if (!releaseSource.includes("__explodingKittyTouchBubbling")) {
   throw new Error("MINIGAME_BUNDLE_TOUCH_BUBBLING_MISSING");
 }
-console.log("MINIGAME_BUNDLE_SMOKE_OK");
+if ((buildConfig.mode === "preview" || buildConfig.mode === "production") && buildConfig.authEndpoint?.kind !== "cloudContainer") {
+  throw new Error(`MINIGAME_${buildConfig.mode.toUpperCase()}_BUNDLE_REQUIRES_CLOUD_CONTAINER`);
+}
+const endpointValues = buildConfig.authEndpoint?.kind === "cloudContainer"
+  ? [buildConfig.authEndpoint.environmentId, buildConfig.authEndpoint.serviceName]
+  : buildConfig.authEndpoint?.kind === "direct" ? [buildConfig.authEndpoint.apiBaseUrl] : [];
+for (const value of endpointValues) {
+  if (!value || !releaseSource.includes(value)) throw new Error(`MINIGAME_BUNDLE_AUTH_CONFIG_MISSING:${value}`);
+}
+console.log(`MINIGAME_BUNDLE_SMOKE_OK mode=${buildConfig.mode} auth=${buildConfig.authEndpoint?.kind ?? "demo-only"}`);
