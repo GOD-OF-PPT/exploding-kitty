@@ -168,9 +168,11 @@ export class ScreenHost {
       : `<view class="headerSpacer"></view>`;
     const header = `<view class="header">${headerLeft}<view class="headerCopy"><text class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
     const subtitle = model.subtitle ? `<text class="subtitle" value="${escape(model.subtitle)}"></text>` : "";
+    const stackedHero = model.id === "home" || model.id === "result";
+    const heroVariant = model.id === "home" ? "Home" : "Result";
     const hero = model.heroImage || model.heroLabel
-      ? model.id === "result"
-        ? `<view class="hero heroResult">${model.heroLabel ? `<text class="resultWinnerLabel" value="${escape(model.heroLabel)}"></text>` : ""}${model.heroImage ? `<image class="heroImage heroImageResult" src="${escape(model.heroImage)}"></image>` : ""}</view>`
+      ? stackedHero
+        ? `<view class="hero hero${heroVariant}">${model.heroLabel ? `<text class="stackedHeroLabel stackedHeroLabel${heroVariant}" value="${escape(model.heroLabel)}"></text>` : ""}${model.heroImage ? `<image class="heroImage heroImage${heroVariant}" src="${escape(model.heroImage)}"></image>` : ""}</view>`
         : `<view class="hero">${model.heroImage ? `<image class="heroImage" src="${escape(model.heroImage)}"></image>` : ""}${model.heroLabel ? `<text class="heroLabel" value="${escape(model.heroLabel)}"></text>` : ""}</view>`
       : "";
     const players = model.players ? this.playersTemplate(model.players) : "";
