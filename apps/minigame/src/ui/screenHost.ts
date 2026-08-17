@@ -40,6 +40,7 @@ export class ScreenHost {
   private joinCode: string;
   private roomDraft = { maxPlayers: 4, turnSeconds: 45, allowBots: true };
   private tableSurface: CardTableSurface | null = null;
+  private unsubscribeTableInvalidation: (() => void) | null = null;
   private unsubscribe: (() => void) | null = null;
   private disposed = false;
   private error: string | null = null;
@@ -106,6 +107,8 @@ export class ScreenHost {
 
   dispose(): void {
     this.disposed = true;
+    this.unsubscribeTableInvalidation?.();
+    this.unsubscribeTableInvalidation = null;
     this.unsubscribe?.();
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
@@ -142,6 +145,8 @@ export class ScreenHost {
     const view = this.currentView();
     const id = this.resolveId(view);
     const model = buildScreen(id, this.sceneContext(view));
+    this.unsubscribeTableInvalidation?.();
+    this.unsubscribeTableInvalidation = null;
     this.context.setTransform(1, 0, 0, 1, 0, 0);
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     Layout.clear();
@@ -157,7 +162,11 @@ export class ScreenHost {
   }
 
   private template(model: ScreenModel): string {
-    const header = `<view class="header"><button id="back" class="back" value="${this.navigation.length || this.override ? "‹" : ""}"></button><view class="headerCopy"><text class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
+    const canGoBack = Boolean(this.navigation.length || this.override);
+    const headerLeft = canGoBack
+      ? `<button id="back" class="back" value="‹"></button>`
+      : `<view class="headerSpacer"></view>`;
+    const header = `<view class="header">${headerLeft}<view class="headerCopy"><text class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
     const subtitle = model.subtitle ? `<text class="subtitle" value="${escape(model.subtitle)}"></text>` : "";
     const hero = model.heroImage || model.heroLabel ? `<view class="hero">${model.heroImage ? `<image class="heroImage" src="${escape(model.heroImage)}"></image>` : ""}${model.heroLabel ? `<text class="heroLabel" value="${escape(model.heroLabel)}"></text>` : ""}</view>` : "";
     const players = model.players ? this.playersTemplate(model.players) : "";
@@ -207,8 +216,13 @@ export class ScreenHost {
   private attachTable(model: ScreenModel, view: ProductViewModel): void {
     const component = Layout.getElementById("tableCanvas") as LayoutCanvas | null;
     if (!component || !model.table) return;
-    const state = { width: 358, height: 520, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens };
-    this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
+    const state = { width: 358, height: 520, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens };
+    if (this.tableSurface) this.tableSurface.update(state);
+    else this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
+    this.unsubscribeTableInvalidation = this.tableSurface.subscribeInvalidation(() => {
+      if (this.disposed || component.canvas !== this.tableSurface?.element) return;
+      component.update();
+    });
     component.canvas = this.tableSurface.element;
     component.update();
     component.on("click", (event: unknown) => {

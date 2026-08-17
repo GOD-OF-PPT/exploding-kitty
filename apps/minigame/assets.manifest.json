@@ -18,7 +18,8 @@
     "sounds/action.wav",
     "sounds/danger.wav",
     "sounds/nope.wav",
-    "sounds/select.wav"
+    "sounds/select.wav",
+    "ui/backgrounds/comic-bg-390x844.jpg"
   ],
   "budgets": {
     "developmentBytes": 15000000,
