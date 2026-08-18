@@ -168,17 +168,16 @@ export class ScreenHost {
       : `<view class="headerSpacer"></view>`;
     const header = `<view class="header">${headerLeft}<view class="headerCopy"><text class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
     const subtitle = model.subtitle ? `<text class="subtitle" value="${escape(model.subtitle)}"></text>` : "";
-    const stackedHero = model.id === "home" || model.id === "result";
-    const heroVariant = model.id === "home" ? "Home" : "Result";
+    const heroVariant = heroVariantFor(model);
     const hero = model.heroImage || model.heroLabel
-      ? stackedHero
-        ? `<view class="hero hero${heroVariant}">${model.heroLabel ? `<text class="stackedHeroLabel stackedHeroLabel${heroVariant}" value="${escape(model.heroLabel)}"></text>` : ""}${model.heroImage ? `<image class="heroImage heroImage${heroVariant}" src="${escape(model.heroImage)}"></image>` : ""}</view>`
-        : `<view class="hero">${model.heroImage ? `<image class="heroImage" src="${escape(model.heroImage)}"></image>` : ""}${model.heroLabel ? `<text class="heroLabel" value="${escape(model.heroLabel)}"></text>` : ""}</view>`
+      ? `<view class="hero hero${heroVariant}">${model.heroLabel ? `<text class="stackedHeroLabel stackedHeroLabel${heroVariant}" value="${escape(model.heroLabel)}"></text>` : ""}${model.heroImage ? `<image class="heroImage heroImage${heroVariant}" src="${escape(model.heroImage)}"></image>` : ""}</view>`
       : "";
     const players = model.players ? this.playersTemplate(model.players) : "";
     const table = model.table ? `${this.playersTemplate(model.table.players.filter((player) => player.id !== this.currentView().viewerId))}<canvas id="tableCanvas" class="tableCanvas" width="358" height="520"></canvas>` : "";
-    const cards = model.cards ? `<view class="cardGrid">${model.cards.map((card, index) => `<button id="card-${index}" class="cardItem${this.selectedTokens.includes(card.token) ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image><text class="cardName" value="${escape(card.name)}"></text></button>`).join("")}</view>` : "";
-    const rows = model.rows?.length ? `<view class="rowList">${model.rows.map((row, index) => `<button id="row-${index}" class="row">${row.image ? `<image class="rowImage${model.id === "result" ? " rowImageResult" : ""}" src="${escape(row.image)}"></image>` : ""}<view class="rowCopy"><text class="rowTitle" value="${escape(row.title)}"></text><text class="rowDetail" value="${escape(row.detail ?? "")}"></text></view>${row.badge ? `<text class="badge" value="${escape(row.badge)}"></text>` : ""}</button>`).join("")}</view>` : "";
+    const cards = model.cards
+      ? `<view class="cardGrid">${chunk(model.cards, 3).map((row, rowIndex) => `<view class="cardGridRow">${row.map((card, columnIndex) => { const index = rowIndex * 3 + columnIndex; return `<button id="card-${index}" class="cardItem${this.selectedTokens.includes(card.token) ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image><text class="cardName" value="${escape(card.name)}"></text></button>`; }).join("")}</view>`).join("")}</view>`
+      : "";
+    const rows = model.rows?.length ? `<view class="rowList">${model.rows.map((row, index) => `<button id="row-${index}" class="row">${row.image ? `<image class="rowImage rowImage${rowImageVariantFor(model, row.image)}" src="${escape(row.image)}"></image>` : ""}<view class="rowCopy"><text class="rowTitle" value="${escape(row.title)}"></text><text class="rowDetail" value="${escape(row.detail ?? "")}"></text></view>${row.badge ? `<text class="badge" value="${escape(row.badge)}"></text>` : ""}</button>`).join("")}</view>` : "";
     const content = `${subtitle}${hero}${players}${table}${cards}${rows}`;
     const body = model.scroll ? `<scrollview class="scroll" scrollY="true">${content}</scrollview>` : `<view class="body">${content}</view>`;
     const actions = `<view class="actionDock">${(model.actions ?? []).slice(0, 4).map((action, index) => `<button id="action-${index}" class="button button${capitalize(action.tone ?? "yellow")}" value="${escape(action.label)}"></button>`).join("")}</view>`;
@@ -437,3 +436,25 @@ function escape(value: string): string {
 }
 
 function capitalize(value: string): string { return value.charAt(0).toUpperCase() + value.slice(1); }
+
+function chunk<T>(items: readonly T[], size: number): readonly (readonly T[])[] {
+  const rows: T[][] = [];
+  for (let index = 0; index < items.length; index += size) rows.push(items.slice(index, index + size));
+  return rows;
+}
+
+type HeroVariant = "Home" | "Result" | "Wide" | "Card" | "Square" | "LabelOnly";
+
+function heroVariantFor(model: ScreenModel): HeroVariant {
+  if (model.id === "home") return "Home";
+  if (model.id === "result") return "Result";
+  if (!model.heroImage) return "LabelOnly";
+  if (model.heroImage.includes("/cards/")) return "Card";
+  if (model.heroImage.endsWith("/cat-cast.png") || model.heroImage.endsWith("cat-cast.png")) return "Wide";
+  return "Square";
+}
+
+function rowImageVariantFor(model: ScreenModel, image: string): "Result" | "Card" | "Square" {
+  if (model.id === "result") return "Result";
+  return image.includes("/cards/") ? "Card" : "Square";
+}
