@@ -1,5 +1,6 @@
 ﻿import Layout, { type Canvas as LayoutCanvas, type Element as LayoutElement } from "./layoutEngine";
 import type { ClientAction } from "@exploding-kitty/protocol";
+import type { Text as LayoutText } from "./layoutEngine";
 import {
   DECLARABLE_CARD_TYPES,
   hasProductAction,
@@ -89,7 +90,7 @@ export class ScreenHost {
     this.render();
     this.timer = setInterval(() => {
       const view = this.currentView();
-      if (view.game.deadline || Number.isFinite(Number(view.pending?.deadline))) this.render();
+      if (view.game.deadline || Number.isFinite(Number(view.pending?.deadline))) this.refreshCountdown(view);
     }, 1_000);
   }
 
@@ -154,6 +155,8 @@ export class ScreenHost {
       ...UI_STYLE,
       topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
       actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
+      tableActionDock: { ...UI_STYLE.tableActionDock, height: 84 + this.metrics.safeInsets.bottom },
+      tableCanvas: { ...UI_STYLE.tableCanvas, height: this.tableHeight(model), minHeight: this.tableHeight(model), maxHeight: this.tableHeight(model) },
     });
     applyLayoutTransform(this.context, this.metrics);
     Layout.updateViewPort(this.metrics.viewport);
@@ -163,24 +166,29 @@ export class ScreenHost {
 
   private template(model: ScreenModel): string {
     const canGoBack = Boolean(this.navigation.length || this.override);
-    const headerLeft = canGoBack
-      ? `<button id="back" class="back" value="‹"></button>`
-      : `<view class="headerSpacer"></view>`;
-    const header = `<view class="header">${headerLeft}<view class="headerCopy"><text class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
+    const headerLeft = model.table
+      ? `<button id="table-menu" class="tableMenu" value="≡"></button>`
+      : canGoBack
+        ? `<button id="back" class="back" value="‹"></button>`
+        : `<view class="headerSpacer"></view>`;
+    const header = `<view class="header">${headerLeft}<view class="headerCopy"><text id="screen-eyebrow" class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
     const subtitle = model.subtitle ? `<text class="subtitle" value="${escape(model.subtitle)}"></text>` : "";
     const heroVariant = heroVariantFor(model);
     const hero = model.heroImage || model.heroLabel
       ? `<view class="hero hero${heroVariant}">${model.heroLabel ? `<text class="stackedHeroLabel stackedHeroLabel${heroVariant}" value="${escape(model.heroLabel)}"></text>` : ""}${model.heroImage ? `<image class="heroImage heroImage${heroVariant}" src="${escape(model.heroImage)}"></image>` : ""}</view>`
       : "";
     const players = model.players ? this.playersTemplate(model.players) : "";
-    const table = model.table ? `${this.playersTemplate(model.table.players.filter((player) => player.id !== this.currentView().viewerId))}<canvas id="tableCanvas" class="tableCanvas" width="358" height="520"></canvas>` : "";
+    const tableHeight = this.tableHeight(model);
+    const table = model.table ? `${this.playersTemplate(model.table.players.filter((player) => player.id !== this.currentView().viewerId))}<canvas id="tableCanvas" class="tableCanvas" width="358" height="${tableHeight}"></canvas>` : "";
     const cards = model.cards
       ? `<view class="cardGrid">${chunk(model.cards, 3).map((row, rowIndex) => `<view class="cardGridRow">${row.map((card, columnIndex) => { const index = rowIndex * 3 + columnIndex; return `<button id="card-${index}" class="cardItem${this.selectedTokens.includes(card.token) ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image><text class="cardName" value="${escape(card.name)}"></text></button>`; }).join("")}</view>`).join("")}</view>`
       : "";
     const rows = model.rows?.length ? `<view class="rowList">${model.rows.map((row, index) => `<button id="row-${index}" class="row">${row.image ? `<image class="rowImage rowImage${rowImageVariantFor(model, row.image)}" src="${escape(row.image)}"></image>` : ""}<view class="rowCopy"><text class="rowTitle" value="${escape(row.title)}"></text><text class="rowDetail" value="${escape(row.detail ?? "")}"></text></view>${row.badge ? `<text class="badge" value="${escape(row.badge)}"></text>` : ""}</button>`).join("")}</view>` : "";
     const content = `${subtitle}${hero}${players}${table}${cards}${rows}`;
     const body = model.scroll ? `<scrollview class="scroll" scrollY="true">${content}</scrollview>` : `<view class="body">${content}</view>`;
-    const actions = `<view class="actionDock">${(model.actions ?? []).slice(0, 4).map((action, index) => `<button id="action-${index}" class="button button${capitalize(action.tone ?? "yellow")}" value="${escape(action.label)}"></button>`).join("")}</view>`;
+    const actions = model.actions?.length
+      ? `<view class="actionDock${model.table ? " tableActionDock" : ""}">${(model.actions ?? []).slice(0, 4).map((action, index) => `<button id="action-${index}" class="button button${capitalize(action.tone ?? "yellow")}" value="${escape(action.label)}"></button>`).join("")}</view>`
+      : "";
     const error = this.error ? `<text id="error" class="error" value="${escape(this.error)}"></text>` : "";
     return `<view class="app"><view class="topSafe"></view>${header}${body}${actions}${error}</view>`;
   }
@@ -192,6 +200,7 @@ export class ScreenHost {
   private bind(model: ScreenModel, view: ProductViewModel): void {
     const back = Layout.getElementById("back");
     if (back && (this.navigation.length || this.override)) back.on("click", () => this.goBack());
+    Layout.getElementById("table-menu")?.on("click", () => this.show("game-menu"));
     model.actions?.slice(0, 4).forEach((action, index) => Layout.getElementById(`action-${index}`)?.on("click", () => void this.perform(action, view)));
     model.rows?.forEach((row, index) => {
       const element = Layout.getElementById(`row-${index}`);
@@ -221,7 +230,8 @@ export class ScreenHost {
   private attachTable(model: ScreenModel, view: ProductViewModel): void {
     const component = Layout.getElementById("tableCanvas") as LayoutCanvas | null;
     if (!component || !model.table) return;
-    const state = { width: 358, height: 520, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens };
+    const tableHeight = this.tableHeight(model);
+    const state = { width: 358, height: tableHeight, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens };
     if (this.tableSurface) this.tableSurface.update(state);
     else this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
     this.unsubscribeTableInvalidation = this.tableSurface.subscribeInvalidation(() => {
@@ -235,7 +245,13 @@ export class ScreenHost {
       if (!touch || !this.tableSurface) return;
       const rect = Layout.getElementViewportRect(component as unknown as LayoutElement);
       const x = (touch.x - rect.left) * (358 / rect.width);
-      const y = (touch.y - rect.top) * (520 / rect.height);
+      const y = (touch.y - rect.top) * (tableHeight / rect.height);
+      if (this.tableSurface.drawAt(x, y)) {
+        if (!model.table?.drawAction) return;
+        this.options.media.impact("medium");
+        void this.perform(model.table.drawAction, view);
+        return;
+      }
       const card = this.tableSurface.cardAt(x, y);
       if (!card) return;
       try {
@@ -248,7 +264,33 @@ export class ScreenHost {
       this.options.media.impact("light");
       this.render();
     });
-    void view;
+  }
+
+  private refreshCountdown(view: ProductViewModel): void {
+    if (this.disposed) return;
+    const model = buildScreen(this.resolveId(view), this.sceneContext(view));
+    const eyebrow = Layout.getElementById<LayoutText>("screen-eyebrow");
+    const value = model.eyebrow ?? "";
+    if (!eyebrow || eyebrow.value === value) return;
+
+    eyebrow.value = value;
+    // Text.value marks the entire Layout tree dirty. Its box is fixed, so repaint
+    // only that opaque header region and keep the table canvas intact.
+    for (let element: LayoutElement | null = eyebrow; element; element = element.parent) element.isDirty = false;
+    const box = eyebrow.layoutBox;
+    this.context.save();
+    applyLayoutTransform(this.context, this.metrics);
+    this.context.fillStyle = String(UI_STYLE.app?.backgroundColor ?? "#171514");
+    this.context.fillRect(box.absoluteX - 1, box.absoluteY - 1, box.width + 2, box.height + 2);
+    eyebrow.repaint();
+    this.context.restore();
+  }
+
+  private tableHeight(model: ScreenModel): number {
+    if (!model.table) return 0;
+    const dockHeight = model.actions?.length ? 84 + this.metrics.safeInsets.bottom : this.metrics.safeInsets.bottom;
+    const supplementalRows = model.rows?.length ? 94 : 0;
+    return Math.max(370, 844 - this.metrics.safeInsets.top - 82 - 95 - dockHeight - supplementalRows);
   }
 
   private async perform(action: ScreenAction, view: ProductViewModel): Promise<void> {

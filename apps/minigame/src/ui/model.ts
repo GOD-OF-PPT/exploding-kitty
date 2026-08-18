@@ -52,6 +52,7 @@ export type ScreenModel = Readonly<{
     players: readonly PlayerModel[];
     myTurn: boolean;
     turnsOwed: number;
+    drawAction?: ScreenAction;
   }>;
 }>;
 

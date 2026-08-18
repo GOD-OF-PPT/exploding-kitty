@@ -60,6 +60,7 @@ export type TableSurfaceState = Readonly<{
   hand: readonly CardModel[];
   players: readonly PlayerModel[];
   myTurn: boolean;
+  canDraw: boolean;
   turnsOwed: number;
   waitingLabel?: string;
   selectedTokens?: readonly string[];
@@ -156,6 +157,10 @@ export class CardTableSurface {
     return null;
   }
 
+  drawAt(x: number, y: number): boolean {
+    return this.state.canDraw && pointInRect(this.tableLayout().drawBurst, x, y);
+  }
+
   private resize(width: number, height: number, requestedRenderScale?: number): void {
     const renderScale = normalizedRenderScale(requestedRenderScale);
     this.canvas.width = backingSize(width, renderScale);
@@ -186,7 +191,7 @@ export class CardTableSurface {
 
   private draw(): void {
     const { ctx } = this;
-    const { width, height, deckCount, discard, myTurn, turnsOwed } = this.state;
+    const { width, height, deckCount, discard, myTurn, canDraw, turnsOwed } = this.state;
     const layout = this.tableLayout();
     ctx.clearRect(0, 0, width, height);
 
@@ -215,9 +220,9 @@ export class CardTableSurface {
     ctx.fill();
 
     this.drawTurnBanner(layout.banner, myTurn, turnsOwed, layout.tableScale);
-    this.drawPile(layout.drawPile, CARD_BACK, "draw", deckCount, !myTurn, layout.tableScale, layout.pileLabelGap);
+    this.drawPile(layout.drawPile, CARD_BACK, "draw", deckCount, !canDraw, layout.tableScale, layout.pileLabelGap);
     this.drawPile(layout.discardPile, discard?.image, "discard", undefined, false, layout.tableScale, layout.pileLabelGap);
-    this.drawDrawBurst(layout.drawBurst, myTurn, turnsOwed, layout.tableScale);
+    this.drawDrawBurst(layout.drawBurst, myTurn, canDraw, turnsOwed, layout.tableScale);
     this.drawHandZone(layout);
 
     for (const slot of this.paintOrder(this.handSlots(layout))) this.drawCard(slot, !myTurn || !slot.card.playable);
@@ -411,32 +416,32 @@ export class CardTableSurface {
     ctx.restore();
   }
 
-  private drawDrawBurst(rect: Rect, myTurn: boolean, turnsOwed: number, scale: number): void {
+  private drawDrawBurst(rect: Rect, myTurn: boolean, canDraw: boolean, turnsOwed: number, scale: number): void {
     const { ctx } = this;
-    const label = !myTurn ? "现在不是你的回合" : turnsOwed > 1 ? "抽牌 · 完成 1 回合" : "抽一张";
+    const label = !myTurn ? "现在不是你的回合" : !canDraw ? "请先完成当前操作" : turnsOwed > 1 ? "抽牌 · 完成 1 回合" : "抽一张";
     const priorAlpha = ctx.globalAlpha;
     ctx.save();
-    if (!myTurn) ctx.globalAlpha = priorAlpha * WAITING_ALPHA;
+    if (!canDraw) ctx.globalAlpha = priorAlpha * WAITING_ALPHA;
     burstPath(ctx, rect.x + 4 * scale, rect.y + 4 * scale, rect.width, rect.height);
     ctx.fillStyle = "#000000";
     ctx.fill();
     burstPath(ctx, rect.x, rect.y, rect.width, rect.height);
-    ctx.fillStyle = myTurn ? COLORS.yellow : "#5d5348";
+    ctx.fillStyle = canDraw ? COLORS.yellow : "#5d5348";
     ctx.fill();
-    ctx.fillStyle = myTurn ? COLORS.ink : "#d5c7af";
+    ctx.fillStyle = canDraw ? COLORS.ink : "#d5c7af";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
     const collapsed = rect.height < 44;
-    if (myTurn && turnsOwed > 1 && collapsed) {
+    if (canDraw && turnsOwed > 1 && collapsed) {
       this.setFont(13, 700, true);
       ctx.fillText("抽牌", centerX, centerY - 7, Math.max(1, rect.width - 14));
       ctx.fillText("完成 1 回合", centerX, centerY + 8, Math.max(1, rect.width - 14));
     } else {
       const activeFontSize = turnsOwed > 1 ? 20 : 26;
-      const minimumFontSize = myTurn ? (turnsOwed > 1 ? 15 : 16) : 12;
-      this.setFont(Math.max(minimumFontSize, (myTurn ? activeFontSize : 15) * scale), 700, true);
+      const minimumFontSize = canDraw ? (turnsOwed > 1 ? 15 : 16) : 12;
+      this.setFont(Math.max(minimumFontSize, (canDraw ? activeFontSize : 15) * scale), 700, true);
       ctx.fillText(label, centerX, centerY + scale, Math.max(1, rect.width - 14));
     }
     ctx.globalAlpha = priorAlpha;

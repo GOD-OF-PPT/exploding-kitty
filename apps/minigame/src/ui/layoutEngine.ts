@@ -19,4 +19,4 @@ function resolveLayoutEngine(value: unknown): LayoutEngine {
 }
 
 export default resolveLayoutEngine(LayoutImport);
-export type { Canvas, Element } from "minigame-canvas-engine";
+export type { Canvas, Element, Text } from "minigame-canvas-engine";
