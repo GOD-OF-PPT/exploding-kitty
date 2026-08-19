@@ -18,6 +18,12 @@ type Dependencies = Readonly<{
   matches: MatchCoordinator;
   store: GameStore;
   hub: ConnectionHub;
+  /**
+   * Debounce window for presence-triggered broadcasts (connect/disconnect).
+   * Rapid broadcastPresence() calls within this window coalesce to a single
+   * actual broadcast execution. Default: 500ms.
+   */
+  broadcastDebounceMs?: number;
 }>;
 
 function canonical(value: unknown): string {
@@ -36,7 +42,15 @@ const MATCH_TYPES = new Set<MatchAction["type"]>([
 const ROOM_RECEIPT_TYPES = new Set<string>(["AddBot", "RemoveBot", "StartMatch", "RestartMatch"]);
 
 export class SessionGateway {
-  constructor(readonly dependencies: Dependencies) {}
+  readonly dependencies: Dependencies;
+  readonly #debounceMs: number;
+  /** Per-room suppression windows for presence broadcasts. */
+  readonly #debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  constructor(dependencies: Dependencies) {
+    this.dependencies = dependencies;
+    this.#debounceMs = dependencies.broadcastDebounceMs ?? 500;
+  }
 
   async resume(auth: AuthContext, sessionId: string): Promise<MatchSnapshotEnvelope<MatchSnapshot>> {
     const resumed = sessionId.startsWith("bootstrap_") || sessionId.startsWith("wx-")
@@ -154,6 +168,33 @@ export class SessionGateway {
       const monotonic = await this.#monotonic(member.id, snapshot);
       this.dependencies.hub.sendSnapshot(member.id, monotonic.revision, monotonic.snapshot);
     }
+  }
+
+  /**
+   * Presence-triggered broadcast (connect/disconnect) with per-room leading-edge
+   * debounce. The first call in a quiet period fires the broadcast immediately
+   * and opens a suppression window; subsequent calls within the window are
+   * coalesced (dropped). This reduces cascading broadcast() + observePlayerSnapshot
+   * load during rapid reconnect cycles without delaying match-command broadcasts
+   * (which call broadcast() directly and bypass this mechanism).
+   *
+   * The call is synchronous and fire-and-forgets the underlying broadcast(), so
+   * it never blocks the caller — a reconnecting player still receives their
+   * resume snapshot immediately while other members' presence update is coalesced.
+   */
+  broadcastPresence(roomId: string): void {
+    if (this.#debounceTimers.has(roomId)) return;
+    void this.broadcast(roomId).catch(() => undefined);
+    this.#debounceTimers.set(
+      roomId,
+      setTimeout(() => { this.#debounceTimers.delete(roomId); }, this.#debounceMs),
+    );
+  }
+
+  /** Clears all pending presence-debounce timers. Useful for test teardown. */
+  disposeBroadcastDebounce(): void {
+    for (const timer of this.#debounceTimers.values()) clearTimeout(timer);
+    this.#debounceTimers.clear();
   }
 
   async #roomAction(auth: AuthContext, sessionId: string, action: ClientAction, command?: RoomCommandContext): Promise<RoomSnapshot> {

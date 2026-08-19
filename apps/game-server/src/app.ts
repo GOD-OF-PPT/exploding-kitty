@@ -100,7 +100,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       authenticationTimer = undefined;
       bindConnection(context, sessionId);
       void dependencies.rooms.setConnected(context, true)
-        .then((room) => room && dependencies.gateway.broadcast(room.id));
+        .then((room) => { if (room) dependencies.gateway.broadcastPresence(room.id); });
     };
 
     if (dependencies.wechatTrustCloudHeaders) {
@@ -193,10 +193,10 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         // waiting. Restore presence rather than letting an older close win.
         if (dependencies.hub.hasConnections(authenticated.playerId)) {
           const restored = await dependencies.rooms.setConnected(authenticated, true);
-          if (restored) await dependencies.gateway.broadcast(restored.id);
+          if (restored) dependencies.gateway.broadcastPresence(restored.id);
           return;
         }
-        if (room) await dependencies.gateway.broadcast(room.id);
+        if (room) dependencies.gateway.broadcastPresence(room.id);
       });
     });
   });
