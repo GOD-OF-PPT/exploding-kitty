@@ -1,14 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { PROTOCOL_VERSION } from "@exploding-kitty/protocol";
+import { PROTOCOL_VERSION, type ClientAction, type ClientCommandEnvelope } from "@exploding-kitty/protocol";
 import { MatchCoordinator } from "./match/matchCoordinator.js";
 import { RoomCoordinator } from "./room/roomCoordinator.js";
 import { MemoryGameStore } from "./persistence/memoryStore.js";
 import type { RoomTransaction } from "./persistence/store.js";
 import { ConnectionHub } from "./transport/connectionHub.js";
 import { SessionGateway } from "./transport/sessionGateway.js";
-import type { RoomSettings } from "./model.js";
+import type { AuthContext, RoomSettings } from "./model.js";
 
 const settings: RoomSettings = {
   maxPlayers: 2,
@@ -348,5 +348,397 @@ describe("room command idempotency — cross-room isolation", () => {
     const finalRoom = await store.getRoomForPlayer(alice.playerId);
     expect(finalRoom?.members.filter((m) => m.bot)).toHaveLength(1);
     expect(finalRoom?.id).toBe(roomB?.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Gateway-level replay tests: direct coordinator call then gateway.command()
+// replay with the same commandId.  Validates that a mutation committed
+// directly (without a session-level receipt) is not double-executed when the
+// same commandId is replayed through the gateway.
+// ---------------------------------------------------------------------------
+
+function gatewayEnvelope(
+  sessionId: string,
+  commandId: string,
+  expectedRevision: number,
+  action: ClientAction,
+): ClientCommandEnvelope {
+  return { type: "command", protocolVersion: PROTOCOL_VERSION, sessionId, commandId, expectedRevision, action };
+}
+
+function gatewayHarness() {
+  const context = harness();
+  const hub = new ConnectionHub();
+  const gateway = new SessionGateway({ store: context.store, rooms: context.rooms, matches: context.matches, hub });
+  return { ...context, gateway, hub };
+}
+
+describe("room command idempotency — gateway replay (direct then replay)", () => {
+  it("direct addBot() then gateway.command() replay returns original result (VAL-M1-010)", async () => {
+    const { store, rooms, matches, alice } = harness();
+    const hub = new ConnectionHub();
+    const gateway = new SessionGateway({ store, rooms, matches, hub });
+    const sessionId = "wx-alice";
+
+    // Create room and add bot directly (no command context, no session receipt)
+    const room = await rooms.create(alice, settings);
+    const afterDirect = await rooms.addBot(alice, room.id);
+    expect(afterDirect.members.filter((m) => m.bot)).toHaveLength(1);
+    const directRevision = afterDirect.revision;
+
+    // Establish gateway baseline
+    const initial = await gateway.resume(alice, sessionId);
+
+    // First gateway command — domain-level idempotency catches the duplicate
+    const first = await gateway.command(alice, gatewayEnvelope(sessionId, "cmd-addbot", initial.revision, { type: "AddBot" }));
+    expect(first.ok).toBe(true);
+
+    // No second bot added
+    const afterFirst = await store.getRoomById(room.id);
+    expect(afterFirst?.members.filter((m) => m.bot)).toHaveLength(1);
+    expect(afterFirst?.revision).toBe(directRevision);
+
+    // Replay same commandId — session receipt catches it
+    const replay = await gateway.command(alice, gatewayEnvelope(sessionId, "cmd-addbot", initial.revision, { type: "AddBot" }));
+    expect(replay).toEqual(first);
+
+    // Still no second bot
+    const afterReplay = await store.getRoomById(room.id);
+    expect(afterReplay?.members.filter((m) => m.bot)).toHaveLength(1);
+    expect(afterReplay?.revision).toBe(directRevision);
+  });
+
+  it("direct start() then gateway.command() replay returns original result (VAL-M1-011)", async () => {
+    const { store, rooms, matches, alice } = harness();
+    const hub = new ConnectionHub();
+    const gateway = new SessionGateway({ store, rooms, matches, hub });
+    const sessionId = "wx-alice";
+
+    // Create room, add bot, start match directly (no command context)
+    const room = await rooms.create(alice, settings);
+    await rooms.addBot(alice, room.id);
+    const directStart = await rooms.start(alice, room.id);
+    expect(directStart.snapshot.matchId).toBeTruthy();
+    const directMatchId = directStart.snapshot.matchId!;
+
+    // Establish gateway baseline
+    const initial = await gateway.resume(alice, sessionId);
+
+    // First gateway command — domain-level idempotency catches the duplicate
+    const first = await gateway.command(alice, gatewayEnvelope(sessionId, "cmd-start", initial.revision, { type: "StartMatch" }));
+    expect(first.ok).toBe(true);
+
+    // No second match created
+    const afterFirst = await store.getRoomById(room.id);
+    expect(afterFirst?.matchId).toBe(directMatchId);
+
+    // Replay same commandId — session receipt catches it
+    const replay = await gateway.command(alice, gatewayEnvelope(sessionId, "cmd-start", initial.revision, { type: "StartMatch" }));
+    expect(replay).toEqual(first);
+
+    // Still only one match
+    const afterReplay = await store.getRoomById(room.id);
+    expect(afterReplay?.matchId).toBe(directMatchId);
+  });
+
+  it("direct restart() then gateway.command() replay returns original result (VAL-M1-012)", async () => {
+    const { store, rooms, matches, alice } = harness();
+    const hub = new ConnectionHub();
+    const gateway = new SessionGateway({ store, rooms, matches, hub });
+    const sessionId = "wx-alice";
+
+    // Create room, add bot, start match, finish, then restart directly
+    const room = await rooms.create(alice, settings);
+    await rooms.addBot(alice, room.id);
+    const started = await rooms.start(alice, room.id);
+    const firstMatchId = started.snapshot.matchId!;
+    await finishMatch(store, firstMatchId, "alice", room.id);
+
+    // Restart directly (no command context, no receipt)
+    const directRestart = await rooms.restart(alice, room.id);
+    expect(directRestart.snapshot.matchId).toBeTruthy();
+    expect(directRestart.snapshot.matchId).not.toBe(firstMatchId);
+    const restartMatchId = directRestart.snapshot.matchId!;
+
+    // Establish gateway baseline
+    const initial = await gateway.resume(alice, sessionId);
+
+    // First gateway command — domain-level idempotency catches the duplicate
+    const first = await gateway.command(alice, gatewayEnvelope(sessionId, "cmd-restart", initial.revision, { type: "RestartMatch" }));
+    expect(first.ok).toBe(true);
+
+    // No additional match created
+    const afterFirst = await store.getRoomById(room.id);
+    expect(afterFirst?.matchId).toBe(restartMatchId);
+
+    // Replay same commandId — session receipt catches it
+    const replay = await gateway.command(alice, gatewayEnvelope(sessionId, "cmd-restart", initial.revision, { type: "RestartMatch" }));
+    expect(replay).toEqual(first);
+
+    // Still same match
+    const afterReplay = await store.getRoomById(room.id);
+    expect(afterReplay?.matchId).toBe(restartMatchId);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Concurrent same-commandId race: two simultaneous gateway.command() calls
+// with the same commandId must result in exactly one mutation.
+// ---------------------------------------------------------------------------
+
+describe("room command idempotency — concurrent same-commandId race", () => {
+  it("two concurrent gateway.command() with same commandId — only one executes (VAL-M1-013)", async () => {
+    const { store, rooms, matches, alice } = harness();
+    const hub = new ConnectionHub();
+    const gateway = new SessionGateway({ store, rooms, matches, hub });
+    const sessionId = "wx-alice";
+
+    // Create room directly
+    const room = await rooms.create(alice, settings);
+
+    // Establish gateway baseline
+    const initial = await gateway.resume(alice, sessionId);
+
+    // Two concurrent gateway commands with the same commandId
+    const envelope = gatewayEnvelope(sessionId, "cmd-race", initial.revision, { type: "AddBot" });
+    const results = await Promise.allSettled([
+      gateway.command(alice, envelope),
+      gateway.command(alice, envelope),
+    ]);
+
+    // Both should fulfill with ok:true
+    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+    const [a, b] = results;
+    if (a.status === "fulfilled" && b.status === "fulfilled") {
+      expect(a.value.ok).toBe(true);
+      expect(b.value.ok).toBe(true);
+      expect(b.value).toEqual(a.value);
+    }
+
+    // Exactly one bot added (not two)
+    const afterRace = await store.getRoomById(room.id);
+    expect(afterRace?.members.filter((m) => m.bot)).toHaveLength(1);
+
+    // Only one room-level receipt should exist
+    const roomReceipts = store.roomReceipts();
+    expect(roomReceipts).toHaveLength(1);
+    expect(roomReceipts[0]!.commandId).toBe("cmd-race");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Parameterized gateway replay coverage for all 8 room action types.
+// Each action is executed through gateway.command(), then replayed with the
+// same commandId.  The replay must return the original result without
+// double-executing.
+// ---------------------------------------------------------------------------
+
+type ReplayCtx = {
+  gateway: SessionGateway;
+  auth: AuthContext;
+  sessionId: string;
+  revision: number;
+  store: MemoryGameStore;
+  action: ClientAction;
+  verify: () => Promise<void>;
+};
+
+const REPLAY_CASES: ReadonlyArray<{ name: string; setup: () => Promise<ReplayCtx> }> = [
+  {
+    name: "CreateRoom",
+    setup: async () => {
+      const { store, rooms, matches, alice } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      const sessionId = "wx-alice";
+      const initial = await gateway.resume(alice, sessionId);
+      return {
+        gateway, auth: alice, sessionId, store,
+        revision: initial.revision,
+        action: { type: "CreateRoom", settings },
+        verify: async () => {
+          const room = await store.getRoomForPlayer(alice.playerId);
+          expect(room).not.toBeNull();
+          expect(room?.members).toHaveLength(1);
+        },
+      };
+    },
+  },
+  {
+    name: "JoinRoom",
+    setup: async () => {
+      const { store, rooms, matches } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      // Alice creates a room directly
+      const alice = { playerId: "alice", sessionToken: "session-alice" } as const;
+      const room = await rooms.create(alice, { ...settings, maxPlayers: 3 });
+      // Bob connects through gateway
+      const bob = { playerId: "bob", sessionToken: "session-bob" } as const;
+      const sessionId = "wx-bob";
+      const initial = await gateway.resume(bob, sessionId);
+      return {
+        gateway, auth: bob, sessionId, store,
+        revision: initial.revision,
+        action: { type: "JoinRoom", code: room.code },
+        verify: async () => {
+          const updated = await store.getRoomById(room.id);
+          expect(updated?.members).toHaveLength(2);
+          expect(updated?.members.some((m) => m.id === "bob")).toBe(true);
+        },
+      };
+    },
+  },
+  {
+    name: "AddBot",
+    setup: async () => {
+      const { store, rooms, matches, alice } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      const room = await rooms.create(alice, settings);
+      const sessionId = "wx-alice";
+      const initial = await gateway.resume(alice, sessionId);
+      return {
+        gateway, auth: alice, sessionId, store,
+        revision: initial.revision,
+        action: { type: "AddBot" },
+        verify: async () => {
+          const updated = await store.getRoomById(room.id);
+          expect(updated?.members.filter((m) => m.bot)).toHaveLength(1);
+        },
+      };
+    },
+  },
+  {
+    name: "RemoveBot",
+    setup: async () => {
+      const { store, rooms, matches, alice } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      const room = await rooms.create(alice, settings);
+      const withBot = await rooms.addBot(alice, room.id);
+      const botId = withBot.members.find((m) => m.bot)!.id;
+      const sessionId = "wx-alice";
+      const initial = await gateway.resume(alice, sessionId);
+      return {
+        gateway, auth: alice, sessionId, store,
+        revision: initial.revision,
+        action: { type: "RemoveBot", playerId: botId },
+        verify: async () => {
+          const updated = await store.getRoomById(room.id);
+          expect(updated?.members.filter((m) => m.bot)).toHaveLength(0);
+        },
+      };
+    },
+  },
+  {
+    name: "StartMatch",
+    setup: async () => {
+      const { store, rooms, matches, alice } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      const room = await rooms.create(alice, settings);
+      await rooms.addBot(alice, room.id);
+      const sessionId = "wx-alice";
+      const initial = await gateway.resume(alice, sessionId);
+      return {
+        gateway, auth: alice, sessionId, store,
+        revision: initial.revision,
+        action: { type: "StartMatch" },
+        verify: async () => {
+          const updated = await store.getRoomById(room.id);
+          expect(updated?.status).toBe("ACTIVE");
+          expect(updated?.matchId).toBeTruthy();
+          const match = await store.getMatch(updated?.matchId ?? "");
+          expect(match).not.toBeNull();
+        },
+      };
+    },
+  },
+  {
+    name: "StartTutorial",
+    setup: async () => {
+      const { store, rooms, matches, alice } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      const sessionId = "wx-alice";
+      const initial = await gateway.resume(alice, sessionId);
+      return {
+        gateway, auth: alice, sessionId, store,
+        revision: initial.revision,
+        action: { type: "StartTutorial" },
+        verify: async () => {
+          const room = await store.getRoomForPlayer(alice.playerId);
+          expect(room).not.toBeNull();
+          expect(room?.tutorial).toBe(true);
+          expect(room?.status).toBe("ACTIVE");
+          expect(room?.matchId).toBeTruthy();
+        },
+      };
+    },
+  },
+  {
+    name: "LeaveRoom",
+    setup: async () => {
+      const { store, rooms, matches, alice } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      const room = await rooms.create(alice, settings);
+      const sessionId = "wx-alice";
+      const initial = await gateway.resume(alice, sessionId);
+      return {
+        gateway, auth: alice, sessionId, store,
+        revision: initial.revision,
+        action: { type: "LeaveRoom" },
+        verify: async () => {
+          const roomAfter = await store.getRoomById(room.id);
+          expect(roomAfter).toBeNull();
+        },
+      };
+    },
+  },
+  {
+    name: "RestartMatch",
+    setup: async () => {
+      const { store, rooms, matches, alice } = harness();
+      const hub = new ConnectionHub();
+      const gateway = new SessionGateway({ store, rooms, matches, hub });
+      const room = await rooms.create(alice, settings);
+      await rooms.addBot(alice, room.id);
+      const started = await rooms.start(alice, room.id);
+      await finishMatch(store, started.snapshot.matchId!, "alice", room.id);
+      const sessionId = "wx-alice";
+      const initial = await gateway.resume(alice, sessionId);
+      return {
+        gateway, auth: alice, sessionId, store,
+        revision: initial.revision,
+        action: { type: "RestartMatch" },
+        verify: async () => {
+          const updated = await store.getRoomById(room.id);
+          expect(updated?.status).toBe("ACTIVE");
+          expect(updated?.matchId).toBeTruthy();
+          expect(updated?.matchId).not.toBe(started.snapshot.matchId);
+        },
+      };
+    },
+  },
+];
+
+describe("room command idempotency — parameterized gateway replay coverage", () => {
+  it.each(REPLAY_CASES)("replays $name through gateway without double-executing (VAL-M1-030)", async ({ setup }) => {
+    const ctx = await setup();
+    const envelope = gatewayEnvelope(ctx.sessionId, "cmd-replay", ctx.revision, ctx.action);
+
+    // First execution through the gateway
+    const first = await ctx.gateway.command(ctx.auth, envelope);
+    expect(first.ok).toBe(true);
+
+    // Replay the same commandId — must return the identical result
+    const replay = await ctx.gateway.command(ctx.auth, envelope);
+    expect(replay).toEqual(first);
+
+    // Verify no double-execution
+    await ctx.verify();
   });
 });
