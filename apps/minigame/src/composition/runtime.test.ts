@@ -78,15 +78,57 @@ describe("mini-game runtime config", () => {
     });
   });
 
-  it("opens a local demo in WeChat developer tools when no API was configured", () => {
-    process.env.NODE_ENV = "production";
+  it("opens a local demo in WeChat developer tools when no API was configured (development only)", () => {
+    process.env.NODE_ENV = "development";
     delete process.env.MINIGAME_API_BASE_URL;
+    delete process.env.MINIGAME_CLOUD_ENV_ID;
+    delete process.env.MINIGAME_CLOUD_SERVICE_NAME;
     const wx = {
       getLaunchOptionsSync: () => ({ query: {} }),
       getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 844, pixelRatio: 2, platform: "devtools" }),
     } as unknown as WxLike;
 
     expect(readRuntimeConfig(wx)).toMatchObject({ apiBaseUrl: undefined, forceDemo: true, allowDevAuth: false });
+  });
+
+  it("disables the devtools demo heuristic in production when no server is configured", () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.MINIGAME_API_BASE_URL;
+    delete process.env.MINIGAME_CLOUD_ENV_ID;
+    delete process.env.MINIGAME_CLOUD_SERVICE_NAME;
+    const wx = {
+      getLaunchOptionsSync: () => ({ query: {} }),
+      getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 844, pixelRatio: 2, platform: "devtools" }),
+    } as unknown as WxLike;
+
+    expect(readRuntimeConfig(wx)).toMatchObject({
+      apiBaseUrl: undefined,
+      cloudEnvironmentId: undefined,
+      forceDemo: false,
+      allowDevAuth: false,
+    });
+  });
+
+  it("surfaces MINIGAME_AUTH_ENDPOINT_REQUIRED in production instead of a silent demo fallback", async () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.MINIGAME_API_BASE_URL;
+    delete process.env.MINIGAME_CLOUD_ENV_ID;
+    delete process.env.MINIGAME_CLOUD_SERVICE_NAME;
+    const wx = {
+      getLaunchOptionsSync: () => ({ query: {} }),
+      getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 844, pixelRatio: 2, platform: "devtools" }),
+    } as unknown as WxLike;
+
+    const config = readRuntimeConfig(wx);
+    expect(config.forceDemo).toBe(false);
+    await expect(createGameSession(wx, config)).rejects.toThrow(/MINIGAME_AUTH_ENDPOINT_REQUIRED/);
+  });
+
+  it("still boots an explicitly requested demo session in production", async () => {
+    process.env.NODE_ENV = "production";
+    const session = await createGameSession({} as WxLike, { forceDemo: true });
+    expect(session.getSnapshot()).toMatchObject({ connectivity: "local", view: { phase: "HOME" } });
+    session.dispose();
   });
 
   it("boots the developer-tools fallback without requiring a remote session module", async () => {

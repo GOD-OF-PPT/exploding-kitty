@@ -48,7 +48,10 @@ export function readRuntimeConfig(wx: WxLike): RuntimeConfig {
   const cloudEnvironmentId = debugServer ? undefined : configuredCloudEnvironment;
   const cloudServiceName = cloudEnvironmentId ? configuredCloudService ?? "exploding-kitty-api" : undefined;
   const remoteConfigured = Boolean(cloudEnvironmentId || apiBaseUrl);
-  const developerToolsWithoutServer = !remoteConfigured && wx.getSystemInfoSync().platform?.toLowerCase() === "devtools";
+  // The developer-tools-without-server heuristic is a development convenience only.
+  // A production runtime must never silently fall back to a demo session — missing
+  // config surfaces as MINIGAME_AUTH_ENDPOINT_REQUIRED from createGameSession instead.
+  const developerToolsWithoutServer = allowDebugQuery && !remoteConfigured && wx.getSystemInfoSync().platform?.toLowerCase() === "devtools";
   return {
     apiBaseUrl,
     cloudEnvironmentId,
