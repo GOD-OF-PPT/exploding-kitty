@@ -47,7 +47,50 @@ const screens: Record<ScreenId, SceneDefinition> = {
   login: { id: "login", build: () => ({ id: "login", eyebrow: COPY.original, title: COPY.brand, subtitle: "今晚谁先炸？", heroImage: "assets/cat-cast.png", heroLabel: "BOOM!", actions: [intent("login", COPY.enter, "Login", { provider: "wechat" })] }) },
   home: { id: "home", build: (context) => ({ id: "home", eyebrow: COPY.tagline, title: COPY.brand, subtitle: `嗨，${context.view.user.name}`, heroImage: context.view.user.avatar, heroLabel: "BOOM!", rows: [{ id: "settings", title: "声音与振动", detail: "调整当前设备设置", action: nav("settings", "打开", "settings") }], actions: [nav("play", COPY.start, "play-mode", "yellow"), nav("join", COPY.join, "join", "cream"), nav("tutorial", COPY.tutorial, "tutorial", "cyan"), nav("rules", COPY.rules, "rules", "cream")] }) },
   "play-mode": { id: "play-mode", build: () => ({ id: "play-mode", eyebrow: "选择你的混乱方式", title: COPY.start, heroImage: "assets/cats/player.png", rows: [{ id: "create", title: COPY.create, detail: "设置人数与节奏，邀请好友", action: nav("create", "创建", "create") }, { id: "join", title: COPY.join, detail: "输入好友分享的 6 位房间码", action: nav("join", "加入", "join") }], actions: [nav("back", "返回首页", "home", "ink")] }) },
-  create: { id: "create", build: (context) => { const draft = context.roomDraft ?? { maxPlayers: 4, turnSeconds: 45, allowBots: true }; return { id: "create", eyebrow: "PRIVATE ROOM", title: COPY.create, rows: [{ id: "players", title: "玩家人数", detail: "点击在 2 - 5 人间切换", badge: `${draft.maxPlayers} 人`, action: { id: "cycle-players", label: "切换", intent: { type: "CycleRoomPlayers" } } }, { id: "timer", title: "行动计时", detail: "30 / 45 / 60 秒", badge: `${draft.turnSeconds} 秒`, action: { id: "cycle-timer", label: "切换", intent: { type: "CycleTurnSeconds" } } }, { id: "bots", title: "允许机器人补位", detail: "点击切换", badge: draft.allowBots ? "开启" : "关闭", action: { id: "toggle-bots", label: "切换", intent: { type: "ToggleRoomBots" } } }, { id: "ruleset", title: "规则集", detail: "original-2025@1", badge: "基础版" }], actions: [intent("create", "创建并邀请", "CreateRoom"), nav("back", "返回", "play-mode", "ink")] }; } },
+  create: { id: "create", build: (context) => {
+    const draft = context.roomDraft ?? { maxPlayers: 4, turnSeconds: 45, allowBots: true };
+    return {
+      id: "create",
+      eyebrow: "PRIVATE ROOM",
+      title: COPY.create,
+      rows: [
+        {
+          id: "players",
+          title: "玩家人数",
+          detail: "2 至 5 人",
+          control: {
+            kind: "stepper",
+            value: `${draft.maxPlayers} 人`,
+            decrement: intent("players-down", "减少玩家", "AdjustRoomPlayers", { delta: -1 }),
+            increment: intent("players-up", "增加玩家", "AdjustRoomPlayers", { delta: 1 }),
+          },
+        },
+        {
+          id: "timer",
+          title: "行动计时",
+          detail: "每位玩家的行动时间",
+          control: {
+            kind: "stepper",
+            value: `${draft.turnSeconds} 秒`,
+            decrement: intent("timer-down", "缩短时间", "AdjustTurnSeconds", { delta: -1 }),
+            increment: intent("timer-up", "延长时间", "AdjustTurnSeconds", { delta: 1 }),
+          },
+        },
+        {
+          id: "bots",
+          title: "机器人补位",
+          detail: "空位允许 Bot 加入",
+          control: {
+            kind: "toggle",
+            checked: draft.allowBots,
+            action: intent("toggle-bots", "切换机器人补位", "ToggleRoomBots"),
+          },
+        },
+        { id: "ruleset", title: "规则集", detail: "original-2025@1", badge: "基础版" },
+      ],
+      actions: [intent("create", "创建并邀请", "CreateRoom"), nav("back", "返回", "play-mode", "ink")],
+    };
+  } },
   join: { id: "join", build: (context) => ({ id: "join", eyebrow: "JOIN THE CHAOS", title: COPY.join, subtitle: "输入好友发来的 6 位房间码", heroImage: "assets/cats/a-ju.png", rows: [{ id: "room-code", title: "房间码", detail: context.joinCode || "点击输入", badge: context.joinCode?.length === 6 ? "可加入" : "6 位数字" }], actions: [intent("join", "进入房间", "JoinRoom"), nav("back", "返回", "play-mode", "ink")] }) },
   "lobby-host": { id: "lobby-host", build: (context) => ({ id: "lobby-host", eyebrow: `ROOM #${context.view.room.code}`, title: COPY.lobby, subtitle: "你是房主，所有人准备后即可开始", rows: avatarRows(context).map((row) => { const player = context.view.players.find((entry) => entry.id === row.id); return player?.bot ? { ...row, detail: "点击移除这个 Bot", action: intent(`remove-${row.id}`, "移除", "RemoveBot", { playerId: row.id }, "red") } : row; }), actions: [intent("share", "分享房间码", "ShareRoom", {}, "yellow"), ...(context.view.room.allowBots && context.view.players.length < context.view.room.maxPlayers ? [intent("bot", "加入 Bot", "AddBot", {}, "cream")] : []), ...(context.view.players.length >= 2 && context.view.players.every((player) => player.ready) ? [intent("start", "开始游戏", "StartMatch", {}, "cyan")] : []), intent("leave", "离开房间", "LeaveRoom", {}, "ink")], scroll: true }) },
   "lobby-member": { id: "lobby-member", build: (context) => { const ready = context.view.players.find((player) => player.id === context.view.viewerId)?.ready ?? false; return { id: "lobby-member", eyebrow: `ROOM #${context.view.room.code}`, title: COPY.lobby, subtitle: "房主正在调整规则", rows: avatarRows(context), actions: [intent("ready", ready ? "取消准备" : "我准备好了", "SetReady", { ready: !ready }), nav("rules", COPY.rules, "rules", "cream"), intent("leave", "离开房间", "LeaveRoom", {}, "ink")], scroll: true }; } },
@@ -55,11 +98,74 @@ const screens: Record<ScreenId, SceneDefinition> = {
   "other-turn": { id: "other-turn", build: (context) => { const active = context.view.players.find((player) => player.id === context.view.game.turnPlayerId); return { ...table(context, false), id: "other-turn", subtitle: active ? `等待${active.name}行动…` : "等待其他玩家行动…" }; } },
   attack: { id: "attack", build: (context) => ({ ...table(context, true), id: "attack", eyebrow: "攻击已生效", title: `你还欠 ${Math.max(2, context.view.game.turnsOwed)} 个回合！`, heroLabel: "×2" }) },
   response: { id: "response", build: (context) => { const pending = context.view.pending?.kind === "RESPONSE" ? context.view.pending : null; const windowId = pending?.windowId ?? pending?.id ?? ""; const legalNope = context.view.legalActionDetails.find((action) => action.type === "PlayNope" && action.cardTokens?.[0]); const actor = context.view.players.find((player) => player.id === pending?.actorId); const target = context.view.players.find((player) => player.id === pending?.targetId); const types = pending?.cardTypes.length ? pending.cardTypes.map((type) => cardName(type)).join(" + ") : "动作"; const declaration = pending?.declaredCardType ? `，声明 ${cardName(pending.declaredCardType)}` : ""; const targetCopy = target ? `，目标 ${target.name}` : ""; return { id: "response", eyebrow: `否决窗口 · ${remainingSeconds(pending?.deadline, context)} 秒`, title: "要取消这次行动吗？", subtitle: `${actor?.name ?? "一名玩家"}打出了 ${types}${targetCopy}${declaration}。再次否决会让原动作重新生效。`, heroImage: "assets/cards/card-back.png", heroLabel: "NOPE!", actions: [...(legalNope && windowId ? [intent("nope", "打出否决", "PlayNope", { cardToken: legalNope.cardTokens![0], windowId }, "red")] : []), ...(can(context, "PassResponse") && windowId ? [intent("pass", "放行", "PassResponse", { windowId }, "cream")] : [])] }; } },
-  favor: { id: "favor", build: (context) => { const cards = selectedCards(context); const count = cards.length; const needsDeclaration = count === 3; const eligible = new Set(eligibleTargets(context.view, cards).map((player) => player.id)); const rows: ScreenRow[] = avatarRows(context).filter((row) => eligible.has(row.id)).map((row) => ({ ...row, badge: row.id === context.selectedTargetId ? "已选择" : row.badge, action: { id: `target-${row.id}`, label: "选择", intent: { type: "SelectTarget", targetId: row.id } } })); if (needsDeclaration) rows.push({ id: "declare", title: "声明索要的牌型", detail: "点击循环选择牌型", badge: context.declaredCardType ?? "未选择", action: { id: "declare", label: "切换", intent: { type: "CycleDeclaredCard" } } }); const ready = Boolean(context.selectedTargetId && eligible.has(context.selectedTargetId) && (!needsDeclaration || context.declaredCardType)); return { id: "favor", eyebrow: count === 1 ? "帮忙 · FAVOR" : count === 2 ? "两张同名组合" : "三张同名组合", title: "选择目标玩家", subtitle: count === 3 ? "选择玩家并声明一种牌" : "对方将交出或失去一张牌", heroImage: cards[0]?.image ?? "assets/cards/reverse.png", rows, actions: [...(ready ? [intent("confirm", "确认目标并出牌", "PlayCards")] : []), nav("back", "取消", "game", "ink")], scroll: true }; } },
+  favor: { id: "favor", build: (context) => {
+    const cards = selectedCards(context);
+    const count = cards.length;
+    const needsDeclaration = count === 3;
+    const eligible = new Set(eligibleTargets(context.view, cards).map((player) => player.id));
+    const rows: ScreenRow[] = avatarRows(context)
+      .filter((row) => eligible.has(row.id))
+      .map((row) => ({
+        ...row,
+        detail: [row.detail, row.badge].filter(Boolean).join(" · "),
+        badge: undefined,
+        action: { id: `target-${row.id}`, label: "选择", intent: { type: "SelectTarget", targetId: row.id } },
+        control: { kind: "selection", selected: row.id === context.selectedTargetId },
+      }));
+    if (needsDeclaration) {
+      rows.push({
+        id: "declare",
+        title: "声明索要的牌型",
+        detail: "使用两侧按钮选择",
+        control: {
+          kind: "stepper",
+          value: context.declaredCardType ? cardName(context.declaredCardType) : "请选择",
+          decrement: intent("declare-down", "上一种牌", "AdjustDeclaredCard", { delta: -1 }),
+          increment: intent("declare-up", "下一种牌", "AdjustDeclaredCard", { delta: 1 }),
+        },
+      });
+    }
+    const ready = Boolean(context.selectedTargetId && eligible.has(context.selectedTargetId) && (!needsDeclaration || context.declaredCardType));
+    return {
+      id: "favor",
+      eyebrow: count === 1 ? "帮忙 · FAVOR" : count === 2 ? "两张同名组合" : "三张同名组合",
+      title: "选择目标玩家",
+      subtitle: count === 3 ? "选择玩家并声明一种牌" : "对方将交出或失去一张牌",
+      heroImage: cards[0]?.image ?? "assets/cards/reverse.png",
+      rows,
+      actions: [...(ready ? [intent("confirm", "确认目标并出牌", "PlayCards")] : []), nav("back", "取消", "game", "ink")],
+      scroll: true,
+    };
+  } },
   "give-card": { id: "give-card", build: (context) => { const pending = context.view.pending; const promptId = String(pending && "promptId" in pending ? pending.promptId ?? pending.id : ""); const card = selectedCards(context)[0]; const allowed = card && context.view.legalActionDetails.some((action) => action.type === "ChooseCard" && action.cardTokens?.includes(card.token)); return { id: "give-card", eyebrow: `秘密选择 · ${remainingSeconds(pending?.deadline, context)} 秒`, title: "交给对方一张牌", subtitle: card ? `已选择：${card.name}` : "点击选择要交出的手牌；只有双方会看到", cards: context.view.hand, scroll: true, actions: [...(allowed && promptId ? [intent("give", "交出所选牌", "ChooseCard", { promptId, cardToken: card.token })] : [])] }; } },
   future: { id: "future", build: (context) => { const pending = context.view.pending?.kind === "PRIVATE_PEEK" ? context.view.pending : null; const promptId = pending?.promptId ?? pending?.id ?? ""; const cards: ScreenModel["cards"] = pending?.cards.length ? pending.cards : context.view.privatePeek; return { id: "future", eyebrow: "仅你可见", title: "未来的三张牌", subtitle: "从左到右依次抽到，查看不会改变顺序", cards, actions: can(context, "AcknowledgePeek") && promptId ? [intent("done", "记住了", "AcknowledgePeek", { promptId })] : [] }; } },
   explosion: { id: "explosion", build: (context) => { const pending = context.view.pending; const promptId = String(pending && "promptId" in pending ? pending.promptId ?? pending.id : ""); const legalDefuse = context.view.legalActionDetails.find((action) => action.type === "UseDefuse" && action.cardTokens?.[0]); return { id: "explosion", eyebrow: "危险猫出现了！", title: "砰！你抽到了危险", subtitle: legalDefuse ? "你有一张拆弹，赶紧化解危机。" : "没有可用的拆弹，等待服务器处理淘汰。", heroImage: "assets/cards/danger.png", heroLabel: "BOOM!", actions: promptId && legalDefuse ? [intent("defuse", "使用拆弹", "UseDefuse", { promptId, cardToken: legalDefuse.cardTokens![0] }, "cyan")] : [] }; } },
-  defuse: { id: "defuse", build: (context) => { const pending = context.view.pending; const promptId = String(pending && "promptId" in pending ? pending.promptId ?? pending.id : ""); const deckSize = Number(pending?.kind === "DEFUSE_INSERTION" ? pending.deckSize : context.view.game.drawPileCount); const position = Math.max(0, Math.min(deckSize, context.insertionPosition ?? 0)); return { id: "defuse", eyebrow: `秘密操作 · ${remainingSeconds(pending?.deadline, context)} 秒`, title: "把危险放回哪里？", subtitle: `牌堆当前共 ${deckSize} 张。位置只有你知道。`, heroImage: "assets/cards/defuse.png", rows: [{ id: "position", title: "插入位置", detail: "点击在牌堆顶（0）到牌堆底间循环", badge: position === 0 ? "牌堆顶" : position === deckSize ? "牌堆底" : `第 ${position + 1} 张`, action: { id: "position", label: "切换", intent: { type: "CycleInsertionPosition" } } }], actions: can(context, "InsertKitten") && promptId ? [intent("insert", "秘密放回牌堆", "InsertKitten", { promptId, position }, "cyan")] : [] }; } },
+  defuse: { id: "defuse", build: (context) => {
+    const pending = context.view.pending;
+    const promptId = String(pending && "promptId" in pending ? pending.promptId ?? pending.id : "");
+    const deckSize = Number(pending?.kind === "DEFUSE_INSERTION" ? pending.deckSize : context.view.game.drawPileCount);
+    const position = Math.max(0, Math.min(deckSize, context.insertionPosition ?? 0));
+    const positionLabel = position === 0 ? "牌堆顶" : position === deckSize ? "牌堆底" : `第 ${position + 1} 张`;
+    return {
+      id: "defuse",
+      eyebrow: `秘密操作 · ${remainingSeconds(pending?.deadline, context)} 秒`,
+      title: "把危险放回哪里？",
+      subtitle: `牌堆当前共 ${deckSize} 张。位置只有你知道。`,
+      heroImage: "assets/cards/defuse.png",
+      rows: [{
+        id: "position",
+        title: "插入位置",
+        detail: "精确调整后再确认",
+        control: {
+          kind: "stepper",
+          value: positionLabel,
+          decrement: intent("position-down", "向牌堆顶移动", "AdjustInsertionPosition", { delta: -1 }),
+          increment: intent("position-up", "向牌堆底移动", "AdjustInsertionPosition", { delta: 1 }),
+        },
+      }],
+      actions: can(context, "InsertKitten") && promptId ? [intent("insert", "秘密放回牌堆", "InsertKitten", { promptId, position }, "cyan")] : [],
+    };
+  } },
   eliminated: { id: "eliminated", build: (context) => { const result = context.view.rankings.find((item) => item.playerId === context.view.viewerId); return { id: "eliminated", eyebrow: "砰！", title: "你炸毛了", subtitle: "别灰心，下一局把危险留给他们。", heroImage: "assets/cats/player.png", rows: result ? [{ id: "rank", title: "本局名次", detail: result.reason ?? "已淘汰", badge: `第 ${result.rank} 名` }] : [], actions: [nav("spectate", "继续观战", "other-turn")] }; } },
   result: { id: "result", build: (context) => { const byId = new Map(context.view.players.map((player) => [player.id, player])); const ranking = context.view.rankings.length ? [...context.view.rankings] : [{ playerId: context.view.winnerId, rank: 1 }]; const host = context.view.room.ownerId === context.view.viewerId; const voted = context.view.restartVotes.includes(context.view.viewerId); return { id: "result", eyebrow: "最后一只猫站着", title: "本局结算", subtitle: context.view.restartVotes.length ? `${context.view.restartVotes.length} 位玩家已投票再来一局` : undefined, heroImage: context.view.players.find((player) => player.id === context.view.winnerId)?.avatar ?? "assets/cats/tuan-zi.png", heroLabel: "WINNER", rows: ranking.sort((left, right) => left.rank - right.rank).map((item) => { const player = byId.get(item.playerId); return { id: item.playerId, title: player?.name ?? item.playerId, detail: rankingDetail(item.rank, item.reason), badge: `#${item.rank}`, image: player?.avatar }; }), actions: [...(!voted || host ? [intent("restart", host ? "再来一局" : "投票再来一局", host ? "RestartMatch" : "VoteRestart")] : []), intent("leave", "回到首页", "LeaveRoom", {}, "cream")], scroll: true }; } },
   tutorial: { id: "tutorial", build: (context) => tutorial(context) },
@@ -68,7 +174,35 @@ const screens: Record<ScreenId, SceneDefinition> = {
   history: { id: "history", build: (context) => ({ id: "history", eyebrow: "PUBLIC EVENTS", title: "行动记录", rows: context.view.events.map((event, index) => ({ id: `event-${index}`, title: eventTitle(event, index), detail: "公开信息" })), actions: [nav("back", "返回菜单", "game-menu", "cream")], scroll: true }) },
   "game-menu": { id: "game-menu", build: (context) => ({ id: "game-menu", eyebrow: `ROOM #${context.view.room.code}`, title: "对局菜单", rows: [{ id: "history", title: "行动记录", detail: "查看本局公开行动", action: nav("history", "打开", "history") }, { id: "rules", title: COPY.rules, detail: "卡牌、组合与平台规则", action: nav("rules", "打开", "rules") }, { id: "settings", title: "声音与振动", detail: "只影响当前设备", action: nav("settings", "打开", "settings") }, { id: "network", title: "网络状态", detail: "连接与同步信息", action: nav("network", "打开", "network") }], actions: [...(can(context, "Concede") ? [intent("concede", "认输并继续观战", "Concede", {}, "red")] : []), nav("back", "返回牌桌", "game", "cream")], scroll: true }) },
   network: { id: "network", build: (context) => { const retrying = context.view.connectivity.toLowerCase() !== "online"; return { id: "network", eyebrow: "对局仍在服务器继续", title: retrying ? "正在找回牌桌…" : "连接稳定", subtitle: "倒计时以服务端为准，重新连接后会拉取你的最新私有快照。", heroLabel: retrying ? "SYNC" : "ONLINE", rows: [{ id: "state", title: "连接状态", badge: context.view.connectivity }, { id: "revision", title: "同步策略", detail: "全量私有快照", badge: "安全" }], actions: retrying ? [intent("retry", "立即重试", "Reconnect")] : [nav("back", "返回", "home", "cream")] }; } },
-  settings: { id: "settings", build: (context) => ({ id: "settings", eyebrow: "THIS DEVICE", title: "声音与振动", rows: [{ id: "sound", title: "游戏声音", detail: "卡牌与危险提示音", badge: context.settings?.sound === false ? "关闭" : "开启", action: { id: "toggle-sound", label: "切换", intent: { type: "ToggleSound" } } }, { id: "vibration", title: "触感反馈", detail: "出牌与危险提示", badge: context.settings?.vibration === false ? "关闭" : "开启", action: { id: "toggle-vibration", label: "切换", intent: { type: "ToggleVibration" } } }, { id: "privacy", title: "隐私说明", detail: "仅保存会话恢复所需信息" }], actions: [nav("back", "完成", "home", "cream")] }) },
+  settings: { id: "settings", build: (context) => ({
+    id: "settings",
+    eyebrow: "THIS DEVICE",
+    title: "声音与振动",
+    rows: [
+      {
+        id: "sound",
+        title: "游戏声音",
+        detail: "卡牌与危险提示音",
+        control: {
+          kind: "toggle",
+          checked: context.settings?.sound !== false,
+          action: intent("toggle-sound", "切换游戏声音", "ToggleSound"),
+        },
+      },
+      {
+        id: "vibration",
+        title: "触感反馈",
+        detail: "出牌与危险提示",
+        control: {
+          kind: "toggle",
+          checked: context.settings?.vibration !== false,
+          action: intent("toggle-vibration", "切换触感反馈", "ToggleVibration"),
+        },
+      },
+      { id: "privacy", title: "隐私说明", detail: "仅保存会话恢复所需信息" },
+    ],
+    actions: [nav("back", "完成", "home", "cream")],
+  }) },
 };
 
 function table(context: SceneContext, myTurn: boolean): ScreenModel {

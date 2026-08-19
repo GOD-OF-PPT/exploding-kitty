@@ -19,7 +19,11 @@
     "sounds/danger.wav",
     "sounds/nope.wav",
     "sounds/select.wav",
-    "ui/backgrounds/comic-bg-390x844.jpg"
+    "ui/backgrounds/comic-bg-390x844.jpg",
+    "ui/icons/cream/arrow-left.png",
+    "ui/icons/cream/list.png",
+    "ui/icons/ink/caret-right.png",
+    "ui/icons/ink/check.png"
   ],
   "budgets": {
     "developmentBytes": 15000000,

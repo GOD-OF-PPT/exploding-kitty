@@ -8,7 +8,7 @@ import {
   selectionCanExtend,
 } from "@exploding-kitty/presentation-model";
 import type { WxKeyboardAdapter, WxMediaAdapter, WxShareAdapter, WxLike } from "../platform";
-import type { GameSession, RawProductView, ScreenAction, ScreenId, ScreenModel } from "./model";
+import type { GameSession, RawProductView, ScreenAction, ScreenId, ScreenModel, ScreenRow } from "./model";
 import { normalizeProductView, type ProductViewModel } from "./normalize";
 import { buildScreen, deriveScreen } from "./sceneRegistry";
 import { CardTableSurface } from "./cardTableSurface";
@@ -38,6 +38,7 @@ export class ScreenHost {
   private insertionPosition = 0;
   private spectating = false;
   private selectedCard = 0;
+  private handPage = 0;
   private joinCode: string;
   private roomDraft = { maxPlayers: 4, turnSeconds: 45, allowBots: true };
   private tableSurface: CardTableSurface | null = null;
@@ -79,6 +80,7 @@ export class ScreenHost {
       if (revision !== this.lastRevision) {
         this.lastRevision = revision;
         this.clearSelection();
+        this.handPage = 0;
         this.override = null;
         this.navigation.length = 0;
         if (!current.eliminated) this.spectating = false;
@@ -155,7 +157,7 @@ export class ScreenHost {
       ...UI_STYLE,
       topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
       actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
-      tableActionDock: { ...UI_STYLE.tableActionDock, height: 84 + this.metrics.safeInsets.bottom },
+      tableActionDock: { ...UI_STYLE.tableActionDock, height: 96 + this.metrics.safeInsets.bottom, paddingBottom: 12 + this.metrics.safeInsets.bottom },
       tableCanvas: { ...UI_STYLE.tableCanvas, height: this.tableHeight(model), minHeight: this.tableHeight(model), maxHeight: this.tableHeight(model) },
     });
     applyLayoutTransform(this.context, this.metrics);
@@ -167,9 +169,9 @@ export class ScreenHost {
   private template(model: ScreenModel): string {
     const canGoBack = Boolean(this.navigation.length || this.override);
     const headerLeft = model.table
-      ? `<button id="table-menu" class="tableMenu" value="≡"></button>`
+      ? `<button id="table-menu" class="tableMenu"><image class="headerIcon" src="assets/ui/icons/cream/list.png"></image></button>`
       : canGoBack
-        ? `<button id="back" class="back" value="‹"></button>`
+        ? `<button id="back" class="back"><image class="headerIcon" src="assets/ui/icons/cream/arrow-left.png"></image></button>`
         : `<view class="headerSpacer"></view>`;
     const header = `<view class="header">${headerLeft}<view class="headerCopy"><text id="screen-eyebrow" class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
     const subtitle = model.subtitle ? `<text class="subtitle" value="${escape(model.subtitle)}"></text>` : "";
@@ -181,16 +183,90 @@ export class ScreenHost {
     const tableHeight = this.tableHeight(model);
     const table = model.table ? `${this.playersTemplate(model.table.players.filter((player) => player.id !== this.currentView().viewerId))}<canvas id="tableCanvas" class="tableCanvas" width="358" height="${tableHeight}"></canvas>` : "";
     const cards = model.cards
-      ? `<view class="cardGrid">${chunk(model.cards, 3).map((row, rowIndex) => `<view class="cardGridRow">${row.map((card, columnIndex) => { const index = rowIndex * 3 + columnIndex; return `<button id="card-${index}" class="cardItem${this.selectedTokens.includes(card.token) ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image><text class="cardName" value="${escape(card.name)}"></text></button>`; }).join("")}</view>`).join("")}</view>`
+      ? `<view class="cardGrid">${chunk(model.cards, 3).map((row, rowIndex) => `<view class="cardGridRow">${row.map((card, columnIndex) => { const index = rowIndex * 3 + columnIndex; const selected = this.selectedTokens.includes(card.token); return `<button id="card-${index}" class="cardItem${selected ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image>${selected ? `<view class="cardCheck"><image class="cardCheckIcon" src="assets/ui/icons/ink/check.png"></image></view>` : ""}<text class="cardName" value="${escape(card.name)}"></text></button>`; }).join("")}</view>`).join("")}</view>`
       : "";
-    const rows = model.rows?.length ? `<view class="rowList">${model.rows.map((row, index) => `<button id="row-${index}" class="row">${row.image ? `<image class="rowImage rowImage${rowImageVariantFor(model, row.image)}" src="${escape(row.image)}"></image>` : ""}<view class="rowCopy"><text class="rowTitle" value="${escape(row.title)}"></text><text class="rowDetail" value="${escape(row.detail ?? "")}"></text></view>${row.badge ? `<text class="badge" value="${escape(row.badge)}"></text>` : ""}</button>`).join("")}</view>` : "";
+    const rows = model.rows?.length ? `<view class="rowList">${model.rows.map((row, index) => this.rowTemplate(model, row, index)).join("")}</view>` : "";
     const content = `${subtitle}${hero}${players}${table}${cards}${rows}`;
-    const body = model.scroll ? `<scrollview class="scroll" scrollY="true">${content}</scrollview>` : `<view class="body">${content}</view>`;
-    const actions = model.actions?.length
-      ? `<view class="actionDock${model.table ? " tableActionDock" : ""}">${(model.actions ?? []).slice(0, 4).map((action, index) => `<button id="action-${index}" class="button button${capitalize(action.tone ?? "yellow")}" value="${escape(action.label)}"></button>`).join("")}</view>`
-      : "";
+    const body = !model.table || model.scroll ? `<scrollview class="scroll" scrollY="true">${content}</scrollview>` : `<view class="body">${content}</view>`;
+    const actions = this.actionDockTemplate(model);
+    const tableActions = model.table ? this.tableActionDockTemplate(model) : "";
     const error = this.error ? `<text id="error" class="error" value="${escape(this.error)}"></text>` : "";
-    return `<view class="app"><view class="topSafe"></view>${header}${body}${actions}${error}</view>`;
+    return `<view class="app"><view class="topSafe"></view>${header}${body}${tableActions}${actions}${error}</view>`;
+  }
+
+  private rowTemplate(model: ScreenModel, row: ScreenRow, index: number): string {
+    const control = row.control;
+    const interactive = Boolean(row.action || row.id === "room-code" || control?.kind === "toggle");
+    const selected = control?.kind === "selection" && control.selected;
+    const tag = control?.kind === "stepper" || control?.kind === "toggle" || !interactive ? "view" : "button";
+    const copyClass = control?.kind === "stepper" ? "rowCopy rowCopyControl" : "rowCopy";
+    const textSuffix = control?.kind === "stepper" ? " rowTextControl" : "";
+    const image = row.image ? `<image class="rowImage rowImage${rowImageVariantFor(model, row.image)}" src="${escape(row.image)}"></image>` : "";
+    const badge = row.badge ? `<text class="badge" value="${escape(row.badge)}"></text>` : "";
+    const affordance = this.rowControlTemplate(row, index);
+    return `<${tag} id="row-${index}" class="row${interactive ? " rowInteractive" : " rowStatic"}${selected ? " rowSelected" : ""}">${image}<view class="${copyClass}"><text class="rowTitle${textSuffix}" value="${escape(row.title)}"></text><text class="rowDetail${textSuffix}" value="${escape(row.detail ?? "")}"></text></view>${badge}${affordance}</${tag}>`;
+  }
+
+  private rowControlTemplate(row: ScreenRow, index: number): string {
+    const control = row.control;
+    if (control?.kind === "toggle") {
+      return `<view class="toggle${control.checked ? " toggleOn" : ""}"><view class="toggleThumb"></view></view>`;
+    }
+    if (control?.kind === "stepper") {
+      return `<view class="stepper"><button id="row-${index}-down" class="stepperButton" value="−"></button><text class="stepperValue" value="${escape(control.value)}"></text><button id="row-${index}-up" class="stepperButton" value="+"></button></view>`;
+    }
+    if (control?.kind === "selection") {
+      return `<view class="selectionMark${control.selected ? " selectionMarkSelected" : ""}">${control.selected ? `<image class="selectionCheck" src="assets/ui/icons/ink/check.png"></image>` : ""}</view>`;
+    }
+    if (row.action || row.id === "room-code") return `<image class="rowChevron" src="assets/ui/icons/ink/caret-right.png"></image>`;
+    return "";
+  }
+
+  private actionDockTemplate(model: ScreenModel): string {
+    if (model.table) return "";
+    const entries = (model.actions ?? []).slice(0, 4).map((action, index) => ({ action, index }));
+    const primary = primaryAction(model.id, entries);
+    const secondary = entries.filter((entry) => entry !== primary);
+    const disabledLabel = this.disabledPrimaryLabel(model, primary?.action);
+    const primaryMarkup = disabledLabel
+      ? `<view class="button buttonDisabled"><text class="buttonDisabledText" value="${escape(disabledLabel)}"></text></view>`
+      : primary
+        ? this.actionButton(primary.action, primary.index, false)
+        : "";
+    const secondaryRows = chunk(secondary, 2).map((row) => `<view class="actionRow">${row.map((entry) => this.actionButton(entry.action, entry.index, row.length === 2)).join("")}</view>`).join("");
+    if (!primaryMarkup && !secondaryRows) return "";
+    return `<view class="actionDock">${primaryMarkup}${secondaryRows}</view>`;
+  }
+
+  private disabledPrimaryLabel(model: ScreenModel, action: ScreenAction | undefined): string | null {
+    if (this.sending && action) return "处理中…";
+    if (model.id === "join" && this.joinCode.length !== 6) return "输入 6 位房间码";
+    if (model.id === "favor" && action?.id !== "confirm") return "先选择目标玩家";
+    if (model.id === "give-card" && action?.id !== "give") return "先选择一张手牌";
+    return null;
+  }
+
+  private actionButton(action: ScreenAction, index: number, compact: boolean): string {
+    const classes = `button${compact ? " buttonCompact" : ""} button${capitalize(action.tone ?? "yellow")}`;
+    return `<button id="action-${index}" class="${classes}" value="${escape(action.label)}"></button>`;
+  }
+
+  private tableActionDockTemplate(model: ScreenModel): string {
+    if (!model.table?.myTurn) return `<view class="tableActionDock"><text class="tableDockHint" value="等待当前玩家行动"></text></view>`;
+    if (!this.selectedTokens.length) return `<view class="tableActionDock"><text class="tableDockHint" value="选择一张牌，或从牌堆抽牌"></text></view>`;
+
+    const action = model.actions?.[0];
+    const primaryLabel = this.sending
+      ? "处理中…"
+      : action?.id === "target"
+        ? "下一步"
+        : action
+          ? "打出"
+          : "继续选牌";
+    const primary = action && !this.sending
+      ? `<button id="table-primary" class="tablePrimaryButton" value="${primaryLabel}"></button>`
+      : `<view class="tablePrimaryDisabled"><text class="tablePrimaryDisabledText" value="${primaryLabel}"></text></view>`;
+    return `<view class="tableActionDock"><button id="table-cancel" class="tableCancelButton" value="取消"></button>${primary}</view>`;
   }
 
   private playersTemplate(players: readonly { id: string; name: string; avatar?: string }[]): string {
@@ -201,10 +277,27 @@ export class ScreenHost {
     const back = Layout.getElementById("back");
     if (back && (this.navigation.length || this.override)) back.on("click", () => this.goBack());
     Layout.getElementById("table-menu")?.on("click", () => this.show("game-menu"));
-    model.actions?.slice(0, 4).forEach((action, index) => Layout.getElementById(`action-${index}`)?.on("click", () => void this.perform(action, view)));
+    if (!model.table && !this.sending) model.actions?.slice(0, 4).forEach((action, index) => {
+      if (model.id === "join" && action.id === "join" && this.joinCode.length !== 6) return;
+      Layout.getElementById(`action-${index}`)?.on("click", () => void this.perform(action, view));
+    });
+    Layout.getElementById("table-cancel")?.on("click", () => {
+      this.clearSelection();
+      this.error = null;
+      this.options.media.impact("light");
+      this.render();
+    });
+    const tableAction = model.table ? model.actions?.[0] : undefined;
+    if (tableAction && !this.sending) Layout.getElementById("table-primary")?.on("click", () => void this.perform(tableAction, view));
     model.rows?.forEach((row, index) => {
       const element = Layout.getElementById(`row-${index}`);
-      if (row.action) element?.on("click", () => {
+      const control = row.control;
+      if (control?.kind === "stepper") {
+        Layout.getElementById(`row-${index}-down`)?.on("click", () => void this.perform(control.decrement, view));
+        Layout.getElementById(`row-${index}-up`)?.on("click", () => void this.perform(control.increment, view));
+      } else if (control?.kind === "toggle") {
+        element?.on("click", () => void this.perform(control.action, view));
+      } else if (row.action) element?.on("click", () => {
         if (model.id === "rules") this.selectedCard = cardIndexForRule(row.id);
         void this.perform(row.action!, view);
       });
@@ -231,7 +324,7 @@ export class ScreenHost {
     const component = Layout.getElementById("tableCanvas") as LayoutCanvas | null;
     if (!component || !model.table) return;
     const tableHeight = this.tableHeight(model);
-    const state = { width: 358, height: tableHeight, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens };
+    const state = { width: 358, height: tableHeight, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens, handPage: this.handPage };
     if (this.tableSurface) this.tableSurface.update(state);
     else this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
     this.unsubscribeTableInvalidation = this.tableSurface.subscribeInvalidation(() => {
@@ -246,6 +339,13 @@ export class ScreenHost {
       const rect = Layout.getElementViewportRect(component as unknown as LayoutElement);
       const x = (touch.x - rect.left) * (358 / rect.width);
       const y = (touch.y - rect.top) * (tableHeight / rect.height);
+      const pageDelta = this.tableSurface.pageDeltaAt(x, y);
+      if (pageDelta) {
+        this.handPage += pageDelta;
+        this.options.media.impact("light");
+        this.render();
+        return;
+      }
       if (this.tableSurface.drawAt(x, y)) {
         if (!model.table?.drawAction) return;
         this.options.media.impact("medium");
@@ -288,7 +388,7 @@ export class ScreenHost {
 
   private tableHeight(model: ScreenModel): number {
     if (!model.table) return 0;
-    const dockHeight = model.actions?.length ? 84 + this.metrics.safeInsets.bottom : this.metrics.safeInsets.bottom;
+    const dockHeight = 96 + this.metrics.safeInsets.bottom;
     const supplementalRows = model.rows?.length ? 94 : 0;
     return Math.max(370, 844 - this.metrics.safeInsets.top - 82 - 95 - dockHeight - supplementalRows);
   }
@@ -316,16 +416,48 @@ export class ScreenHost {
       if (local) {
         const settings = this.options.media.getSnapshot();
         this.options.media.update(action.intent.type === "ToggleSound" ? { sound: !settings.sound } : action.intent.type === "ToggleVibration" ? { vibration: !settings.vibration } : { sound: action.intent.sound as boolean | undefined, vibration: action.intent.vibration as boolean | undefined });
+        this.options.media.impact("light");
         this.render();
         return;
       }
+      if (action.intent.type === "AdjustRoomPlayers") {
+        const delta = Number(action.intent.delta) < 0 ? -1 : 1;
+        this.roomDraft.maxPlayers = Math.max(2, Math.min(5, this.roomDraft.maxPlayers + delta));
+        this.options.media.impact("light");
+        this.render(); return;
+      }
+      if (action.intent.type === "AdjustTurnSeconds") {
+        const values = [30, 45, 60] as const;
+        const current = Math.max(0, values.indexOf(this.roomDraft.turnSeconds as never));
+        const delta = Number(action.intent.delta) < 0 ? -1 : 1;
+        this.roomDraft.turnSeconds = values[Math.max(0, Math.min(values.length - 1, current + delta))]!;
+        this.options.media.impact("light");
+        this.render(); return;
+      }
       if (action.intent.type === "CycleRoomPlayers") { this.roomDraft.maxPlayers = this.roomDraft.maxPlayers >= 5 ? 2 : this.roomDraft.maxPlayers + 1; this.render(); return; }
       if (action.intent.type === "CycleTurnSeconds") { this.roomDraft.turnSeconds = this.roomDraft.turnSeconds === 30 ? 45 : this.roomDraft.turnSeconds === 45 ? 60 : 30; this.render(); return; }
-      if (action.intent.type === "ToggleRoomBots") { this.roomDraft.allowBots = !this.roomDraft.allowBots; this.render(); return; }
-      if (action.intent.type === "SelectTarget") { this.selectedTargetId = String(action.intent.targetId); this.render(); return; }
+      if (action.intent.type === "ToggleRoomBots") { this.roomDraft.allowBots = !this.roomDraft.allowBots; this.options.media.impact("light"); this.render(); return; }
+      if (action.intent.type === "SelectTarget") { this.selectedTargetId = String(action.intent.targetId); this.options.media.impact("light"); this.render(); return; }
+      if (action.intent.type === "AdjustDeclaredCard") {
+        const current = DECLARABLE_CARD_TYPES.indexOf(this.declaredCardType as never);
+        const delta = Number(action.intent.delta) < 0 ? -1 : 1;
+        const next = current < 0
+          ? delta < 0 ? DECLARABLE_CARD_TYPES.length - 1 : 0
+          : Math.max(0, Math.min(DECLARABLE_CARD_TYPES.length - 1, current + delta));
+        this.declaredCardType = DECLARABLE_CARD_TYPES[next];
+        this.options.media.impact("light");
+        this.render(); return;
+      }
       if (action.intent.type === "CycleDeclaredCard") {
         const current = DECLARABLE_CARD_TYPES.indexOf(this.declaredCardType as never);
         this.declaredCardType = DECLARABLE_CARD_TYPES[(current + 1) % DECLARABLE_CARD_TYPES.length]; this.render(); return;
+      }
+      if (action.intent.type === "AdjustInsertionPosition") {
+        const deckSize = insertionDeckSize(view);
+        const delta = Number(action.intent.delta) < 0 ? -1 : 1;
+        this.insertionPosition = Math.max(0, Math.min(deckSize, this.insertionPosition + delta));
+        this.options.media.impact("light");
+        this.render(); return;
       }
       if (action.intent.type === "CycleInsertionPosition") {
         const deckSize = insertionDeckSize(view);
@@ -345,6 +477,7 @@ export class ScreenHost {
       if (!this.isLocallyAllowed(String(materialized.type), view)) throw new Error("ACTION_NOT_AVAILABLE");
       if (this.sending) return;
       this.sending = true;
+      this.render();
       const result = await this.options.session.send(materialized as ClientAction).finally(() => { this.sending = false; });
       if (!result.ok) throw new Error(result.message || result.code || "ACTION_REJECTED");
       if (materialized.type === "JoinRoom") this.invitationPending = false;
@@ -421,8 +554,9 @@ export class ScreenHost {
       this.declaredCardType = undefined;
       return;
     }
-    if (!selectionCanExtend(view, this.selectedTokens, token)) throw new Error(this.selectedTokens.length ? "该组合当前不可出" : "这张牌当前不可单独打出");
-    this.selectedTokens = [...this.selectedTokens, token];
+    if (selectionCanExtend(view, this.selectedTokens, token)) this.selectedTokens = [...this.selectedTokens, token];
+    else if (selectionCanExtend(view, [], token)) this.selectedTokens = [token];
+    else throw new Error(this.selectedTokens.length ? "该组合当前不可出" : "这张牌当前不可单独打出");
     this.selectedTargetId = undefined;
     this.declaredCardType = undefined;
   }
@@ -442,7 +576,10 @@ export class ScreenHost {
 
   private resolveId(view: ProductViewModel): ScreenId {
     const derived = deriveScreen(this.sceneContext(view));
-    return derived === "network" ? "network" : this.override ?? derived;
+    if (derived === "network") return "network";
+    if (this.override) return this.override;
+    if (derived === "favor") return view.game.turnsOwed > 1 ? "attack" : "game";
+    return derived;
   }
 
   private openInvitationIfReady(): void {
@@ -472,6 +609,28 @@ const RULE_INDEX: Readonly<Record<string, number>> = {
   flow: 0, danger: 1, defuse: 2, nope: 3, attack: 4, favor: 5,
   shuffle: 6, skip: 7, future: 8, cats: 9, combos: 10, platform: 11,
 };
+
+type IndexedAction = Readonly<{ action: ScreenAction; index: number }>;
+
+function primaryAction(id: ScreenId, entries: readonly IndexedAction[]): IndexedAction | undefined {
+  const priorities: Partial<Record<ScreenId, readonly string[]>> = {
+    "lobby-host": ["start", "share"],
+    "lobby-member": ["ready"],
+    favor: ["confirm"],
+    "give-card": ["give"],
+    "game-menu": ["back"],
+    result: ["restart", "leave"],
+  };
+  const preferred = priorities[id];
+  if (preferred) {
+    for (const actionId of preferred) {
+      const match = entries.find((entry) => entry.action.id === actionId);
+      if (match) return match;
+    }
+    return undefined;
+  }
+  return entries[0];
+}
 
 function escape(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");

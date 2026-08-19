@@ -18,6 +18,16 @@ export type ScreenAction = Readonly<{
   back?: boolean;
 }>;
 
+export type ScreenRowControl =
+  | Readonly<{ kind: "toggle"; checked: boolean; action: ScreenAction }>
+  | Readonly<{
+    kind: "stepper";
+    value: string;
+    decrement: ScreenAction;
+    increment: ScreenAction;
+  }>
+  | Readonly<{ kind: "selection"; selected: boolean }>;
+
 export type ScreenRow = Readonly<{
   id: string;
   title: string;
@@ -25,6 +35,7 @@ export type ScreenRow = Readonly<{
   badge?: string;
   image?: string;
   action?: ScreenAction;
+  control?: ScreenRowControl;
 }>;
 
 export type CardModel = ProductCard;

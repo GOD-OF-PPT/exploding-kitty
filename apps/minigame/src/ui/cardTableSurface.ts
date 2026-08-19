@@ -27,22 +27,16 @@ const ULTRA_SHORT_BURST_WIDTH = 188;
 const CARD_WIDTH = 92.4;
 const CARD_HEIGHT = 132;
 const COMPACT_DENSE_HAND_THRESHOLD = 334;
-const COMPACT_DENSE_CARD_WIDTH = 56;
-const ULTRA_SHORT_SIX_CARD_WIDTH = 50;
-const ULTRA_SHORT_DENSE_CARD_WIDTH = 44;
-const DENSE_ROW_GAP = 6;
-const DENSE_COMPACT_TOP_OFFSET = 22;
-const DENSE_FULL_TOP_OFFSET = 60;
-const ULTRA_SHORT_SIX_TOP_OFFSET = 22;
-const ULTRA_SHORT_DENSE_TOP_OFFSET = 8;
 const MIN_CARD_TOUCH_SIZE = 44;
-const DENSE_HAND_ROW_LENGTH = 5;
-const SIX_CARD_ROW_LENGTH = 3;
-const DENSE_HIT_INSET = 4;
-const DENSE_SELECTION_INSET = 5;
-const DENSE_SELECTION_LINE_WIDTH = 4;
-const SELECTED_LIFT = 55;
-const SELECTED_SCALE = 1.05;
+const HAND_PAGE_SIZE = 5;
+const HAND_TRAY_CARD_WIDTH = 68;
+const HAND_TRAY_COMPACT_CARD_WIDTH = 44;
+const HAND_TRAY_GAP = 6;
+const HAND_TRAY_HEADER_HEIGHT = 70;
+const HAND_TRAY_COMPACT_HEADER_HEIGHT = 36;
+const HAND_PAGE_CONTROL_HEIGHT = 38;
+const SELECTED_LIFT = 18;
+const FOCUSED_CARD_SCALE = 1.65;
 const CARD_ROTATION_ORIGIN = 1.6;
 const WAITING_ALPHA = 0.48;
 const DISABLED_CARD_ALPHA = 0.72;
@@ -64,6 +58,7 @@ export type TableSurfaceState = Readonly<{
   turnsOwed: number;
   waitingLabel?: string;
   selectedTokens?: readonly string[];
+  handPage?: number;
   fontFamily?: string;
 }>;
 
@@ -82,6 +77,14 @@ type TableLayout = Readonly<{
 
 type Rect = Readonly<{ x: number; y: number; width: number; height: number }>;
 
+type PaginationLayout = Readonly<{
+  currentPage: number;
+  pageCount: number;
+  previous: Rect;
+  next: Rect;
+  centerY: number;
+}>;
+
 type CardSlot = Readonly<{
   card: CardModel;
   x: number;
@@ -91,9 +94,9 @@ type CardSlot = Readonly<{
   rotation: number;
   scale: number;
   selected: boolean;
+  focused: boolean;
   layoutScale: number;
   artworkInset: number;
-  hitTarget?: Rect;
 }>;
 
 export class CardTableSurface {
@@ -143,12 +146,6 @@ export class CardTableSurface {
   cardAt(x: number, y: number): CardModel | null {
     if (!this.state.myTurn) return null;
     const slots = this.paintOrder(this.handSlots());
-    const denseHand = slots.some((slot) => slot.hitTarget);
-    for (const slot of slots) {
-      if (!slot.hitTarget || !pointInRect(slot.hitTarget, x, y)) continue;
-      return slot.card.playable ? slot.card : null;
-    }
-    if (denseHand) return null;
     for (let index = slots.length - 1; index >= 0; index -= 1) {
       const slot = slots[index]!;
       if (!pointInCard(slot, x, y)) continue;
@@ -159,6 +156,14 @@ export class CardTableSurface {
 
   drawAt(x: number, y: number): boolean {
     return this.state.canDraw && pointInRect(this.tableLayout().drawBurst, x, y);
+  }
+
+  pageDeltaAt(x: number, y: number): -1 | 0 | 1 {
+    const pagination = this.paginationLayout();
+    if (pagination.pageCount <= 1) return 0;
+    if (pagination.currentPage > 0 && pointInRect(pagination.previous, x, y)) return -1;
+    if (pagination.currentPage < pagination.pageCount - 1 && pointInRect(pagination.next, x, y)) return 1;
+    return 0;
   }
 
   private resize(width: number, height: number, requestedRenderScale?: number): void {
@@ -226,13 +231,14 @@ export class CardTableSurface {
     this.drawHandZone(layout);
 
     for (const slot of this.paintOrder(this.handSlots(layout))) this.drawCard(slot, !myTurn || !slot.card.playable);
+    this.drawPagination(layout);
   }
 
   private tableLayout(): TableLayout {
     const { width, height, hand } = this.state;
     const scale = Math.max(0, width / REFERENCE_WIDTH);
     const splitSix = hand.length === 6;
-    const denseHand = hand.length === 6 || hand.length > DENSE_HAND_ROW_LENGTH;
+    const denseHand = hand.length > HAND_PAGE_SIZE;
     const ultraShortDenseHand = denseHand && height <= ULTRA_SHORT_SURFACE_HEIGHT * scale;
     const compactTableHeight = COMPACT_TABLE_HEIGHT * scale;
     const referenceTableHeight = (REFERENCE_HEIGHT - HAND_HEIGHT) * scale;
@@ -459,24 +465,21 @@ export class CardTableSurface {
     ctx.fillRect(0, layout.handTop, width, height - layout.handTop);
 
     ctx.save();
-    const dividerOffset = layout.compactDenseHand ? 0 : 27.5 * layout.scale;
-    ctx.translate(width / 2, layout.handTop + dividerOffset);
+    ctx.translate(width / 2, layout.handTop);
     ctx.rotate(-Math.PI / 180);
     ctx.fillStyle = COLORS.ink;
     ctx.fillRect(-width / 2 - 2 * layout.scale, -2.5 * layout.scale, width + 4 * layout.scale, 5 * layout.scale);
     ctx.restore();
     this.drawHandCount(layout, hand.length);
+    this.drawHandInstruction(layout);
   }
 
   private drawHandCount(layout: TableLayout, count: number): void {
     const { ctx } = this;
     const centerX = this.state.width / 2;
-    const baseline = layout.handTop + (layout.compactDenseHand ? 5 : 45) * layout.scale;
-    this.setFont(
-      layout.compactDenseHand ? Math.max(10, 9 * layout.scale) : Math.max(11, 9 * layout.scale),
-      800,
-      false,
-    );
+    const compact = this.state.height - layout.handTop < 190 * layout.scale;
+    const baseline = layout.handTop + (compact ? 12 : 22) * layout.scale;
+    this.setFont(Math.max(10, (compact ? 9 : 11) * layout.scale), 800, false);
     ctx.textBaseline = "middle";
     ctx.textAlign = "right";
     ctx.fillStyle = COLORS.cream;
@@ -484,6 +487,50 @@ export class CardTableSurface {
     ctx.textAlign = "left";
     ctx.fillStyle = COLORS.yellow;
     ctx.fillText(String(count), centerX + 13 * layout.scale, baseline);
+  }
+
+  private drawHandInstruction(layout: TableLayout): void {
+    const { ctx } = this;
+    const compact = this.state.height - layout.handTop < 190 * layout.scale;
+    if (compact || this.state.selectedTokens?.length) return;
+    this.setFont(Math.max(11, 12 * layout.scale), 700, false);
+    ctx.fillStyle = COLORS.cream;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      this.state.myTurn ? "选择一张牌，或从牌堆抽牌" : "查看手牌，等待你的回合",
+      this.state.width / 2,
+      layout.handTop + 45 * layout.scale,
+      this.state.width - 28 * layout.scale,
+    );
+  }
+
+  private drawPagination(layout: TableLayout): void {
+    const pagination = this.paginationLayout(layout);
+    if (pagination.pageCount <= 1) return;
+    const { ctx } = this;
+    const scale = layout.scale;
+    ctx.save();
+    ctx.lineWidth = 4 * scale;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if (pagination.currentPage > 0) {
+      ctx.strokeStyle = COLORS.yellow;
+      drawChevron(ctx, pagination.previous.x + pagination.previous.width / 2, pagination.centerY, -1, 8 * scale);
+    }
+    if (pagination.currentPage < pagination.pageCount - 1) {
+      ctx.strokeStyle = COLORS.yellow;
+      drawChevron(ctx, pagination.next.x + pagination.next.width / 2, pagination.centerY, 1, 8 * scale);
+    }
+    const gap = 14 * scale;
+    const startX = this.state.width / 2 - ((pagination.pageCount - 1) * gap) / 2;
+    for (let page = 0; page < pagination.pageCount; page += 1) {
+      ctx.beginPath();
+      ctx.arc(startX + page * gap, pagination.centerY, (page === pagination.currentPage ? 4 : 2.5) * scale, 0, Math.PI * 2);
+      ctx.fillStyle = page === pagination.currentPage ? COLORS.yellow : "#8f7f68";
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   private drawCard(slot: CardSlot, dim: boolean): void {
@@ -500,7 +547,7 @@ export class CardTableSurface {
     ctx.translate(originX, originY);
     ctx.rotate(rotation);
     ctx.scale(slot.scale, slot.scale);
-    if (selected && !slot.hitTarget) {
+    if (selected) {
       ctx.fillStyle = COLORS.yellow;
       roundedRect(ctx, left - 4 * layoutScale, top - 4 * layoutScale, width + 8 * layoutScale, height + 8 * layoutScale, 10 * layoutScale);
       ctx.fill();
@@ -549,16 +596,26 @@ export class CardTableSurface {
       Math.max(1, labelWidth - 4 * layoutScale),
     );
     ctx.globalAlpha = priorAlpha;
-    if (selected && slot.hitTarget) {
-      const selectionInset = DENSE_SELECTION_INSET * layoutScale;
-      ctx.strokeStyle = COLORS.yellow;
-      ctx.lineWidth = DENSE_SELECTION_LINE_WIDTH * layoutScale;
-      ctx.strokeRect(
-        left + selectionInset,
-        top + selectionInset,
-        width - selectionInset * 2,
-        height - selectionInset * 2,
-      );
+    if (selected) {
+      const radius = Math.max(8, 11 * layoutScale);
+      const badgeX = left + width - radius * 0.85;
+      const badgeY = top + height - radius * 0.85;
+      ctx.beginPath();
+      ctx.arc(badgeX, badgeY, radius, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.yellow;
+      ctx.fill();
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = Math.max(2, 3 * layoutScale);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(badgeX - radius * 0.48, badgeY);
+      ctx.lineTo(badgeX - radius * 0.12, badgeY + radius * 0.36);
+      ctx.lineTo(badgeX + radius * 0.52, badgeY - radius * 0.38);
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = Math.max(2, 3 * layoutScale);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
     }
     ctx.restore();
   }
@@ -567,127 +624,98 @@ export class CardTableSurface {
     const { width, height, hand, selectedTokens = [] } = this.state;
     if (hand.length === 0) return [];
     const selected = new Set(selectedTokens);
-    // Six cards use two clearly labelled rows except on ultra-short screens,
-    // where one compact row keeps every card complete. Denser hands use
-    // unrotated rows of at most five. All modes keep painted and hit ownership
-    // aligned over a full 44px square even while a card is selected.
-    const splitSix = hand.length === 6;
-    const denseHand = hand.length > 6 || splitSix;
     const availableHandHeight = Math.max(0, height - layout.handTop);
     const canonicalAspect = CARD_WIDTH / CARD_HEIGHT;
-    let cardWidth = CARD_WIDTH * layout.scale;
-    let cardHeight = CARD_HEIGHT * layout.scale;
-    let denseTopOffset = DENSE_FULL_TOP_OFFSET * layout.scale;
-    let denseRowGap = DENSE_ROW_GAP * layout.scale;
-    const ultraShortSingleRow = splitSix && layout.ultraShortDenseHand;
-    if (denseHand && layout.ultraShortDenseHand) {
-      cardWidth = Math.max(
-        (ultraShortSingleRow ? ULTRA_SHORT_SIX_CARD_WIDTH : ULTRA_SHORT_DENSE_CARD_WIDTH) * layout.scale,
-        MIN_CARD_TOUCH_SIZE + 2 * layout.scale,
-      );
-      cardHeight = cardWidth / canonicalAspect;
-      denseTopOffset = (
-        ultraShortSingleRow ? ULTRA_SHORT_SIX_TOP_OFFSET : ULTRA_SHORT_DENSE_TOP_OFFSET
-      ) * layout.scale;
-      // Larger ultra-short hands retain two reduced rows; the extra reserve
-      // keeps their complete frames above the Canvas boundary.
-      denseRowGap = 0;
-    } else if (denseHand && layout.compactDenseHand) {
-      const preferredTop = DENSE_COMPACT_TOP_OFFSET * layout.scale;
-      const maximumCardHeight = Math.max(
-        MIN_CARD_TOUCH_SIZE / canonicalAspect,
-        (availableHandHeight - preferredTop - denseRowGap - 4 * layout.scale) / 2,
-      );
-      cardHeight = Math.min(CARD_HEIGHT * layout.scale, maximumCardHeight);
-      cardWidth = Math.max(COMPACT_DENSE_CARD_WIDTH * layout.scale, cardHeight * canonicalAspect);
-      cardHeight = cardWidth / canonicalAspect;
-      denseTopOffset = Math.max(
-        16 * layout.scale,
-        Math.min(
-          preferredTop,
-          availableHandHeight - cardHeight * 2 - denseRowGap - 4 * layout.scale,
-        ),
-      );
-    }
-    const artworkInset = layout.ultraShortDenseHand
-      ? layout.scale
-      : Math.min(
-          3 * layout.scale,
-          Math.max(layout.scale, (cardWidth - MIN_CARD_TOUCH_SIZE) / 2),
-        );
-    const hitInset = Math.min(
-      DENSE_HIT_INSET * layout.scale,
-      Math.max(0, (cardWidth - MIN_CARD_TOUCH_SIZE) / 2),
+    const compact = availableHandHeight < 190 * layout.scale;
+    const headerHeight = (compact ? HAND_TRAY_COMPACT_HEADER_HEIGHT : HAND_TRAY_HEADER_HEIGHT) * layout.scale;
+    const controlHeight = this.pageCount() > 1 ? HAND_PAGE_CONTROL_HEIGHT * layout.scale : 8 * layout.scale;
+    const maximumCardHeight = Math.max(
+      MIN_CARD_TOUCH_SIZE / canonicalAspect,
+      availableHandHeight - headerHeight - controlHeight - 4 * layout.scale,
     );
-    const top = denseHand
-      ? layout.handTop + denseTopOffset
-      : Math.max(height - 205 * layout.scale, layout.handTop + 65 * layout.scale);
-    const rowLengthLimit = ultraShortSingleRow
-      ? hand.length
-      : splitSix ? SIX_CARD_ROW_LENGTH : DENSE_HAND_ROW_LENGTH;
-    const rowCount = denseHand ? Math.ceil(hand.length / rowLengthLimit) : 1;
-    const baseRowLength = Math.floor(hand.length / rowCount);
-    const longerRows = hand.length % rowCount;
-    const rowGap = denseHand ? cardHeight + denseRowGap : 0;
-    let handIndex = 0;
+    const preferredWidth = (compact ? HAND_TRAY_COMPACT_CARD_WIDTH : HAND_TRAY_CARD_WIDTH) * layout.scale;
+    const cardWidth = Math.max(
+      MIN_CARD_TOUCH_SIZE,
+      Math.min(preferredWidth, maximumCardHeight * canonicalAspect),
+    );
+    const cardHeight = cardWidth / canonicalAspect;
+    const artworkInset = Math.max(layout.scale, Math.min(3 * layout.scale, cardWidth * 0.04));
+    const page = this.currentPage();
+    const visible = hand.slice(page * HAND_PAGE_SIZE, (page + 1) * HAND_PAGE_SIZE);
+    const spread = visible.length <= 1
+      ? 0
+      : Math.min(
+          cardWidth + HAND_TRAY_GAP * layout.scale,
+          (width - cardWidth - 18 * layout.scale) / (visible.length - 1),
+        );
+    const center = (visible.length - 1) / 2;
+    const top = layout.handTop + headerHeight;
+    const selectedLift = (compact ? Math.min(6, SELECTED_LIFT) : SELECTED_LIFT) * layout.scale;
+    const focusedToken = [...selectedTokens].reverse().find((token) => visible.some((card) => card.token === token));
+    const focusedScale = compact ? 1.12 : FOCUSED_CARD_SCALE;
+    const otherCenters: number[] = [];
+    if (focusedToken) {
+      const otherCount = visible.length - 1;
+      const leftCount = Math.ceil(otherCount / 2);
+      for (let index = 0; index < leftCount; index += 1) otherCenters.push(width / 2 - (leftCount - index) * spread);
+      for (let index = 0; index < otherCount - leftCount; index += 1) otherCenters.push(width / 2 + (index + 1) * spread);
+    }
+    let otherIndex = 0;
 
-    return Array.from({ length: rowCount }, (_, rowIndex) => {
-      const rowLength = baseRowLength + (rowIndex < longerRows ? 1 : 0);
-      const center = (rowLength - 1) / 2;
-      const naturalSpread = rowLength <= 1
-        ? 0
-        : Math.min(48 * layout.scale, (230 * layout.scale) / (rowLength - 1));
-      const splitSixSpread = rowLength <= 1
-        ? 0
-        : Math.min(
-            106 * layout.scale,
-            (width - cardWidth - 16 * layout.scale) / (rowLength - 1),
-          );
-      const spread = splitSix
-        ? Math.max(MIN_CARD_TOUCH_SIZE + DENSE_HIT_INSET, splitSixSpread)
-        : denseHand
-          ? Math.max(MIN_CARD_TOUCH_SIZE + DENSE_HIT_INSET, naturalSpread)
-        : naturalSpread;
-      const angleStep = Math.min(4, 28 / Math.max(1, rowLength - 1)) * Math.PI / 180;
-      const rowStart = handIndex;
-      handIndex += rowLength;
-      return hand.slice(rowStart, handIndex).map((card, index) => {
-        const isSelected = selected.has(card.token);
-        const x = width / 2 - cardWidth / 2 + (index - center) * spread;
-        const rowTop = top + rowIndex * rowGap;
-        return {
-          card,
-          x,
-          y: rowTop - (isSelected && !denseHand ? SELECTED_LIFT * layout.scale : 0),
-          width: cardWidth,
-          height: cardHeight,
-          rotation: denseHand || isSelected ? 0 : (index - center) * angleStep,
-          scale: isSelected && !denseHand ? SELECTED_SCALE : 1,
-          selected: isSelected,
-          layoutScale: layout.scale,
-          artworkInset,
-          hitTarget: denseHand ? {
-            x: index === rowLength - 1
-              ? x + cardWidth - hitInset - MIN_CARD_TOUCH_SIZE
-              : x + hitInset,
-            y: Math.min(
-              rowTop + Math.max(
-                artworkInset + 2 * layout.scale,
-                DENSE_HIT_INSET * layout.scale,
-              ),
-              height - MIN_CARD_TOUCH_SIZE,
-            ),
-            width: MIN_CARD_TOUCH_SIZE,
-            height: MIN_CARD_TOUCH_SIZE,
-          } : undefined,
-        };
-      });
-    }).flat();
+    return visible.map((card, index) => {
+      const isSelected = selected.has(card.token);
+      const isFocused = card.token === focusedToken;
+      const slotScale = isFocused ? focusedScale : 1;
+      const slotCenterX = isFocused
+        ? width / 2
+        : focusedToken
+          ? otherCenters[otherIndex++]!
+          : width / 2 + (index - center) * spread;
+      const scaleCompensation = isFocused
+        ? cardHeight * CARD_ROTATION_ORIGIN * (slotScale - 1)
+        : 0;
+      return {
+        card,
+        x: slotCenterX - cardWidth / 2,
+        y: top + scaleCompensation - (isFocused ? selectedLift : 0),
+        width: cardWidth,
+        height: cardHeight,
+        rotation: 0,
+        scale: slotScale,
+        selected: isSelected,
+        focused: isFocused,
+        layoutScale: layout.scale,
+        artworkInset,
+      };
+    });
+  }
+
+  private pageCount(): number {
+    return Math.max(1, Math.ceil(this.state.hand.length / HAND_PAGE_SIZE));
+  }
+
+  private currentPage(): number {
+    return Math.max(0, Math.min(this.pageCount() - 1, Math.floor(this.state.handPage ?? 0)));
+  }
+
+  private paginationLayout(layout = this.tableLayout()): PaginationLayout {
+    const controlSize = MIN_CARD_TOUCH_SIZE * layout.scale;
+    const y = Math.max(layout.handTop, this.state.height - controlSize);
+    return {
+      currentPage: this.currentPage(),
+      pageCount: this.pageCount(),
+      previous: { x: 4 * layout.scale, y, width: controlSize, height: controlSize },
+      next: { x: this.state.width - controlSize - 4 * layout.scale, y, width: controlSize, height: controlSize },
+      centerY: y + controlSize / 2,
+    };
   }
 
   private paintOrder(slots: CardSlot[]): CardSlot[] {
-    if (slots.some((slot) => slot.hitTarget)) return slots;
-    return [...slots.filter((slot) => !slot.selected), ...slots.filter((slot) => slot.selected)];
+    return [
+      ...slots.filter((slot) => !slot.selected),
+      ...slots.filter((slot) => slot.selected && !slot.focused),
+      ...slots.filter((slot) => slot.focused),
+    ];
   }
 
   private setFont(size: number, weight: number, display: boolean): void {
@@ -772,6 +800,20 @@ function drawImageCover(
   const sourceX = Math.max(0, Math.min(sourceWidth - cropWidth, (sourceWidth - cropWidth) * focalX));
   const sourceY = Math.max(0, Math.min(sourceHeight - cropHeight, (sourceHeight - cropHeight) * focalY));
   ctx.drawImage(image, sourceX, sourceY, cropWidth, cropHeight, x, y, width, height);
+}
+
+function drawChevron(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  direction: -1 | 1,
+  size: number,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(centerX - direction * size * 0.35, centerY - size);
+  ctx.lineTo(centerX + direction * size * 0.45, centerY);
+  ctx.lineTo(centerX - direction * size * 0.35, centerY + size);
+  ctx.stroke();
 }
 
 function burstPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
