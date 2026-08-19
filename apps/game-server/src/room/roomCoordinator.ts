@@ -1,7 +1,7 @@
 import { createMatch } from "@exploding-kitty/game-core";
 import { ServiceError } from "../errors.js";
 import { currentDeadline, projectLobby, projectMatch, reconcileCardTokens } from "../match/projection.js";
-import type { AuthContext, MatchRecord, RoomRecord, RoomSettings, RoomSnapshot } from "../model.js";
+import type { AuthContext, MatchRecord, RoomAuditEvent, RoomRecord, RoomSettings, RoomSnapshot } from "../model.js";
 import type { Clock, IdGenerator, RoomCodeGenerator } from "../runtime.js";
 import { secureRoomCodes, secureSeed } from "../runtime.js";
 import type { GameStore, RoomTransaction } from "../persistence/store.js";
@@ -18,6 +18,16 @@ export type RoomCommandContext = Readonly<{
   commandId: string;
   fingerprint: string;
 }>;
+
+function roomAuditEvent(
+  roomId: string,
+  revision: number,
+  type: string,
+  actorId: string,
+  now: number,
+): RoomAuditEvent {
+  return { roomId, revision, type, actorId, createdAt: now };
+}
 
 function assertMember(room: RoomRecord, playerId: string) {
   const value = room.members.find((entry) => entry.id === playerId);
@@ -47,6 +57,7 @@ export class RoomCoordinator {
   async create(auth: AuthContext, settings: RoomSettings, tutorial = false): Promise<RoomRecord> {
     const existing = await this.#store.getRoomForPlayer(auth.playerId);
     if (existing) return existing;
+    const now = this.#clock.now();
     const room: RoomRecord = {
       id: this.#ids.next("room"),
       code: await this.#uniqueCode(),
@@ -63,9 +74,11 @@ export class RoomCoordinator {
       }],
       status: "LOBBY",
       revision: 1,
-      createdAt: this.#clock.now(),
+      createdAt: now,
     };
-    await this.#store.createRoom(room);
+    await this.#store.createRoom(room, [
+      roomAuditEvent(room.id, room.revision, "ROOM_CREATED", auth.playerId, now),
+    ]);
     return room;
   }
 
@@ -93,6 +106,9 @@ export class RoomCoordinator {
         }],
       };
       await transaction.saveRoom(updated);
+      await transaction.appendAudit([
+        roomAuditEvent(updated.id, updated.revision, "MEMBER_JOINED", auth.playerId, this.#clock.now()),
+      ]);
       return updated;
     });
   }
@@ -153,6 +169,9 @@ export class RoomCoordinator {
         }],
       };
       await transaction.saveRoom(updated);
+      await transaction.appendAudit([
+        roomAuditEvent(updated.id, updated.revision, "BOT_ADDED", auth.playerId, this.#clock.now()),
+      ]);
       if (command) {
         await transaction.saveReceipt({
           roomId: room.id,
@@ -189,6 +208,9 @@ export class RoomCoordinator {
         members: room.members.filter((entry) => entry.id !== playerId),
       };
       await transaction.saveRoom(updated);
+      await transaction.appendAudit([
+        roomAuditEvent(updated.id, updated.revision, "BOT_REMOVED", auth.playerId, this.#clock.now()),
+      ]);
       if (command) {
         await transaction.saveReceipt({
           roomId: room.id,
@@ -231,6 +253,9 @@ export class RoomCoordinator {
           members,
         });
       }
+      await transaction.appendAudit([
+        roomAuditEvent(locked.id, revision, "MEMBER_LEFT", auth.playerId, this.#clock.now()),
+      ]);
       return { revision, snapshot: { phase: "HOME", viewerId: auth.playerId, serverTime: this.#clock.now() } };
     });
   }
@@ -312,7 +337,10 @@ export class RoomCoordinator {
       revision,
       createdAt: now,
     };
-    await this.#store.createRoomWithMatch(room, match);
+    await this.#store.createRoomWithMatch(room, match, [
+      roomAuditEvent(room.id, room.revision, "ROOM_CREATED", auth.playerId, now),
+      roomAuditEvent(room.id, match.revision, "MATCH_STARTED", auth.playerId, now),
+    ]);
     return { revision, snapshot: projectMatch(match, room, auth.playerId, now) };
   }
 
@@ -406,6 +434,9 @@ export class RoomCoordinator {
       };
       await transaction.createMatch(match);
       await transaction.saveRoom(activeRoom);
+      await transaction.appendAudit([
+        roomAuditEvent(activeRoom.id, match.revision, restarting ? "MATCH_RESTARTED" : "MATCH_STARTED", viewerId, now),
+      ]);
       if (command) {
         await transaction.saveReceipt({
           roomId: room.id,

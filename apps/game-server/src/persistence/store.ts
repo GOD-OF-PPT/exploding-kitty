@@ -2,6 +2,7 @@ import type {
   AuditEvent,
   DeadlineRecord,
   MatchRecord,
+  RoomAuditEvent,
   RoomRecord,
   StoredRoomReceipt,
   StoredSessionCommandReceipt,
@@ -24,12 +25,13 @@ export type RoomTransaction = {
   createMatch(match: MatchRecord): Promise<void>;
   findReceipt(actorId: string, commandId: string): Promise<StoredRoomReceipt | null>;
   saveReceipt(receipt: StoredRoomReceipt): Promise<void>;
+  appendAudit(events: readonly RoomAuditEvent[]): Promise<void>;
 };
 
 export interface GameStore {
-  createRoom(room: RoomRecord): Promise<void>;
+  createRoom(room: RoomRecord, audit?: readonly RoomAuditEvent[]): Promise<void>;
   /** Atomically creates an active room and its first match. */
-  createRoomWithMatch(room: RoomRecord, match: MatchRecord): Promise<void>;
+  createRoomWithMatch(room: RoomRecord, match: MatchRecord, audit?: readonly RoomAuditEvent[]): Promise<void>;
   getRoomById(roomId: string): Promise<RoomRecord | null>;
   getRoomByCode(code: string): Promise<RoomRecord | null>;
   getRoomForPlayer(playerId: string): Promise<RoomRecord | null>;

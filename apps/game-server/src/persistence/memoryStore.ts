@@ -1,5 +1,5 @@
 import { ServiceError } from "../errors.js";
-import type { AuditEvent, DeadlineRecord, MatchRecord, RoomRecord, StoredReceipt, StoredRoomReceipt, StoredSessionCommandReceipt } from "../model.js";
+import type { AuditEvent, DeadlineRecord, MatchRecord, RoomAuditEvent, RoomRecord, StoredReceipt, StoredRoomReceipt, StoredSessionCommandReceipt } from "../model.js";
 import type { GameStore, MatchTransaction, RoomTransaction } from "./store.js";
 
 type Lock = { tail: Promise<void>; pending: number };
@@ -13,19 +13,21 @@ export class MemoryGameStore implements GameStore {
   readonly #commandReceipts = new Map<string, StoredSessionCommandReceipt>();
   readonly #playerRevisions = new Map<string, { revision: number; cursor: string }>();
   readonly #audit: AuditEvent[] = [];
+  readonly #roomAudit: RoomAuditEvent[] = [];
   readonly #locks = new Map<string, Lock>();
   readonly #claimedDeadlines = new Set<string>();
 
-  async createRoom(room: RoomRecord): Promise<void> {
+  async createRoom(room: RoomRecord, audit?: readonly RoomAuditEvent[]): Promise<void> {
     if (this.#rooms.has(room.id) || this.#roomCodes.has(room.code)) throw new ServiceError("ROOM_ALREADY_EXISTS");
     if ([...this.#rooms.values()].some((entry) => entry.members.some((member) => !member.bot && room.members.some((candidate) => !candidate.bot && candidate.id === member.id)))) {
       throw new ServiceError("ALREADY_IN_ROOM");
     }
     this.#rooms.set(room.id, structuredClone(room));
     this.#roomCodes.set(room.code, room.id);
+    if (audit) this.#roomAudit.push(...structuredClone(audit));
   }
 
-  async createRoomWithMatch(room: RoomRecord, match: MatchRecord): Promise<void> {
+  async createRoomWithMatch(room: RoomRecord, match: MatchRecord, audit?: readonly RoomAuditEvent[]): Promise<void> {
     if (room.status !== "ACTIVE" || room.matchId !== match.id || match.roomId !== room.id) {
       throw new ServiceError("ROOM_TRANSACTION_MISMATCH");
     }
@@ -39,6 +41,7 @@ export class MemoryGameStore implements GameStore {
     this.#rooms.set(room.id, storedRoom);
     this.#roomCodes.set(room.code, room.id);
     this.#matches.set(match.id, storedMatch);
+    if (audit) this.#roomAudit.push(...structuredClone(audit));
   }
 
   async getRoomById(roomId: string): Promise<RoomRecord | null> {
@@ -101,6 +104,7 @@ export class MemoryGameStore implements GameStore {
       let deleted = false;
       const stagedMatches = new Map<string, MatchRecord>();
       const stagedRoomReceipts: StoredRoomReceipt[] = [];
+      const stagedRoomAudit: RoomAuditEvent[] = [];
       const transaction: RoomTransaction = {
         get room() { return structuredClone(stagedRoom); },
         getMatch: async (matchId) => {
@@ -132,6 +136,7 @@ export class MemoryGameStore implements GameStore {
           if (receipt.roomId !== roomId) throw new ServiceError("ROOM_TRANSACTION_MISMATCH");
           stagedRoomReceipts.push(structuredClone(receipt));
         },
+        appendAudit: async (events) => { stagedRoomAudit.push(...structuredClone(events)); },
       };
       const result = await operation(transaction);
       if (deleted) {
@@ -150,6 +155,7 @@ export class MemoryGameStore implements GameStore {
       for (const receipt of stagedRoomReceipts) {
         this.#roomReceipts.set(`${receipt.roomId}:${receipt.actorId}:${receipt.commandId}`, structuredClone(receipt));
       }
+      this.#roomAudit.push(...stagedRoomAudit);
       return result;
     });
   }
@@ -213,6 +219,10 @@ export class MemoryGameStore implements GameStore {
 
   auditEvents(): readonly AuditEvent[] {
     return structuredClone(this.#audit);
+  }
+
+  roomAuditEvents(): readonly RoomAuditEvent[] {
+    return structuredClone(this.#roomAudit);
   }
 
   roomReceipts(): readonly StoredRoomReceipt[] {

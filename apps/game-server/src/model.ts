@@ -114,6 +114,14 @@ export type AuditEvent = Readonly<{
   createdAt: number;
 }>;
 
+export type RoomAuditEvent = Readonly<{
+  roomId: string;
+  revision: number;
+  type: string;
+  actorId?: string;
+  createdAt: number;
+}>;
+
 export type ClientCard = Readonly<{ token: string; type: CardType }>;
 
 export type MatchSnapshot = Readonly<{

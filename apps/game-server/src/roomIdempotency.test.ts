@@ -198,6 +198,7 @@ describe("room command idempotency — transactional receipt layer", () => {
               calls.push("saveReceipt");
               return tx.saveReceipt(receipt);
             },
+            appendAudit: (events) => tx.appendAudit(events),
           };
           const result = await operation(wrappedTx) as T;
           calls.push("tx:end");

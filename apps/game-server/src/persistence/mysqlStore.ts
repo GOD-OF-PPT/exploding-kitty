@@ -10,6 +10,7 @@ import type {
   DeadlineRecord,
   MatchRecord,
   MatchSnapshot,
+  RoomAuditEvent,
   RoomMember,
   RoomRecord,
   StoredReceipt,
@@ -138,12 +139,13 @@ function toMatch(row: MatchRow): MatchRecord {
 export class MysqlGameStore implements GameStore {
   constructor(readonly pool: Pool) {}
 
-  async createRoom(room: RoomRecord): Promise<void> {
+  async createRoom(room: RoomRecord, audit?: readonly RoomAuditEvent[]): Promise<void> {
     const connection = await this.pool.getConnection();
     try {
       await connection.beginTransaction();
       await this.#insertRoom(connection, room);
       await this.#replaceMembers(connection, room);
+      if (audit) await this.#insertRoomEvents(connection, audit);
       await connection.commit();
     } catch (error) {
       await connection.rollback();
@@ -153,7 +155,7 @@ export class MysqlGameStore implements GameStore {
     }
   }
 
-  async createRoomWithMatch(room: RoomRecord, match: MatchRecord): Promise<void> {
+  async createRoomWithMatch(room: RoomRecord, match: MatchRecord, audit?: readonly RoomAuditEvent[]): Promise<void> {
     if (room.status !== "ACTIVE" || room.matchId !== match.id || match.roomId !== room.id) {
       throw new ServiceError("ROOM_TRANSACTION_MISMATCH");
     }
@@ -163,6 +165,7 @@ export class MysqlGameStore implements GameStore {
       await this.#insertRoom(connection, room);
       await this.#replaceMembers(connection, room);
       await this.#insertMatch(connection, match);
+      if (audit) await this.#insertRoomEvents(connection, audit);
       await connection.commit();
     } catch (error) {
       await connection.rollback();
@@ -339,6 +342,9 @@ export class MysqlGameStore implements GameStore {
             [receipt.roomId, receipt.actorId, receipt.commandId, receipt.fingerprint,
               serializeJson(receipt.receipt), toMysqlDate(receipt.createdAt)],
           );
+        },
+        appendAudit: async (events) => {
+          await this.#insertRoomEvents(connection, events);
         },
       };
       const output = await operation(transaction);
@@ -517,6 +523,16 @@ export class MysqlGameStore implements GameStore {
         match.deadline?.deadlineId ?? null, match.deadline ? toMysqlDate(match.deadline.deadlineAt) : null,
         toMysqlDate(match.createdAt), toMysqlDate(match.updatedAt)],
     );
+  }
+
+  async #insertRoomEvents(connection: PoolConnection, events: readonly RoomAuditEvent[]): Promise<void> {
+    for (const event of events) {
+      await connection.execute(
+        `INSERT INTO room_events(room_id,revision,type,actor_id,created_at)
+         VALUES (?,?,?,?,?)`,
+        [event.roomId, event.revision, event.type, event.actorId ?? null, toMysqlDate(event.createdAt)],
+      );
+    }
   }
 
   async #loadRoom(row: RoomRow): Promise<RoomRecord> {
