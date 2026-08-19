@@ -120,6 +120,11 @@ export class ScreenHost {
   }
 
   show(id: ScreenId): void {
+    if (id === "login" && this.currentView().authenticated) {
+      this.override = "home";
+      this.render();
+      return;
+    }
     const current = this.currentId();
     if (id === "tutorial" && current !== "tutorial") this.tutorialStep = 0;
     if (current === "tutorial" && id !== "tutorial") this.tutorialStep = 0;
@@ -473,6 +478,13 @@ export class ScreenHost {
         this.options.session.reconnect?.();
         return;
       }
+      if (action.intent.type === "Login" && view.connectivity.toLowerCase() !== "local") {
+        // Remote sessions authenticate through the auth adapter before the
+        // session is created. Sending Login over the wire is rejected by the
+        // server as LOGIN_OVER_HTTP_ONLY, so intercept it locally as a no-op.
+        // Demo sessions handle Login through session.send() (see DemoGameSession).
+        return;
+      }
       const materialized = this.materialize(action.intent, view);
       if (!this.isLocallyAllowed(String(materialized.type), view)) throw new Error("ACTION_NOT_AVAILABLE");
       if (this.sending) return;
@@ -577,6 +589,7 @@ export class ScreenHost {
   private resolveId(view: ProductViewModel): ScreenId {
     const derived = deriveScreen(this.sceneContext(view));
     if (derived === "network") return "network";
+    if (this.override === "login" && view.authenticated) return "home";
     if (this.override) return this.override;
     if (derived === "favor") return view.game.turnsOwed > 1 ? "attack" : "game";
     return derived;
