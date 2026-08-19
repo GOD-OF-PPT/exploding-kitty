@@ -11,6 +11,7 @@
 - [正式架构](docs/ARCHITECTURE.md)
 - [验收矩阵](docs/ACCEPTANCE.md)
 - [微信云托管部署清单](docs/WECHAT_CLOUD_RUN_DEPLOYMENT.md)
+- [服务实现审查报告(2026-08-19)](docs/SERVICE_REVIEW.md)
 
 ## 运行与验证
 
