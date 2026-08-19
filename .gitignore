@@ -41,6 +41,6 @@ temp/
 
 # Cocos Creator generated files
 library/
-local/
+/local/
 profiles/
 native/

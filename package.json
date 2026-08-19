@@ -9,9 +9,12 @@
     "prototype"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build:packages && npm run build:apps",
+    "build:packages": "npm run build --workspace @exploding-kitty/game-core && npm run build --workspace @exploding-kitty/protocol && npm run build --workspace @exploding-kitty/presentation-model && npm run build --workspace @exploding-kitty/session-client",
+    "build:apps": "npm run build --workspace @exploding-kitty/game-server && npm run build --workspace @exploding-kitty/minigame && npm run build --workspace prototype",
     "test": "npm --workspace @exploding-kitty/minigame run test:build-environment && npm --workspace @exploding-kitty/minigame run test:runtime-config-bundle && vitest run && npm --workspace prototype test",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build:packages && npm run typecheck:workspaces",
+    "typecheck:workspaces": "npm run typecheck --workspaces --if-present",
     "dev:minigame": "npm --workspace @exploding-kitty/minigame run dev",
     "dev:server": "npm --workspace @exploding-kitty/game-server run dev",
     "build:minigame": "npm --workspace @exploding-kitty/minigame run build",
