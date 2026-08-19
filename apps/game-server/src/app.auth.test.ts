@@ -119,3 +119,84 @@ describe("WeChat auth endpoint", () => {
     await app.close();
   });
 });
+
+describe("auth endpoint IP rate limiting (VAL-M2-002)", () => {
+  const hexId = (i: number): string => i.toString(16).padStart(32, "0");
+
+  it("allows 60 POST /v1/auth/dev from the same IP and returns 429 on the 61st", async () => {
+    const app = await buildApp(dependencies(true));
+    for (let i = 0; i < 60; i++) {
+      const response = await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: hexId(i + 1) } });
+      expect(response.statusCode).toBe(200);
+    }
+    const blocked = await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: hexId(61) } });
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.json()).toMatchObject({ code: "RATE_LIMITED", retryable: true });
+    await app.close();
+  });
+
+  it("does not rate-limit non-auth routes", async () => {
+    const app = await buildApp(dependencies(true));
+    for (let i = 0; i < 70; i++) {
+      const response = await app.inject({ method: "GET", url: "/health/live" });
+      expect(response.statusCode).toBe(200);
+    }
+    // Auth endpoint should still work after many health checks
+    const authResponse = await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: identity } });
+    expect(authResponse.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it("rate-limits /v1/auth/wechat as well", async () => {
+    const app = await buildApp(dependencies(false, true));
+    for (let i = 0; i < 60; i++) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/wechat",
+        headers: { "x-wx-openid": `cloud_open-id-${i + 1}`, "x-wx-source": "wx-client" },
+        payload: {},
+      });
+      expect(response.statusCode).toBe(200);
+    }
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/v1/auth/wechat",
+      headers: { "x-wx-openid": "cloud_open-id-61", "x-wx-source": "wx-client" },
+      payload: {},
+    });
+    expect(blocked.statusCode).toBe(429);
+    await app.close();
+  });
+
+  it("rate limiter is not spoofable via x-forwarded-for without trustProxy", async () => {
+    const app = await buildApp(dependencies(true));
+    // Exhaust the default IP (127.0.0.1)
+    for (let i = 0; i < 60; i++) {
+      await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: hexId(i + 1) } });
+    }
+    const blocked = await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: hexId(61) } });
+    expect(blocked.statusCode).toBe(429);
+    // Without trustProxy, request.ip is the socket remote address (127.0.0.1).
+    // The x-forwarded-for header is ignored, so this is also rate-limited.
+    const spoofed = await app.inject({
+      method: "POST",
+      url: "/v1/auth/dev",
+      headers: { "x-forwarded-for": "10.0.0.1" },
+      payload: { developmentIdentity: hexId(62) },
+    });
+    expect(spoofed.statusCode).toBe(429);
+    await app.close();
+  });
+
+  it("respects a custom injected authRateLimiter with a lower limit", async () => {
+    const { AuthRateLimiter } = await import("./transport/authRateLimiter.js");
+    const app = await buildApp({ ...dependencies(true), authRateLimiter: new AuthRateLimiter({ limit: 3, windowMs: 60_000 }) });
+    for (let i = 0; i < 3; i++) {
+      const response = await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: hexId(i + 1) } });
+      expect(response.statusCode).toBe(200);
+    }
+    const blocked = await app.inject({ method: "POST", url: "/v1/auth/dev", payload: { developmentIdentity: hexId(4) } });
+    expect(blocked.statusCode).toBe(429);
+    await app.close();
+  });
+});

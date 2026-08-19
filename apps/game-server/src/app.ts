@@ -7,6 +7,7 @@ import type { RoomCoordinator } from "./room/roomCoordinator.js";
 import type { RawData } from "ws";
 import type { GameStore } from "./persistence/store.js";
 import type { ConnectionHub } from "./transport/connectionHub.js";
+import { AuthRateLimiter } from "./transport/authRateLimiter.js";
 import type { SessionGateway } from "./transport/sessionGateway.js";
 import type { AuthContext } from "./model.js";
 
@@ -19,6 +20,7 @@ export type AppDependencies = Readonly<{
   devAuthEnabled: boolean;
   wechatTrustCloudHeaders: boolean;
   logger?: FastifyServerOptions["logger"];
+  authRateLimiter?: AuthRateLimiter;
 }>;
 
 type AuthBody = { code?: string; developmentIdentity?: string; profile?: { displayName?: string; avatarUrl?: string } };
@@ -30,6 +32,17 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     requestIdHeader: false,
   });
   await app.register(websocket, { options: { maxPayload: 16 * 1024, perMessageDeflate: false } });
+
+  // Lightweight in-memory IP-based rate limit for auth endpoints.
+  // >60 POST /v1/auth/* from the same IP in 60s returns 429.
+  // Non-auth routes are unaffected.
+  const authRateLimiter = dependencies.authRateLimiter ?? new AuthRateLimiter();
+  app.addHook("onRequest", async (request, reply) => {
+    if (request.method !== "POST" || !request.url.startsWith("/v1/auth/")) return;
+    if (authRateLimiter.tryAcquire(request.ip)) return;
+    app.log.warn({ ip: request.ip, url: request.url }, "auth rate limit exceeded");
+    return reply.code(429).send({ code: "RATE_LIMITED", message: "Too many auth requests", retryable: true });
+  });
 
   app.get("/health/live", async () => ({ status: "ok" }));
   app.get("/health/ready", async (_request, reply) => {
@@ -61,8 +74,6 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     let removeConnection: (() => void) | undefined;
     let authenticationTimer: ReturnType<typeof setTimeout> | undefined;
     let connectionTerminated = false;
-    let commandCount = 0;
-    let windowStartedAt = Date.now();
     let messageQueue: Promise<void> = Promise.resolve();
 
     const bindConnection = (context: AuthContext, sessionId: string): void => {
@@ -72,6 +83,12 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
         playerId: context.playerId,
         sessionId,
         send: (envelope) => { if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(envelope)); },
+        close: (code, reason) => {
+          if (socket.readyState === socket.OPEN) {
+            app.log.warn({ playerId: context.playerId, sessionId }, "connection cap: evicting oldest connection");
+            socket.close(code ?? 1008, reason ?? "connection replaced");
+          }
+        },
       });
       // Register the replacement first so a bootstrap -> room/match rebind
       // never makes the player appear to have no live connection.
@@ -107,9 +124,6 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       try {
         if (connectionTerminated) return;
         if (isBinary) throw new ProtocolDecodeError("$", "UTF-8 JSON text");
-        const now = Date.now();
-        if (now - windowStartedAt >= 1_000) { windowStartedAt = now; commandCount = 0; }
-        if (++commandCount > 30) throw new ServiceError("RATE_LIMITED", "Too many commands", true);
         const envelope = parseClientEnvelope(JSON.parse(data.toString("utf8")) as unknown);
         if (!auth) {
           if (!dependencies.wechatTrustCloudHeaders || envelope.type !== "resume" || !envelope.resumeToken) {
@@ -137,6 +151,13 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
           connectionTerminated = true;
           socket.close(1008, "unauthorized");
           return;
+        }
+        // Per-playerId cross-connection throttle (30 cmd/s). The counter lives
+        // in ConnectionHub keyed by playerId, so it survives socket reconnects
+        // — a new socket does not get a fresh budget.
+        if (!dependencies.hub.tryAcquire(authenticated.playerId)) {
+          app.log.warn({ playerId: authenticated.playerId }, "message throttle: rate limit exceeded");
+          throw new ServiceError("RATE_LIMITED", "Too many commands", true);
         }
         if (envelope.sessionId !== activeSessionId) {
           bindConnection(authenticated, envelope.sessionId);

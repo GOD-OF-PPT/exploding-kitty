@@ -313,8 +313,8 @@ describe("authoritative room and match flow", () => {
 describe("session gateway reliability", () => {
   it("keeps a player connected until their final socket is removed", () => {
     const hub = new ConnectionHub();
-    const first = hub.add({ playerId: "alice", sessionId: "bootstrap_alice", send: () => undefined });
-    const second = hub.add({ playerId: "alice", sessionId: "room-1", send: () => undefined });
+    const first = hub.add({ playerId: "alice", sessionId: "bootstrap_alice", send: () => undefined, close: () => undefined });
+    const second = hub.add({ playerId: "alice", sessionId: "room-1", send: () => undefined, close: () => undefined });
 
     first();
     expect(hub.hasConnections("alice")).toBe(true);
@@ -330,7 +330,7 @@ describe("session gateway reliability", () => {
     const snapshots: Array<{ revision: number; phase?: string }> = [];
     hub.add({ playerId: alice.playerId, sessionId, send: (message) => {
       if (message.type === "snapshot") snapshots.push({ revision: message.revision, phase: message.snapshot.phase });
-    } });
+    }, close: () => undefined });
     const initial = await gateway.resume(alice, sessionId);
     const settings = { maxPlayers: 2, turnSeconds: 45, responseSeconds: 5, choiceSeconds: 15, allowBots: true, rulesetVersion: "original-2025@1" } as const;
     const create = await gateway.command(alice, { type: "command", protocolVersion: PROTOCOL_VERSION, sessionId, commandId: "create-1", expectedRevision: initial.revision, action: { type: "CreateRoom", settings } });
