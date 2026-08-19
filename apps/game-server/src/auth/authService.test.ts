@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AuthService, DisabledWechatProvider } from "./authService.js";
+import { AuthService, DisabledWechatProvider, WechatCode2SessionProvider } from "./authService.js";
 
 const identityA = "00112233445566778899aabbccddeeff";
 const identityB = "ffeeddccbbaa99887766554433221100";
@@ -92,5 +92,59 @@ describe("trusted WeChat authentication", () => {
     const auth = service();
     const session = auth.issueTrustedWechat("cloud_open-id-123", "wx-client");
     expect(() => auth.authenticateTrustedWechatSocket(session.token, openId, source)).toThrow();
+  });
+});
+
+describe("WechatCode2SessionProvider", () => {
+  function makeFetcher(body: unknown, ok = true, status = 200): typeof fetch {
+    return (async () => ({
+      ok,
+      status,
+      json: async () => body,
+    })) as unknown as typeof fetch;
+  }
+
+  it("exchanges a valid code for an openid on the happy path", async () => {
+    const provider = new WechatCode2SessionProvider(
+      "wx-app-id",
+      "wx-secret",
+      makeFetcher({ openid: "cloud_open-id-123", unionid: "union-456" }),
+    );
+    const identity = await provider.exchange("valid-code");
+    expect(identity).toEqual({ openId: "cloud_open-id-123", unionId: "union-456" });
+  });
+
+  it("throws WECHAT_AUTH_UNAVAILABLE when the HTTP response is not OK", async () => {
+    const provider = new WechatCode2SessionProvider(
+      "wx-app-id",
+      "wx-secret",
+      makeFetcher({ errcode: 500 }, false, 503),
+    );
+    await expect(provider.exchange("any-code")).rejects.toMatchObject({
+      code: "WECHAT_AUTH_UNAVAILABLE",
+      retryable: true,
+    });
+  });
+
+  it("throws WECHAT_CODE_INVALID when the body contains an errcode without an openid", async () => {
+    const provider = new WechatCode2SessionProvider(
+      "wx-app-id",
+      "wx-secret",
+      makeFetcher({ errcode: 40029, errmsg: "invalid code" }),
+    );
+    await expect(provider.exchange("bad-code")).rejects.toMatchObject({
+      code: "WECHAT_CODE_INVALID",
+    });
+  });
+
+  it("throws WECHAT_CODE_INVALID when the openid is malformed", async () => {
+    const provider = new WechatCode2SessionProvider(
+      "wx-app-id",
+      "wx-secret",
+      makeFetcher({ openid: "invalid openid" }),
+    );
+    await expect(provider.exchange("any-code")).rejects.toMatchObject({
+      code: "WECHAT_CODE_INVALID",
+    });
   });
 });

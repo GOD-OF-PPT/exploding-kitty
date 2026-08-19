@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { ClientEnvelope, ServerEnvelope } from "@exploding-kitty/protocol";
-import { MemorySessionRepository, MemoryTransport, RemoteGameSession } from "./index";
+import {
+  LocalGameSession,
+  MemorySessionRepository,
+  MemoryTransport,
+  RemoteGameSession,
+  type LocalKernelAdapter,
+  type SessionSnapshot,
+} from "./index";
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -54,5 +61,161 @@ describe("RemoteGameSession", () => {
       lastRevision: 4,
       resumeToken: "fresh-login-token",
     });
+  });
+});
+
+describe("LocalGameSession", () => {
+  it("conforms to GameSession interface, send() returns ok ack, and subscribe() fires on state change", async () => {
+    type S = { count: number };
+    type V = { count: number };
+
+    const kernel: LocalKernelAdapter<S, V> = {
+      create: () => ({ count: 0 }),
+      restore: (payload) => (payload as S) ?? { count: 0 },
+      execute: (state) => {
+        const next = { count: state.count + 1 };
+        return { ok: true, state: next };
+      },
+      project: (s) => ({ count: s.count }),
+      serialize: (s) => s,
+    };
+
+    const session = await LocalGameSession.open({
+      sessionId: "local-1",
+      kernel,
+      repository: new MemorySessionRepository(),
+      commandId: () => "cmd-1",
+      now: () => 1_000,
+    });
+
+    expect(session.getSnapshot()).toMatchObject({
+      lifecycle: "active",
+      connectivity: "local",
+      view: { count: 0 },
+      revision: 0,
+    });
+
+    const snapshots: SessionSnapshot<V>[] = [];
+    const unsubscribe = session.subscribe(() => snapshots.push(session.getSnapshot()));
+
+    const result = await session.send({ type: "Concede" });
+
+    expect(result).toEqual({ ok: true, commandId: "cmd-1", revision: 1 });
+    expect(session.getSnapshot()).toMatchObject({ view: { count: 1 }, revision: 1 });
+    expect(snapshots.length).toBeGreaterThan(0);
+    expect(snapshots.at(-1)).toMatchObject({ view: { count: 1 }, revision: 1 });
+
+    unsubscribe();
+    session.dispose();
+    expect(session.getSnapshot()).toMatchObject({ view: { count: 1 }, revision: 1 });
+  });
+});
+
+describe("RemoteGameSession ack timeout", () => {
+  it("settles with retryable:true after timeout and preserves outbox for retry", async () => {
+    const repository = new MemorySessionRepository();
+    const transport = new MemoryTransport<ClientEnvelope, ServerEnvelope<{ value: number }>>();
+    const session = await RemoteGameSession.open({
+      sessionId: "s",
+      transport,
+      repository,
+      commandId: () => "c-timeout",
+      ackTimeoutMs: 50,
+    });
+    transport.open();
+    await flush();
+    transport.clearSent();
+
+    const result = await session.send({ type: "Concede" });
+
+    expect(result).toMatchObject({
+      ok: false,
+      commandId: "c-timeout",
+      code: "COMMAND_TIMEOUT",
+      retryable: true,
+    });
+
+    const stored = await repository.load("s");
+    expect(stored?.payload).toMatchObject({ outbox: { commandId: "c-timeout" } });
+
+    session.dispose();
+  });
+});
+
+describe("RemoteGameSession transport failure and snapshot interleaving", () => {
+  it("preserves outbox when transport send fails", async () => {
+    const repository = new MemorySessionRepository();
+    const transport = new MemoryTransport<ClientEnvelope, ServerEnvelope<{ value: number }>>();
+    const session = await RemoteGameSession.open({
+      sessionId: "s",
+      transport,
+      repository,
+      commandId: () => "c-fail",
+      ackTimeoutMs: 10_000,
+    });
+    transport.open();
+    await flush();
+    transport.clearSent();
+
+    transport.failNext(new Error("network down"));
+    const result = await session.send({ type: "Concede" });
+
+    expect(result).toMatchObject({
+      ok: false,
+      commandId: "c-fail",
+      code: "TRANSPORT_SEND_FAILED",
+      retryable: true,
+    });
+
+    const stored = await repository.load("s");
+    expect(stored?.payload).toMatchObject({ outbox: { commandId: "c-fail" } });
+
+    session.dispose();
+  });
+
+  it("applies a snapshot arriving mid-command without corrupting state", async () => {
+    const repository = new MemorySessionRepository();
+    const transport = new MemoryTransport<ClientEnvelope, ServerEnvelope<{ value: number }>>();
+    const session = await RemoteGameSession.open({
+      sessionId: "s",
+      transport,
+      repository,
+      commandId: () => "c-mid",
+      ackTimeoutMs: 10_000,
+    });
+    transport.open();
+    await flush();
+    transport.clearSent();
+
+    const sendPromise = session.send({ type: "Concede" });
+    await flush();
+
+    // Snapshot arrives while the command is in-flight
+    transport.message({
+      type: "snapshot",
+      protocolVersion: 1,
+      sessionId: "s",
+      revision: 10,
+      snapshot: { value: 42 },
+    });
+    await flush();
+
+    expect(session.getSnapshot()).toMatchObject({ revision: 10, view: { value: 42 } });
+
+    // Ack arrives for the in-flight command
+    transport.message({
+      type: "command.ack",
+      protocolVersion: 1,
+      sessionId: "s",
+      commandId: "c-mid",
+      ok: true,
+      revision: 10,
+    });
+
+    const result = await sendPromise;
+    expect(result).toMatchObject({ ok: true, commandId: "c-mid", revision: 10 });
+    expect(session.getSnapshot()).toMatchObject({ revision: 10, view: { value: 42 } });
+
+    session.dispose();
   });
 });

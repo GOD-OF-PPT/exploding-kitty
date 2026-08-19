@@ -305,6 +305,23 @@ describe("deterministic authoritative game core", () => {
     expect(cardCount(state)).toBe(56);
   });
 
+  it("plays a bare SKIP card to end the turn without drawing and pass to the next player", () => {
+    let state = createMatch({ playerIds: ["a", "b", "c"], seed: "skip-test", firstPlayerId: "a" });
+    const skip = moveCardsToPlayer(state, "a", "SKIP")[0]!;
+    const deckBefore = state.deck.length;
+    const handBefore = state.players.a.hand.length;
+
+    state = applyCommand(state, { type: "PlayCards", commandId: "skip", actorId: "a", turnId: state.turn!.id, cardIds: [skip.id] });
+    state = passResponse(state, "skip-pass");
+
+    expect(state.players.a.hand).not.toContainEqual(skip);
+    expect(state.players.a.hand.length).toBe(handBefore - 1);
+    expect(state.deck.length).toBe(deckBefore);
+    expect(state.turn?.playerId).toBe("b");
+    expect(state.turn?.remaining).toBe(1);
+    expect(cardCount(state)).toBe(56);
+  });
+
   it("finishes after explosion and creates a bot turn command", () => {
     let state = createMatch({ playerIds: ["a", "bot"], seed: "finish", firstPlayerId: "a" });
     const kitten = takeCard(state, "EXPLODING_KITTEN");
