@@ -5,6 +5,7 @@ import { MemoryGameStore } from "./persistence/memoryStore.js";
 import { ConnectionHub } from "./transport/connectionHub.js";
 import { SessionGateway } from "./transport/sessionGateway.js";
 import { PROTOCOL_VERSION } from "@exploding-kitty/protocol";
+import type { RoomSnapshot } from "./model.js";
 
 function harness(now = 1_000) {
   const store = new MemoryGameStore();
@@ -64,9 +65,11 @@ describe("authoritative room and match flow", () => {
       context.rooms.start(context.alice, room.id),
     ]);
 
-    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
-    const rejection = results.find((result) => result.status === "rejected");
-    expect(rejection).toMatchObject({ status: "rejected", reason: { code: "MATCH_ALREADY_STARTED" } });
+    expect(results.every((result) => result.status === "fulfilled")).toBe(true);
+    const matchIds = results
+      .filter((result): result is PromiseFulfilledResult<RoomSnapshot> => result.status === "fulfilled")
+      .map((result) => result.value.snapshot.matchId);
+    expect(new Set(matchIds).size).toBe(1);
     const activeRoom = await context.store.getRoomById(room.id);
     expect(activeRoom).toMatchObject({ status: "ACTIVE" });
     expect(await context.store.getMatch(activeRoom?.matchId ?? "")).not.toBeNull();

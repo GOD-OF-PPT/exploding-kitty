@@ -14,6 +14,11 @@ type Dependencies = Readonly<{
   seed?: () => Uint8Array;
 }>;
 
+export type RoomCommandContext = Readonly<{
+  commandId: string;
+  fingerprint: string;
+}>;
+
 function assertMember(room: RoomRecord, playerId: string) {
   const value = room.members.find((entry) => entry.id === playerId);
   if (!value) throw new ServiceError("NOT_ROOM_MEMBER");
@@ -41,7 +46,7 @@ export class RoomCoordinator {
 
   async create(auth: AuthContext, settings: RoomSettings, tutorial = false): Promise<RoomRecord> {
     const existing = await this.#store.getRoomForPlayer(auth.playerId);
-    if (existing) throw new ServiceError("ALREADY_IN_ROOM");
+    if (existing) return existing;
     const room: RoomRecord = {
       id: this.#ids.next("room"),
       code: await this.#uniqueCode(),
@@ -118,14 +123,25 @@ export class RoomCoordinator {
     });
   }
 
-  async addBot(auth: AuthContext, roomId: string): Promise<RoomRecord> {
-    return this.#update(roomId, (room) => {
+  async addBot(auth: AuthContext, roomId: string, command?: RoomCommandContext): Promise<RoomRecord> {
+    return this.#store.transactRoom(roomId, async (transaction) => {
+      const room = transaction.room;
+      if (command) {
+        const existing = await transaction.findReceipt(auth.playerId, command.commandId);
+        if (existing) {
+          if (existing.fingerprint !== command.fingerprint) {
+            throw new ServiceError("COMMAND_ID_REUSED", "Command id was already used for a different action");
+          }
+          return room;
+        }
+      }
       assertHost(room, auth.playerId);
+      if (room.members.some((entry) => entry.bot)) return room;
       if (!room.settings.allowBots) throw new ServiceError("BOTS_DISABLED");
       if (room.status !== "LOBBY") throw new ServiceError("MATCH_ALREADY_STARTED");
       if (room.members.length >= room.settings.maxPlayers) throw new ServiceError("ROOM_FULL");
       const botIndex = room.members.filter((entry) => entry.bot).length + 1;
-      return {
+      const updated: RoomRecord = {
         ...room,
         revision: room.revision + 1,
         members: [...room.members, {
@@ -136,16 +152,54 @@ export class RoomCoordinator {
           connected: true,
         }],
       };
+      await transaction.saveRoom(updated);
+      if (command) {
+        await transaction.saveReceipt({
+          roomId: room.id,
+          actorId: auth.playerId,
+          commandId: command.commandId,
+          fingerprint: command.fingerprint,
+          receipt: { ok: true, commandId: command.commandId, revision: updated.revision },
+          createdAt: this.#clock.now(),
+        });
+      }
+      return updated;
     });
   }
 
-  async removeBot(auth: AuthContext, roomId: string, playerId: string): Promise<RoomRecord> {
-    return this.#update(roomId, (room) => {
+  async removeBot(auth: AuthContext, roomId: string, playerId: string, command?: RoomCommandContext): Promise<RoomRecord> {
+    return this.#store.transactRoom(roomId, async (transaction) => {
+      const room = transaction.room;
+      if (command) {
+        const existing = await transaction.findReceipt(auth.playerId, command.commandId);
+        if (existing) {
+          if (existing.fingerprint !== command.fingerprint) {
+            throw new ServiceError("COMMAND_ID_REUSED", "Command id was already used for a different action");
+          }
+          return room;
+        }
+      }
       assertHost(room, auth.playerId);
-      if (room.status !== "LOBBY") throw new ServiceError("MATCH_ALREADY_STARTED");
       const target = room.members.find((entry) => entry.id === playerId);
-      if (!target?.bot) throw new ServiceError("BOT_NOT_FOUND");
-      return { ...room, revision: room.revision + 1, members: room.members.filter((entry) => entry.id !== playerId) };
+      if (!target?.bot) return room;
+      if (room.status !== "LOBBY") throw new ServiceError("MATCH_ALREADY_STARTED");
+      const updated: RoomRecord = {
+        ...room,
+        revision: room.revision + 1,
+        members: room.members.filter((entry) => entry.id !== playerId),
+      };
+      await transaction.saveRoom(updated);
+      if (command) {
+        await transaction.saveReceipt({
+          roomId: room.id,
+          actorId: auth.playerId,
+          commandId: command.commandId,
+          fingerprint: command.fingerprint,
+          receipt: { ok: true, commandId: command.commandId, revision: updated.revision },
+          createdAt: this.#clock.now(),
+        });
+      }
+      return updated;
     });
   }
 
@@ -181,13 +235,22 @@ export class RoomCoordinator {
     });
   }
 
-  async start(auth: AuthContext, roomId: string): Promise<RoomSnapshot> {
-    return this.#startRoom(roomId, auth.playerId, false);
+  async start(auth: AuthContext, roomId: string, command?: RoomCommandContext): Promise<RoomSnapshot> {
+    return this.#startRoom(roomId, auth.playerId, false, undefined, command);
   }
 
   async startTutorial(auth: AuthContext): Promise<RoomSnapshot> {
     const existing = await this.#store.getRoomForPlayer(auth.playerId);
-    if (existing) throw new ServiceError("ALREADY_IN_ROOM");
+    if (existing) {
+      if (existing.tutorial) {
+        if (existing.matchId) {
+          const match = await this.#store.getMatch(existing.matchId);
+          if (match) return { revision: match.revision, snapshot: projectMatch(match, existing, auth.playerId, this.#clock.now()) };
+        }
+        return { revision: existing.revision, snapshot: projectLobby(existing, auth.playerId, this.#clock.now()) };
+      }
+      throw new ServiceError("ALREADY_IN_ROOM");
+    }
     const settings: RoomSettings = {
       maxPlayers: 2,
       turnSeconds: 45,
@@ -253,8 +316,8 @@ export class RoomCoordinator {
     return { revision, snapshot: projectMatch(match, room, auth.playerId, now) };
   }
 
-  async restart(auth: AuthContext, roomId: string): Promise<RoomSnapshot> {
-    return this.#startRoom(roomId, auth.playerId, true);
+  async restart(auth: AuthContext, roomId: string, command?: RoomCommandContext): Promise<RoomSnapshot> {
+    return this.#startRoom(roomId, auth.playerId, true, undefined, command);
   }
 
   async voteRestart(auth: AuthContext, roomId: string): Promise<RoomSnapshot> {
@@ -275,14 +338,38 @@ export class RoomCoordinator {
     viewerId: string,
     restarting: boolean,
     seedOverride?: number | string | Uint8Array,
+    command?: RoomCommandContext,
   ): Promise<RoomSnapshot> {
     return this.#store.transactRoom(roomId, async (transaction) => {
       const room = transaction.room;
+      if (command) {
+        const existing = await transaction.findReceipt(viewerId, command.commandId);
+        if (existing) {
+          if (existing.fingerprint !== command.fingerprint) {
+            throw new ServiceError("COMMAND_ID_REUSED", "Command id was already used for a different action");
+          }
+          if (room.matchId) {
+            const match = await transaction.getMatch(room.matchId);
+            if (match) return { revision: match.revision, snapshot: projectMatch(match, room, viewerId, this.#clock.now()) };
+          }
+          return { revision: room.revision, snapshot: projectLobby(room, viewerId, this.#clock.now()) };
+        }
+      }
       assertHost(room, viewerId);
       let previous: MatchRecord | null = null;
       if (restarting) {
+        if (room.matchId) {
+          const match = await transaction.getMatch(room.matchId);
+          if (match && match.state.status === "ACTIVE") {
+            return { revision: match.revision, snapshot: projectMatch(match, room, viewerId, this.#clock.now()) };
+          }
+        }
         previous = await this.#finishedMatch(transaction, room);
       } else {
+        if (room.status === "ACTIVE" && room.matchId) {
+          const match = await transaction.getMatch(room.matchId);
+          if (match) return { revision: match.revision, snapshot: projectMatch(match, room, viewerId, this.#clock.now()) };
+        }
         if (room.status !== "LOBBY" || room.matchId) throw new ServiceError("MATCH_ALREADY_STARTED");
         if (room.members.length < 2) throw new ServiceError("NOT_ENOUGH_PLAYERS");
         if (!room.members.every((entry) => entry.ready)) throw new ServiceError("PLAYERS_NOT_READY");
@@ -319,6 +406,16 @@ export class RoomCoordinator {
       };
       await transaction.createMatch(match);
       await transaction.saveRoom(activeRoom);
+      if (command) {
+        await transaction.saveReceipt({
+          roomId: room.id,
+          actorId: viewerId,
+          commandId: command.commandId,
+          fingerprint: command.fingerprint,
+          receipt: { ok: true, commandId: command.commandId, revision: match.revision },
+          createdAt: now,
+        });
+      }
       return { revision: match.revision, snapshot: projectMatch(match, activeRoom, viewerId, now) };
     });
   }

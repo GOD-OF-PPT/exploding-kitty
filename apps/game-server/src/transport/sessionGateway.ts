@@ -9,7 +9,7 @@ import { ServiceError, toProblem } from "../errors.js";
 import type { MatchAction } from "../match/actions.js";
 import type { MatchCoordinator } from "../match/matchCoordinator.js";
 import type { AuthContext, MatchSnapshot, RoomRecord, RoomSnapshot } from "../model.js";
-import type { RoomCoordinator } from "../room/roomCoordinator.js";
+import type { RoomCoordinator, RoomCommandContext } from "../room/roomCoordinator.js";
 import type { GameStore } from "../persistence/store.js";
 import type { ConnectionHub } from "./connectionHub.js";
 
@@ -32,6 +32,8 @@ const MATCH_TYPES = new Set<MatchAction["type"]>([
   "Draw", "PlayCards", "PlayNope", "PassResponse", "ChooseCard",
   "AcknowledgePeek", "UseDefuse", "InsertKitten", "Concede",
 ]);
+
+const ROOM_RECEIPT_TYPES = new Set<string>(["AddBot", "RemoveBot", "StartMatch", "RestartMatch"]);
 
 export class SessionGateway {
   constructor(readonly dependencies: Dependencies) {}
@@ -91,25 +93,41 @@ export class SessionGateway {
         return ack;
       }
 
+      const hasRoomReceipt = ROOM_RECEIPT_TYPES.has(action.type);
+      const currentRoom = await this.#roomForPlayerOrSession(auth, envelope.sessionId);
+
       const duplicate = await this.dependencies.store.findCommandReceipt(auth.playerId, envelope.commandId);
       if (duplicate) {
         if (duplicate.fingerprint !== actionFingerprint) throw new ServiceError("COMMAND_ID_REUSED", "Command id was already used for a different action");
-        if (duplicate.snapshot) this.dependencies.hub.sendSnapshot(auth.playerId, duplicate.receipt.revision, duplicate.snapshot);
-        return duplicate.receipt.ok
-          ? { type: "command.ack", protocolVersion: PROTOCOL_VERSION, sessionId: envelope.sessionId, commandId: envelope.commandId, ok: true, revision: duplicate.receipt.revision }
-          : { type: "command.ack", protocolVersion: PROTOCOL_VERSION, sessionId: envelope.sessionId, commandId: envelope.commandId, ok: false, problem: duplicate.receipt.problem };
+        const receiptRoomId = duplicate.snapshot?.room?.id;
+        if (receiptRoomId && currentRoom && receiptRoomId !== currentRoom.id) {
+          // Cross-room isolation: the stored receipt is for a different room.
+          // Proceed with execution so the same commandId can be reused in a
+          // different room without being treated as a duplicate.
+        } else {
+          if (duplicate.snapshot) this.dependencies.hub.sendSnapshot(auth.playerId, duplicate.receipt.revision, duplicate.snapshot);
+          return duplicate.receipt.ok
+            ? { type: "command.ack", protocolVersion: PROTOCOL_VERSION, sessionId: envelope.sessionId, commandId: envelope.commandId, ok: true, revision: duplicate.receipt.revision }
+            : { type: "command.ack", protocolVersion: PROTOCOL_VERSION, sessionId: envelope.sessionId, commandId: envelope.commandId, ok: false, problem: duplicate.receipt.problem };
+        }
       }
-      const observed = await this.#monotonic(auth.playerId, await this.dependencies.rooms.resume(auth));
-      if (envelope.expectedRevision !== observed.revision) {
-        throw new ServiceError("REVISION_CONFLICT", "Client snapshot is stale; resume before retrying", true);
+
+      if (!hasRoomReceipt) {
+        const observed = await this.#monotonic(auth.playerId, await this.dependencies.rooms.resume(auth));
+        if (envelope.expectedRevision !== observed.revision) {
+          throw new ServiceError("REVISION_CONFLICT", "Client snapshot is stale; resume before retrying", true);
+        }
       }
-      const roomBefore = await this.#roomForPlayerOrSession(auth, envelope.sessionId);
-      const roomSnapshot = await this.#monotonic(auth.playerId, await this.#roomAction(auth, envelope.sessionId, action));
+
+      const commandContext: RoomCommandContext | undefined = hasRoomReceipt
+        ? { commandId: envelope.commandId, fingerprint: actionFingerprint }
+        : undefined;
+      const roomSnapshot = await this.#monotonic(auth.playerId, await this.#roomAction(auth, envelope.sessionId, action, commandContext));
       const receipt = { ok: true as const, commandId: envelope.commandId, revision: roomSnapshot.revision };
       await this.dependencies.store.saveCommandReceipt({ actorId: auth.playerId, commandId: envelope.commandId,
         fingerprint: actionFingerprint, receipt, snapshot: roomSnapshot.snapshot, createdAt: Date.now() });
       this.dependencies.hub.sendSnapshot(auth.playerId, roomSnapshot.revision, roomSnapshot.snapshot);
-      void this.broadcast(roomSnapshot.snapshot.room?.id ?? roomBefore?.id ?? envelope.sessionId).catch(() => undefined);
+      void this.broadcast(roomSnapshot.snapshot.room?.id ?? currentRoom?.id ?? envelope.sessionId).catch(() => undefined);
       return { type: "command.ack", protocolVersion: PROTOCOL_VERSION, sessionId: envelope.sessionId,
         commandId: envelope.commandId, ok: true, revision: roomSnapshot.revision };
     } catch (error) {
@@ -138,7 +156,7 @@ export class SessionGateway {
     }
   }
 
-  async #roomAction(auth: AuthContext, sessionId: string, action: ClientAction): Promise<RoomSnapshot> {
+  async #roomAction(auth: AuthContext, sessionId: string, action: ClientAction, command?: RoomCommandContext): Promise<RoomSnapshot> {
     switch (action.type) {
       case "CreateRoom": {
         const room = await this.dependencies.rooms.create(auth, action.settings);
@@ -152,16 +170,16 @@ export class SessionGateway {
         await this.dependencies.rooms.setReady(auth, await this.#currentRoomId(auth, sessionId), action.ready);
         return this.dependencies.rooms.resume(auth);
       case "AddBot":
-        await this.dependencies.rooms.addBot(auth, await this.#currentRoomId(auth, sessionId));
+        await this.dependencies.rooms.addBot(auth, await this.#currentRoomId(auth, sessionId), command);
         return this.dependencies.rooms.resume(auth);
       case "RemoveBot":
-        await this.dependencies.rooms.removeBot(auth, await this.#currentRoomId(auth, sessionId), action.playerId);
+        await this.dependencies.rooms.removeBot(auth, await this.#currentRoomId(auth, sessionId), action.playerId, command);
         return this.dependencies.rooms.resume(auth);
-      case "StartMatch": return this.dependencies.rooms.start(auth, await this.#currentRoomId(auth, sessionId));
+      case "StartMatch": return this.dependencies.rooms.start(auth, await this.#currentRoomId(auth, sessionId), command);
       case "StartTutorial": return this.dependencies.rooms.startTutorial(auth);
       case "LeaveRoom":
         return this.dependencies.rooms.leave(auth);
-      case "RestartMatch": return this.dependencies.rooms.restart(auth, await this.#currentRoomId(auth, sessionId));
+      case "RestartMatch": return this.dependencies.rooms.restart(auth, await this.#currentRoomId(auth, sessionId), command);
       case "VoteRestart": return this.dependencies.rooms.voteRestart(auth, await this.#currentRoomId(auth, sessionId));
       default: throw new ServiceError("UNSUPPORTED_ACTION");
     }

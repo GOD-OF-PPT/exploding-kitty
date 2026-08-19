@@ -13,6 +13,7 @@ import type {
   RoomMember,
   RoomRecord,
   StoredReceipt,
+  StoredRoomReceipt,
   StoredSessionCommandReceipt,
 } from "../model.js";
 import type { GameStore, MatchTransaction, RoomTransaction } from "./store.js";
@@ -310,6 +311,34 @@ export class MysqlGameStore implements GameStore {
           if (match.roomId !== roomId) throw new ServiceError("ROOM_TRANSACTION_MISMATCH");
           if (stagedMatches.has(match.id)) throw new ServiceError("MATCH_ALREADY_EXISTS");
           stagedMatches.set(match.id, structuredClone(match));
+        },
+        findReceipt: async (actorId, commandId) => {
+          const [receiptRows] = await connection.execute<(RowDataPacket & {
+            fingerprint: string | null;
+            receipt: JsonValue;
+            created_at: Date | string;
+          })[]>(
+            "SELECT fingerprint,receipt,created_at FROM room_command_receipts WHERE room_id=? AND actor_id=? AND command_id=?",
+            [roomId, actorId, commandId],
+          );
+          const receiptRow = receiptRows[0];
+          return receiptRow ? {
+            roomId,
+            actorId,
+            commandId,
+            fingerprint: receiptRow.fingerprint ?? "",
+            receipt: parseJson<StoredRoomReceipt["receipt"]>(receiptRow.receipt),
+            createdAt: toDateMilliseconds(receiptRow.created_at),
+          } : null;
+        },
+        saveReceipt: async (receipt) => {
+          if (receipt.roomId !== roomId) throw new ServiceError("ROOM_TRANSACTION_MISMATCH");
+          await connection.execute(
+            `INSERT INTO room_command_receipts(room_id,actor_id,command_id,fingerprint,receipt,created_at)
+             VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE command_id=VALUES(command_id)`,
+            [receipt.roomId, receipt.actorId, receipt.commandId, receipt.fingerprint,
+              serializeJson(receipt.receipt), toMysqlDate(receipt.createdAt)],
+          );
         },
       };
       const output = await operation(transaction);

@@ -86,6 +86,16 @@ export type StoredReceipt = Readonly<{
   createdAt: number;
 }>;
 
+export type StoredRoomReceipt = Readonly<{
+  roomId: string;
+  actorId: string;
+  commandId: string;
+  /** Canonical wire action used to reject command-id reuse with a different payload. */
+  fingerprint: string;
+  receipt: CommandReceipt;
+  createdAt: number;
+}>;
+
 export type StoredSessionCommandReceipt = Readonly<{
   actorId: string;
   commandId: string;

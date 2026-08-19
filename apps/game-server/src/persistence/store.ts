@@ -3,6 +3,7 @@ import type {
   DeadlineRecord,
   MatchRecord,
   RoomRecord,
+  StoredRoomReceipt,
   StoredSessionCommandReceipt,
   StoredReceipt,
 } from "../model.js";
@@ -21,6 +22,8 @@ export type RoomTransaction = {
   saveRoom(room: RoomRecord): Promise<void>;
   deleteRoom(): Promise<void>;
   createMatch(match: MatchRecord): Promise<void>;
+  findReceipt(actorId: string, commandId: string): Promise<StoredRoomReceipt | null>;
+  saveReceipt(receipt: StoredRoomReceipt): Promise<void>;
 };
 
 export interface GameStore {
