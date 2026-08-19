@@ -5,6 +5,7 @@ import {
   type GameState,
 } from "@exploding-kitty/game-core";
 import { ServiceError, toProblem } from "../errors.js";
+import { canonicalFingerprint } from "../fingerprint.js";
 import type {
   AuditEvent,
   AuthContext,
@@ -29,16 +30,6 @@ type Dependencies = Readonly<{
   clock: Clock;
   token: IdGenerator;
 }>;
-
-function fingerprint(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(fingerprint).join(",")}]`;
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${fingerprint(item)}`).join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
 
 function commandFromAction(
   action: MatchAction,
@@ -151,7 +142,7 @@ export class MatchCoordinator {
       throw new ServiceError("NOT_ROOM_MEMBER");
     }
     const now = this.#clock.now();
-    const actionFingerprint = fingerprint(envelope.action);
+    const actionFingerprint = canonicalFingerprint(envelope.action);
     const receipt = await this.#store.transactMatch(room.matchId, async (transaction) => {
       const duplicate = await transaction.findReceipt(auth.playerId, envelope.commandId);
       if (duplicate) {
@@ -263,7 +254,7 @@ export class MatchCoordinator {
       };
       const receipt: CommandReceipt = { ok: true, commandId, revision };
       await transaction.saveMatch(nextMatch);
-      await transaction.saveReceipt({ matchId, actorId: systemActor, commandId, fingerprint: fingerprint({ type: "DeadlineElapsed", deadlineId, deadlineAt }), receipt, createdAt: now });
+      await transaction.saveReceipt({ matchId, actorId: systemActor, commandId, fingerprint: canonicalFingerprint({ type: "DeadlineElapsed", deadlineId, deadlineAt }), receipt, createdAt: now });
       await transaction.appendAudit(sanitizeAudit(current.state, fullNextState, revision, now));
       return revision;
     });

@@ -465,7 +465,7 @@ export class MysqlGameStore implements GameStore {
       })[]>(
         `SELECT id,deadline_id,deadline_at FROM matches
          WHERE deadline_at <= ? AND (deadline_lease_until IS NULL OR deadline_lease_until < UTC_TIMESTAMP(3))
-         ORDER BY deadline_at LIMIT ? FOR UPDATE`,
+         ORDER BY deadline_at LIMIT ? FOR UPDATE SKIP LOCKED`,
         [toMysqlDate(now), limit],
       );
       if (rows.length > 0) {

@@ -27,6 +27,15 @@ const SINGLE_ACTIONS = new Set<CardType>(["ATTACK", "FAVOR", "SHUFFLE", "SKIP", 
 // Must retain every event from the largest server-side bot batch so incremental audit projection
 // can still read all events whose sequence is newer than the transaction's previous state.
 const EVENT_HISTORY_LIMIT = 2_048;
+/**
+ * Bound on the in-kernel `commandResults` deduplication cache. The cache is a
+ * bounded, non-authoritative defense-in-depth layer: it is trimmed to this
+ * many entries, so old command IDs can be evicted. The authoritative
+ * idempotency guarantee is the server-side receipt tables
+ * (`command_receipts` / `room_command_receipts`) checked by
+ * `MatchCoordinator`/`RoomCoordinator` before the kernel is ever called.
+ * New callers must not rely on this cache alone for correctness.
+ */
 const COMMAND_RESULT_LIMIT = 256;
 
 export class GameRuleError extends Error {
@@ -114,14 +123,14 @@ function issueId(state: GameState, prefix: string): string {
 }
 
 function aliveIds(state: GameState): string[] {
-  return state.order.filter((id) => state.players[id].alive);
+  return state.order.filter((id) => state.players[id]!.alive);
 }
 
 function nextAlivePlayer(state: GameState, playerId: string): string {
   const start = state.order.indexOf(playerId);
   for (let offset = 1; offset <= state.order.length; offset += 1) {
-    const candidate = state.order[(start + offset) % state.order.length];
-    if (state.players[candidate].alive) return candidate;
+    const candidate = state.order[(start + offset) % state.order.length]!;
+    if (state.players[candidate]!.alive) return candidate;
   }
   fail("NO_LIVING_PLAYER");
 }
@@ -156,7 +165,7 @@ function finishIfWon(state: GameState): boolean {
 function completeOneTurn(state: GameState): void {
   const turn = state.turn;
   if (!turn) fail("NO_ACTIVE_TURN");
-  if (!state.players[turn.playerId].alive) {
+  if (!state.players[turn.playerId]!.alive) {
     setTurn(state, nextAlivePlayer(state, turn.playerId));
     return;
   }
@@ -167,7 +176,7 @@ function completeOneTurn(state: GameState): void {
 function removeOwnedCard(player: { hand: Card[] }, cardId: string, expectedType?: CardType): Card {
   const index = player.hand.findIndex((card) => card.id === cardId);
   if (index < 0) fail("CARD_NOT_OWNED");
-  const card = player.hand[index];
+  const card = player.hand[index]!;
   if (expectedType && card.type !== expectedType) fail("WRONG_CARD_TYPE");
   player.hand.splice(index, 1);
   return card;
@@ -181,7 +190,7 @@ function transferCard(state: GameState, fromId: string, toId: string, card: Card
 }
 
 function eliminateForExplosion(state: GameState, playerId: string, explodingCard: Card): void {
-  const player = state.players[playerId];
+  const player = state.players[playerId]!;
   state.eliminatedZone.push({ ownerId: playerId, card: explodingCard, faceUp: true });
   for (const card of player.hand) state.eliminatedZone.push({ ownerId: playerId, card, faceUp: false });
   player.hand = [];
@@ -205,12 +214,12 @@ function drawForCurrentTurn(state: GameState, actorId: string): void {
   const card = state.deck.shift()!;
   event(state, "CARD_DRAWN", { playerId: actorId, cardId: card.id, cardType: card.type });
   if (card.type !== "EXPLODING_KITTEN") {
-    state.players[actorId].hand.push(card);
+    state.players[actorId]!.hand.push(card);
     completeOneTurn(state);
     return;
   }
   event(state, "EXPLODING_KITTEN_REVEALED", { playerId: actorId, cardId: card.id });
-  const defuse = state.players[actorId].hand.find((held) => held.type === "DEFUSE");
+  const defuse = state.players[actorId]!.hand.find((held) => held.type === "DEFUSE");
   if (!defuse) {
     eliminateForExplosion(state, actorId, card);
     return;
@@ -251,7 +260,7 @@ function resolveAction(state: GameState, action: CommittedAction): void {
   if (action.mode === "PAIR") {
     const target = state.players[action.targetId!];
     if (target?.alive && target.hand.length > 0) {
-      const card = target.hand[randomIndex(state, target.hand.length)];
+      const card = target.hand[randomIndex(state, target.hand.length)]!;
       transferCard(state, target.id, action.actorId, card, "CARD_STOLEN");
     }
     return;
@@ -286,12 +295,12 @@ function resolveAction(state: GameState, action: CommittedAction): void {
           kind: "PRIVATE_PEEK",
           promptId,
           playerId: action.actorId,
-          cards: [...state.privatePeeks[action.actorId]],
+          cards: [...(state.privatePeeks[action.actorId] ?? [])],
           deadlineId: `deadline-${promptId}`,
           deadline: state.clock + state.config.choiceDurationMs,
         };
       }
-      event(state, "PRIVATE_PEEK_GRANTED", { playerId: action.actorId, cardIds: state.privatePeeks[action.actorId].map((card) => card.id) });
+      event(state, "PRIVATE_PEEK_GRANTED", { playerId: action.actorId, cardIds: (state.privatePeeks[action.actorId] ?? []).map((card) => card.id) });
       break;
     case "FAVOR": {
       const target = state.players[action.targetId!];
@@ -326,7 +335,7 @@ function closeResponse(state: GameState, window: ResponseWindow): void {
 }
 
 function eliminateConcedingPlayer(state: GameState, playerId: string): void {
-  const player = state.players[playerId];
+  const player = state.players[playerId]!;
   const pending = state.pending;
 
   if ((pending?.kind === "EXPLOSION" || pending?.kind === "DEFUSE_INSERTION") && pending.playerId === playerId) {
@@ -374,13 +383,13 @@ function validateAction(state: GameState, command: Extract<Command, { type: "Pla
   if (!state.turn || state.turn.id !== command.turnId) fail("STALE_TURN");
   if (state.turn.playerId !== command.actorId) fail("NOT_YOUR_TURN");
   if (command.cardIds.length < 1 || command.cardIds.length > 3 || new Set(command.cardIds).size !== command.cardIds.length) fail("INVALID_CARD_SET");
-  const player = state.players[command.actorId];
+  const player = state.players[command.actorId]!;
   const cards = command.cardIds.map((id) => player.hand.find((card) => card.id === id) ?? fail("CARD_NOT_OWNED"));
-  if (!cards.every((card) => card.type === cards[0].type)) fail("COMBO_REQUIRES_SAME_TYPE");
+  if (!cards.every((card) => card.type === cards[0]!.type)) fail("COMBO_REQUIRES_SAME_TYPE");
   const mode = cards.length === 1 ? "SINGLE" : cards.length === 2 ? "PAIR" : "TRIPLE";
-  if (mode === "SINGLE" && !SINGLE_ACTIONS.has(cards[0].type)) fail("CARD_NOT_PLAYABLE_SINGLY");
-  if (mode !== "SINGLE" && cards[0].type === "EXPLODING_KITTEN") fail("EXPLODING_KITTEN_NOT_PLAYABLE");
-  const isSingleFavor = mode === "SINGLE" && cards[0].type === "FAVOR";
+  if (mode === "SINGLE" && !SINGLE_ACTIONS.has(cards[0]!.type)) fail("CARD_NOT_PLAYABLE_SINGLY");
+  if (mode !== "SINGLE" && cards[0]!.type === "EXPLODING_KITTEN") fail("EXPLODING_KITTEN_NOT_PLAYABLE");
+  const isSingleFavor = mode === "SINGLE" && cards[0]!.type === "FAVOR";
   if ((isSingleFavor || mode === "PAIR") && !command.targetId) fail("TARGET_REQUIRED");
   if (mode === "TRIPLE" && (!command.targetId || !command.declaredCardType)) fail("TARGET_AND_DECLARATION_REQUIRED");
   if (mode !== "TRIPLE" && command.declaredCardType) fail("DECLARATION_NOT_ALLOWED");
@@ -394,7 +403,7 @@ function validateAction(state: GameState, command: Extract<Command, { type: "Pla
     actorId: command.actorId,
     turnId: command.turnId,
     cardIds: [...command.cardIds],
-    cardType: cards[0].type,
+    cardType: cards[0]!.type,
     mode,
     targetId: command.targetId,
     declaredCardType: command.declaredCardType,
@@ -413,7 +422,7 @@ export function createMatch(options: CreateMatchOptions): GameState {
     id,
     alive: true,
     conceded: false,
-    hand: [defuses[index], ...ordinary.slice(index * 7, index * 7 + 7)],
+    hand: [defuses[index]!, ...ordinary.slice(index * 7, index * 7 + 7)],
   }]));
   const dealt = options.playerIds.length * 7;
   const extraDefuseCount = options.playerIds.length === 5 ? 1 : 2;
@@ -580,7 +589,7 @@ function applyDeadline(state: GameState, command: Extract<Command, { type: "Dead
       const target = state.players[pending.targetId];
       const requester = state.players[pending.requesterId];
       if (target?.alive && requester?.alive && target.hand.length) {
-        const card = target.hand[randomIndex(state, target.hand.length)];
+        const card = target.hand[randomIndex(state, target.hand.length)]!;
         transferCard(state, target.id, pending.requesterId, card, "CARD_GIVEN");
       }
       state.pending = null;
@@ -676,7 +685,7 @@ export function projectView(state: GameState, viewerId: string): PlayerView {
     status: state.status,
     winnerId: state.winnerId,
     you: { id: viewer.id, alive: viewer.alive, hand: [...viewer.hand] },
-    players: state.order.map((id) => ({ id, alive: state.players[id].alive, handCount: state.players[id].hand.length })),
+    players: state.order.map((id) => ({ id, alive: state.players[id]!.alive, handCount: state.players[id]!.hand.length })),
     deckCount: state.deck.length,
     discard: [...state.discard],
     eliminatedZone: state.eliminatedZone.map((entry) => ({
@@ -713,7 +722,7 @@ export function legalActions(state: GameState, actorId: string): LegalAction[] {
   if (pending?.kind === "DEFUSE_INSERTION" && pending.playerId === actorId) return [{ type: "Concede" }, { type: "Choose", promptId: pending.promptId }];
   if (pending || state.turn?.playerId !== actorId) return actions;
   actions.push({ type: "Draw", turnId: state.turn.id });
-  const hasTargetWithCards = state.order.some((id) => id !== actorId && state.players[id].alive && state.players[id].hand.length > 0);
+  const hasTargetWithCards = state.order.some((id) => id !== actorId && state.players[id]!.alive && state.players[id]!.hand.length > 0);
   for (const card of player.hand.filter((held) => SINGLE_ACTIONS.has(held.type))) {
     if (card.type !== "FAVOR" || hasTargetWithCards) {
       actions.push({ type: "PlayCards", turnId: state.turn.id, cardIds: [card.id] });
@@ -725,14 +734,14 @@ export function legalActions(state: GameState, actorId: string): LegalAction[] {
     if (hasTargetWithCards) {
       for (let left = 0; left < cards.length; left += 1) {
         for (let right = left + 1; right < cards.length; right += 1) {
-          actions.push({ type: "PlayCards", turnId: state.turn.id, cardIds: [cards[left].id, cards[right].id] });
+          actions.push({ type: "PlayCards", turnId: state.turn.id, cardIds: [cards[left]!.id, cards[right]!.id] });
         }
       }
     }
     for (let first = 0; first < cards.length; first += 1) {
       for (let second = first + 1; second < cards.length; second += 1) {
         for (let third = second + 1; third < cards.length; third += 1) {
-          actions.push({ type: "PlayCards", turnId: state.turn.id, cardIds: [cards[first].id, cards[second].id, cards[third].id] });
+          actions.push({ type: "PlayCards", turnId: state.turn.id, cardIds: [cards[first]!.id, cards[second]!.id, cards[third]!.id] });
         }
       }
     }

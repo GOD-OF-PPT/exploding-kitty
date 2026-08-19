@@ -6,6 +6,7 @@ import {
   type MatchSnapshotEnvelope,
 } from "@exploding-kitty/protocol";
 import { ServiceError, toProblem } from "../errors.js";
+import { canonicalFingerprint } from "../fingerprint.js";
 import type { MatchAction } from "../match/actions.js";
 import type { MatchCoordinator } from "../match/matchCoordinator.js";
 import type { AuthContext, MatchSnapshot, RoomRecord, RoomSnapshot } from "../model.js";
@@ -25,14 +26,6 @@ type Dependencies = Readonly<{
    */
   broadcastDebounceMs?: number;
 }>;
-
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`;
-  return JSON.stringify(value);
-}
 
 const MATCH_TYPES = new Set<MatchAction["type"]>([
   "Draw", "PlayCards", "PlayNope", "PassResponse", "ChooseCard",
@@ -63,7 +56,7 @@ export class SessionGateway {
     let actionFingerprint: string | undefined;
     try {
       const action = envelope.action;
-      actionFingerprint = canonical(action);
+      actionFingerprint = canonicalFingerprint(action);
       if (action.type === "Login") throw new ServiceError("LOGIN_OVER_HTTP_ONLY");
       if (action.type === "UpdateSettings") throw new ServiceError("CLIENT_SETTING_NOT_SERVER_COMMAND");
       if (MATCH_TYPES.has(action.type as MatchAction["type"])) {
@@ -255,7 +248,7 @@ export class SessionGateway {
 
   async #monotonic(playerId: string, value: RoomSnapshot): Promise<RoomSnapshot> {
     const { serverTime: _serverTime, ...stableSnapshot } = value.snapshot;
-    const cursor = canonical(stableSnapshot);
+    const cursor = canonicalFingerprint(stableSnapshot);
     const revision = await this.dependencies.store.observePlayerSnapshot(playerId, cursor, value.revision);
     return { revision, snapshot: value.snapshot };
   }

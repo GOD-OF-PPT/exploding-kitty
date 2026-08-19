@@ -61,7 +61,7 @@ function sha256(input: readonly number[]): number[] {
       const s1 = rotateRight(b, 17) ^ rotateRight(b, 19) ^ (b >>> 10);
       words[index] = ((words[index - 16] ?? 0) + s0 + (words[index - 7] ?? 0) + s1) >>> 0;
     }
-    let [a, b, c, d, e, f, g, h] = hash;
+    let [a = 0, b = 0, c = 0, d = 0, e = 0, f = 0, g = 0, h = 0] = hash;
     for (let index = 0; index < 64; index += 1) {
       const sum1 = (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) >>> 0;
       const choice = ((e & f) ^ (~e & g)) >>> 0;

@@ -574,7 +574,7 @@ export class ScreenHost {
   }
 
   private isLocallyAllowed(type: string, view: ProductViewModel): boolean {
-    const always = new Set(["Login", "CreateRoom", "JoinRoom", "SetReady", "AddBot", "RemoveBot", "StartMatch", "StartTutorial", "LeaveRoom", "RestartMatch", "VoteRestart", "UpdateSettings"]);
+    const always = new Set(["Login", "CreateRoom", "JoinRoom", "SetReady", "AddBot", "RemoveBot", "StartMatch", "StartTutorial", "LeaveRoom", "RestartMatch", "VoteRestart"]);
     if (always.has(type)) return true;
     return hasProductAction(view, type);
   }

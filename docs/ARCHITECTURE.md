@@ -68,7 +68,7 @@ snapshot    { sessionId, revision, snapshot, resumeToken? }
 
 MySQL 是 MVP 的唯一事实源。首版运行时按单 server 实例部署；房间与牌局状态仍全部持久化，进程重启后由客户端重连恢复。Redis、Kafka、微服务和 Kubernetes 都不是首版依赖。扩展到多实例前，必须增加独立的跨实例通知总线来唤醒持有其他玩家连接的实例。
 
-上面的单事务保证适用于对局内核命令：match 快照、对局回执和审计事件一起提交。房间变更本身使用房间行锁和事务，开局时 `createMatch + saveRoom` 原子提交；但 Session Gateway 的通用 `session_command_receipts` 仍在业务事务之后单独写入，进程若恰在两者之间崩溃，房间命令可能已经生效但会话回执尚未落库。首版以单实例、客户端 revision 冲突恢复和房间不变量减轻影响，不宣称该窗口具备 exactly-once；后续应把房间命令执行与会话回执纳入统一事务边界。
+上面的单事务保证适用于对局内核命令：match 快照、对局回执和审计事件一起提交。房间变更本身使用房间行锁和事务，开局时 `createMatch + saveRoom` 原子提交。Session Gateway 的通用 `session_command_receipts` 仍在业务事务之后单独写入；该缺口并非仅限于进程崩溃时序——在回执落库前，房主可主动重放相同 commandId 触发重复生效或永久错误回执。M1 已在 `transactRoom` 同一行锁事务内补充 `room_command_receipts` 回执检查，使房间级双重执行在事务边界内被阻断；会话级回执仍在业务事务后单独写入，但房间级幂等不再依赖它。项目承诺至少一次发送、幂等回执和 revision 恢复，不宣称所有命令端到端 exactly-once。
 
 微信云托管生产进程拒绝在缺少数据库配置或至少 32 字符 `AUTH_SECRET` 时启动，并以 `WECHAT_TRUST_CLOUD_HEADERS=true` 使用网关注入的可信微信身份；该模式不需要 `WECHAT_APP_SECRET`。小游戏生产构建只注入 `MINIGAME_CLOUD_ENV_ID` 和 `MINIGAME_CLOUD_SERVICE_NAME`，基础库最低版本为 `2.23.0`，并忽略 query 中的调试 endpoint、Demo 和开发认证开关；开发身份、直连 API 地址与内存存储不属于生产信任边界。
 
