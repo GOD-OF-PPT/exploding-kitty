@@ -29,6 +29,9 @@ type ScreenHostOptions = Readonly<{
 
 const ACTIVITY_BAR_HEIGHT = 48;
 const ACTIVITY_HIGHLIGHT_MS = 2_400;
+const MATCH_ACTIVITY_SCREEN_IDS = new Set<ScreenId>([
+  "game", "other-turn", "attack", "response", "favor", "give-card", "future", "explosion", "defuse", "eliminated",
+]);
 
 export class ScreenHost {
   private readonly canvas: HTMLCanvasElement;
@@ -64,6 +67,8 @@ export class ScreenHost {
   private highlightedActivitySequence = 0;
   private activityLive = false;
   private activityTimer: ReturnType<typeof setTimeout> | null = null;
+  private resumeOfferPending = true;
+  private resumeGateOpen = false;
 
   constructor(private readonly options: ScreenHostOptions) {
     this.joinCode = options.initialJoinCode ?? "";
@@ -84,6 +89,7 @@ export class ScreenHost {
     this.anchorServerClock(initial);
     this.authoritySounds.prime(soundView(initial));
     this.primeActivity(initial);
+    this.offerResumeIfNeeded(initial);
     this.unsubscribe = this.options.session.subscribe(() => {
       const current = this.currentView();
       this.anchorServerClock(current);
@@ -91,13 +97,17 @@ export class ScreenHost {
       this.consumeActivity(current);
       const revision = this.options.session.getSnapshot().revision ?? -1;
       if (revision !== this.lastRevision) {
+        const preserveResumeNavigation = this.resumeGateOpen;
         this.lastRevision = revision;
         this.clearSelection();
         this.handPage = 0;
-        this.override = null;
-        this.navigation.length = 0;
+        if (!preserveResumeNavigation) {
+          this.override = null;
+          this.navigation.length = 0;
+        }
         if (!current.eliminated) this.spectating = false;
       }
+      this.offerResumeIfNeeded(current);
       this.openInvitationIfReady();
       this.render();
     });
@@ -144,7 +154,7 @@ export class ScreenHost {
     if (id === "tutorial" && current !== "tutorial") this.tutorialStep = 0;
     if (current === "tutorial" && id !== "tutorial") this.tutorialStep = 0;
     if (current === "eliminated" && id === "other-turn") this.spectating = true;
-    if (id !== "game" && id !== "other-turn") this.activityOpen = false;
+    if (!MATCH_ACTIVITY_SCREEN_IDS.has(id)) this.activityOpen = false;
     if (id === "history") this.markActivityRead(this.currentView());
     if (["favor", "give-card", "defuse"].includes(current) && (id === "game" || id === "other-turn")) this.clearSelection();
     if (current !== id) this.navigation.push(current);
@@ -177,10 +187,13 @@ export class ScreenHost {
     Layout.clear();
     Layout.init(this.template(model, view), {
       ...UI_STYLE,
+      ...this.homeSafeStyles(model),
       topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
       actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
       tableActionDock: { ...UI_STYLE.tableActionDock, height: 96 + this.metrics.safeInsets.bottom, paddingBottom: 12 + this.metrics.safeInsets.bottom },
       tableCanvas: { ...UI_STYLE.tableCanvas, height: this.tableHeight(model), minHeight: this.tableHeight(model), maxHeight: this.tableHeight(model) },
+      activitySheet: { ...UI_STYLE.activitySheet, paddingBottom: this.metrics.safeInsets.bottom },
+      activityTimeline: { ...UI_STYLE.activityTimeline, height: Math.max(238, 280 - this.metrics.safeInsets.bottom) },
     });
     applyLayoutTransform(this.context, this.metrics);
     Layout.updateViewPort(this.metrics.viewport);
@@ -190,13 +203,14 @@ export class ScreenHost {
 
   private template(model: ScreenModel, view: ProductViewModel): string {
     if (model.id === "home") return this.homeTemplate(model, view);
+    const activityAvailable = this.activityAvailable(model, view);
     const canGoBack = Boolean(this.navigation.length || this.override);
     const headerLeft = model.table
       ? `<button id="table-menu" class="tableMenu"><image class="headerIcon" src="assets/ui/icons/cream/list.png"></image></button>`
       : canGoBack
         ? `<button id="back" class="back"><image class="headerIcon" src="assets/ui/icons/cream/arrow-left.png"></image></button>`
         : `<view class="headerSpacer"></view>`;
-    const headerRight = model.table
+    const headerRight = activityAvailable
       ? `<button id="activity-toggle" class="activityHeaderButton" value="战报">${this.activityUnread ? `<text class="activityUnread" value="${Math.min(99, this.activityUnread)}"></text>` : ""}</button>`
       : `<view class="headerSpacer"></view>`;
     const header = `<view class="header">${headerLeft}<view class="headerCopy"><text id="screen-eyebrow" class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view>${headerRight}</view>`;
@@ -212,11 +226,12 @@ export class ScreenHost {
       ? `<view class="cardGrid">${chunk(model.cards, 3).map((row, rowIndex) => `<view class="cardGridRow">${row.map((card, columnIndex) => { const index = rowIndex * 3 + columnIndex; const selected = this.selectedTokens.includes(card.token); return `<button id="card-${index}" class="cardItem${selected ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image>${selected ? `<view class="cardCheck"><image class="cardCheckIcon" src="assets/ui/icons/ink/check.png"></image></view>` : ""}<text class="cardName" value="${escape(card.name)}"></text></button>`; }).join("")}</view>`).join("")}</view>`
       : "";
     const rows = model.rows?.length ? `<view class="rowList">${model.rows.map((row, index) => this.rowTemplate(model, row, index)).join("")}</view>` : "";
-    const content = `${subtitle}${hero}${players}${table}${cards}${rows}`;
+    const auxiliaryActivity = activityAvailable && !model.table ? this.activityBannerTemplate(view) : "";
+    const content = `${auxiliaryActivity}${subtitle}${hero}${players}${table}${cards}${rows}`;
     const body = !model.table || model.scroll ? `<scrollview class="scroll" scrollY="true">${content}</scrollview>` : `<view class="body">${content}</view>`;
     const actions = this.actionDockTemplate(model);
     const tableActions = model.table ? this.tableActionDockTemplate(model, view) : "";
-    const activityOverlay = model.table && this.activityOpen ? this.activityOverlayTemplate(view) : "";
+    const activityOverlay = activityAvailable && this.activityOpen ? this.activityOverlayTemplate(view) : "";
     const error = this.error ? `<text id="error" class="error" value="${escape(this.error)}"></text>` : "";
     return `<view class="app"><view class="topSafe"></view>${header}${body}${tableActions}${actions}${activityOverlay}${error}</view>`;
   }
@@ -240,6 +255,28 @@ export class ScreenHost {
     }
     if (view.room.id || view.phase === "LOBBY") return `房间 ${view.room.code || "进行中"} · 等待开局`;
     return "牌局仍在进行";
+  }
+
+  private homeSafeStyles(model: ScreenModel): Record<string, (typeof UI_STYLE)[string]> {
+    if (model.id !== "home") return {};
+    const pressure = Math.max(0, this.metrics.safeInsets.top - 26) + this.metrics.safeInsets.bottom;
+    const brandReduction = Math.min(28, Math.ceil(pressure * 0.4));
+    const stageReduction = Math.min(42, Math.max(0, pressure - brandReduction));
+    const utilityReduction = Math.min(16, Math.max(0, pressure - brandReduction - stageReduction));
+    const catSize = 312 - stageReduction;
+    return {
+      homeScreen: { ...UI_STYLE.homeScreen, paddingBottom: 12 + this.metrics.safeInsets.bottom },
+      homeBrand: { ...UI_STYLE.homeBrand, height: 158 - brandReduction },
+      homeStage: { ...UI_STYLE.homeStage, height: 330 - stageReduction },
+      homeCat: { ...UI_STYLE.homeCat, left: Math.round((358 - catSize) / 2), width: catSize, height: catSize },
+      homeHeroCard: { ...UI_STYLE.homeHeroCard, top: 174 - Math.round(stageReduction * 0.65) },
+      homeUtilities: { ...UI_STYLE.homeUtilities, height: 108 - utilityReduction },
+      homeUtility: { ...UI_STYLE.homeUtility, height: 100 - utilityReduction },
+    };
+  }
+
+  private activityAvailable(model: ScreenModel, view: ProductViewModel): boolean {
+    return view.phase === "MATCH" && Boolean(view.game.id) && MATCH_ACTIVITY_SCREEN_IDS.has(model.id);
   }
 
   private rowTemplate(model: ScreenModel, row: ScreenRow, index: number): string {
@@ -341,7 +378,7 @@ export class ScreenHost {
   }
 
   private activityOverlayTemplate(view: ProductViewModel): string {
-    const items = activityTimeline(view, 7);
+    const items = activityTimeline(view, 4);
     const rows = items.length
       ? items.map((item) => this.activityTimelineRow(item)).join("")
       : `<view class="activityEmpty"><text class="activityEmptyTitle" value="行动记录还是空的"></text><text class="activityEmptyDetail" value="公开行动发生后会按顺序出现在这里"></text></view>`;
@@ -528,6 +565,8 @@ export class ScreenHost {
         return;
       }
       if (action.intent.type === "ResumeSession") {
+        this.resumeGateOpen = false;
+        this.resumeOfferPending = false;
         this.override = null;
         this.navigation.length = 0;
         this.render();
@@ -748,6 +787,18 @@ export class ScreenHost {
   private markActivityRead(view: ProductViewModel): void {
     this.activityUnread = 0;
     this.activitySequence = Math.max(this.activitySequence, latestActivitySequence(view));
+  }
+
+  private offerResumeIfNeeded(view: ProductViewModel): void {
+    if (!this.resumeOfferPending || !view.authenticated) return;
+    if (view.phase === "MATCH" || view.phase === "LOBBY") {
+      this.resumeOfferPending = false;
+      this.resumeGateOpen = true;
+      this.navigation.length = 0;
+      this.override = "home";
+      return;
+    }
+    if (view.phase === "HOME" && isLiveConnectivity(view.connectivity)) this.resumeOfferPending = false;
   }
 
   private resolveId(view: ProductViewModel): ScreenId {
