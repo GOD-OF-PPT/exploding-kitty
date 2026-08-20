@@ -269,7 +269,7 @@ function resolveAction(state: GameState, action: CommittedAction): void {
     const target = state.players[action.targetId!];
     const card = target?.alive ? target.hand.find((held) => held.type === action.declaredCardType) : undefined;
     if (target?.alive && card) transferCard(state, target.id, action.actorId, card, "CARD_GIVEN");
-    else event(state, "COMBO_MISSED", { targetId: action.targetId, declaredCardType: action.declaredCardType });
+    else event(state, "COMBO_MISSED", { actorId: action.actorId, targetId: action.targetId, declaredCardType: action.declaredCardType });
     return;
   }
   switch (action.cardType) {
@@ -284,7 +284,7 @@ function resolveAction(state: GameState, action: CommittedAction): void {
       break;
     case "SHUFFLE": {
       [state.deck, state.rngState] = shuffle(state.deck, state.rngState);
-      event(state, "DECK_SHUFFLED", { cardIds: state.deck.map((card) => card.id) });
+      event(state, "DECK_SHUFFLED", { actorId: action.actorId, cardIds: state.deck.map((card) => card.id) });
       break;
     }
     case "SEE_FUTURE":

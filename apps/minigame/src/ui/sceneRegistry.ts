@@ -1,4 +1,5 @@
 ﻿import { deriveScene, eligibleTargets, hasProductAction, legalSelectionKind, selectedCards as selectCards, selectionNeedsTarget } from "@exploding-kitty/presentation-model";
+import { activityTimeline } from "./activityFeed";
 import { CARD_CATALOG, COPY, RULE_DETAILS, RULE_ROWS } from "./copy";
 import type { ScreenAction, ScreenId, ScreenModel, ScreenRow } from "./model";
 import type { ProductViewModel } from "./normalize";
@@ -35,17 +36,27 @@ const avatarRows = (context: SceneContext): ScreenRow[] => context.view.players.
 }));
 const can = (context: SceneContext, type: string): boolean => hasProductAction(context.view, type);
 const selectedCards = (context: SceneContext) => selectCards(context.view, context.selectedTokens ?? []);
-const eventTitle = (event: unknown, index: number): string => {
-  if (typeof event === "string") return event;
-  if (!event || typeof event !== "object") return `第 ${index + 1} 条行动`;
-  const value = event as Record<string, unknown>;
-  if (value.type === "CARD_DRAWN") return "一名玩家抽了一张牌";
-  return String(value.message ?? value.summary ?? value.type ?? `第 ${index + 1} 条行动`);
-};
-
 const screens: Record<ScreenId, SceneDefinition> = {
   login: { id: "login", build: () => ({ id: "login", eyebrow: COPY.original, title: COPY.brand, subtitle: "今晚谁先炸？", heroImage: "assets/cat-cast.png", heroLabel: "BOOM!", actions: [intent("login", COPY.enter, "Login", { provider: "wechat" })] }) },
-  home: { id: "home", build: (context) => ({ id: "home", eyebrow: COPY.tagline, title: COPY.brand, subtitle: `嗨，${context.view.user.name}`, heroImage: context.view.user.avatar, heroLabel: "BOOM!", rows: [{ id: "settings", title: "声音与振动", detail: "调整当前设备设置", action: nav("settings", "打开", "settings") }], actions: [nav("play", COPY.start, "play-mode", "yellow"), nav("join", COPY.join, "join", "cream"), nav("tutorial", COPY.tutorial, "tutorial", "cyan"), nav("rules", COPY.rules, "rules", "cream")] }) },
+  home: { id: "home", build: (context) => {
+    const resumable = Boolean(context.view.game.id || context.view.room.id || context.view.phase === "MATCH" || context.view.phase === "LOBBY");
+    return {
+      id: "home",
+      eyebrow: COPY.tagline,
+      title: COPY.brand,
+      subtitle: `嗨，${context.view.user.name}`,
+      heroImage: "assets/cats/player.png",
+      rows: [{ id: "settings", title: "声音与振动", detail: "调整当前设备设置", action: nav("settings", "打开", "settings") }],
+      actions: [
+        resumable
+          ? intent("resume", "继续牌局", "ResumeSession", {}, "yellow")
+          : nav("create", COPY.create, "create", "yellow"),
+        nav("join", COPY.join, "join", "cream"),
+        nav("tutorial", COPY.tutorial, "tutorial", "cyan"),
+        nav("rules", COPY.rules, "rules", "cream"),
+      ],
+    };
+  } },
   "play-mode": { id: "play-mode", build: () => ({ id: "play-mode", eyebrow: "选择你的混乱方式", title: COPY.start, heroImage: "assets/cats/player.png", rows: [{ id: "create", title: COPY.create, detail: "设置人数与节奏，邀请好友", action: nav("create", "创建", "create") }, { id: "join", title: COPY.join, detail: "输入好友分享的 6 位房间码", action: nav("join", "加入", "join") }], actions: [nav("back", "返回首页", "home", "ink")] }) },
   create: { id: "create", build: (context) => {
     const draft = context.roomDraft ?? { maxPlayers: 4, turnSeconds: 45, allowBots: true };
@@ -171,7 +182,7 @@ const screens: Record<ScreenId, SceneDefinition> = {
   tutorial: { id: "tutorial", build: (context) => tutorial(context) },
   rules: { id: "rules", build: () => ({ id: "rules", eyebrow: "original-2025@1", title: COPY.rules, subtitle: "2 - 5 人 · 共 56 张牌", rows: RULE_ROWS.map((row) => ({ ...row, action: nav(`card-${row.id}`, "详情", "card-detail") })), actions: [nav("back", "返回", "home", "ink")], scroll: true }) },
   "card-detail": { id: "card-detail", build: (context) => { const selectedRule = RULE_ROWS[context.selectedCard ?? 0]; const detail = selectedRule ? RULE_DETAILS[selectedRule.id] : undefined; if (detail) return { id: "card-detail", eyebrow: detail.eyebrow, title: detail.title, subtitle: detail.subtitle, ...(detail.image ? { heroImage: detail.image } : {}), rows: detail.rows, actions: [nav("back", "返回图鉴", "rules", "cream")], scroll: true }; const card = cardForRule(selectedRule?.id) ?? CARD_CATALOG[0]!; return { id: "card-detail", eyebrow: card.type, title: card.name, subtitle: card.type === "ATTACK" ? "结束你的回合，让下一位玩家承担两个回合。可被否决，攻击债务可以继续叠加。" : "完整牌效与数字平台补充规则。", heroImage: card.image, rows: [{ id: "count", title: "基础牌组数量", badge: `${cardCount(card.type)} 张` }, { id: "nope", title: "可否决", badge: card.type === "DEFUSE" || card.type === "EXPLODING_KITTEN" ? "否" : "是" }], actions: [nav("back", "返回图鉴", "rules", "cream")], scroll: true }; } },
-  history: { id: "history", build: (context) => ({ id: "history", eyebrow: "PUBLIC EVENTS", title: "行动记录", rows: context.view.events.map((event, index) => ({ id: `event-${index}`, title: eventTitle(event, index), detail: "公开信息" })), actions: [nav("back", "返回菜单", "game-menu", "cream")], scroll: true }) },
+  history: { id: "history", build: (context) => ({ id: "history", eyebrow: "PUBLIC EVENTS", title: "行动记录", subtitle: "只展示所有玩家都能看到的信息", rows: activityTimeline(context.view, 80).map((entry) => ({ id: `event-${entry.sequence}`, title: entry.title, detail: entry.detail, badge: activityBadge(entry.tone) })), actions: [nav("back", "返回菜单", "game-menu", "cream")], scroll: true }) },
   "game-menu": { id: "game-menu", build: (context) => ({ id: "game-menu", eyebrow: `ROOM #${context.view.room.code}`, title: "对局菜单", rows: [{ id: "history", title: "行动记录", detail: "查看本局公开行动", action: nav("history", "打开", "history") }, { id: "rules", title: COPY.rules, detail: "卡牌、组合与平台规则", action: nav("rules", "打开", "rules") }, { id: "settings", title: "声音与振动", detail: "只影响当前设备", action: nav("settings", "打开", "settings") }, { id: "network", title: "网络状态", detail: "连接与同步信息", action: nav("network", "打开", "network") }], actions: [...(can(context, "Concede") ? [intent("concede", "认输并继续观战", "Concede", {}, "red")] : []), nav("back", "返回牌桌", "game", "cream")], scroll: true }) },
   network: { id: "network", build: (context) => { const retrying = context.view.connectivity.toLowerCase() !== "online"; return { id: "network", eyebrow: "对局仍在服务器继续", title: retrying ? "正在找回牌桌…" : "连接稳定", subtitle: "倒计时以服务端为准，重新连接后会拉取你的最新私有快照。", heroLabel: retrying ? "SYNC" : "ONLINE", rows: [{ id: "state", title: "连接状态", badge: context.view.connectivity }, { id: "revision", title: "同步策略", detail: "全量私有快照", badge: "安全" }], actions: retrying ? [intent("retry", "立即重试", "Reconnect")] : [nav("back", "返回", "home", "cream")] }; } },
   settings: { id: "settings", build: (context) => ({
@@ -292,6 +303,13 @@ function cardForRule(id: string | undefined) {
 function cardCount(type: string): number {
   return type === "EXPLODING_KITTEN" || ["ATTACK", "FAVOR", "SHUFFLE", "SKIP"].includes(type) ? 4
     : type === "DEFUSE" ? 6 : type === "NOPE" || type === "SEE_FUTURE" ? 5 : 4;
+}
+
+function activityBadge(tone: "neutral" | "action" | "danger" | "success"): string {
+  if (tone === "danger") return "危险";
+  if (tone === "success") return "生效";
+  if (tone === "action") return "行动";
+  return "公开";
 }
 
 function selectionIsLegal(context: SceneContext, cards: readonly { type: string }[]): boolean {

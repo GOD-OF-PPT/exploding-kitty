@@ -70,8 +70,15 @@ export type PublicEvent = Readonly<{
   actorId?: string;
   actorName?: string;
   cardType?: CardType;
+  cardTypes?: readonly CardType[];
   count?: number;
   reason?: string;
+  targetId?: string;
+  fromId?: string;
+  toId?: string;
+  declaredCardType?: CardType;
+  mode?: string;
+  winnerId?: string;
 }>;
 
 export type ProductView = Readonly<{
@@ -314,13 +321,22 @@ function normalizePublicEvent(value: unknown, index: number): PublicEvent {
   if (typeof value === "string") return { sequence: index + 1, type: value };
   const event = object(value);
   const cardType = canonicalCardType(text(event.cardType));
+  const cardTypes = array(event.cardTypes).map((value) => canonicalCardType(text(value))).filter((value): value is CardType => Boolean(value));
+  const declaredCardType = canonicalCardType(text(event.declaredCardType));
   return {
     sequence: numeric(index + 1, event.sequence), type: text(event.type, event.kind, "EVENT"),
     ...(text(event.actorId, event.playerId) ? { actorId: text(event.actorId, event.playerId) } : {}),
     ...(text(event.actorName) ? { actorName: text(event.actorName) } : {}),
     ...(cardType ? { cardType } : {}),
+    ...(cardTypes.length ? { cardTypes } : {}),
     ...(Number.isFinite(Number(event.count)) ? { count: Number(event.count) } : {}),
     ...(text(event.reason) ? { reason: text(event.reason) } : {}),
+    ...(text(event.targetId) ? { targetId: text(event.targetId) } : {}),
+    ...(text(event.fromId) ? { fromId: text(event.fromId) } : {}),
+    ...(text(event.toId) ? { toId: text(event.toId) } : {}),
+    ...(declaredCardType ? { declaredCardType } : {}),
+    ...(text(event.mode) ? { mode: text(event.mode) } : {}),
+    ...(text(event.winnerId) ? { winnerId: text(event.winnerId) } : {}),
   };
 }
 

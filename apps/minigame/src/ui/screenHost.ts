@@ -15,6 +15,7 @@ import { CardTableSurface } from "./cardTableSurface";
 import { UI_STYLE } from "./theme";
 import { applyLayoutTransform, extractCssPoint, resolveCanvasMetrics, sizeDisplayCanvas, type CanvasMetrics } from "./canvasMetrics";
 import { AuthoritativeSoundPlayer, SOUND_ASSETS } from "./soundEffects";
+import { activityTimeline, latestActivity, latestActivitySequence, type ActivityItem } from "./activityFeed";
 
 type ScreenHostOptions = Readonly<{
   wx: WxLike;
@@ -25,6 +26,9 @@ type ScreenHostOptions = Readonly<{
   initialJoinCode?: string;
   canvas?: HTMLCanvasElement;
 }>;
+
+const ACTIVITY_BAR_HEIGHT = 48;
+const ACTIVITY_HIGHLIGHT_MS = 2_400;
 
 export class ScreenHost {
   private readonly canvas: HTMLCanvasElement;
@@ -53,6 +57,13 @@ export class ScreenHost {
   private timer: ReturnType<typeof setInterval> | null = null;
   private clockAnchor = { serverAt: Date.now(), localAt: Date.now() };
   private readonly authoritySounds: AuthoritativeSoundPlayer;
+  private activityOpen = false;
+  private activityMatchId = "";
+  private activitySequence = 0;
+  private activityUnread = 0;
+  private highlightedActivitySequence = 0;
+  private activityLive = false;
+  private activityTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly options: ScreenHostOptions) {
     this.joinCode = options.initialJoinCode ?? "";
@@ -72,10 +83,12 @@ export class ScreenHost {
     this.lastRevision = this.options.session.getSnapshot().revision ?? -1;
     this.anchorServerClock(initial);
     this.authoritySounds.prime(soundView(initial));
+    this.primeActivity(initial);
     this.unsubscribe = this.options.session.subscribe(() => {
       const current = this.currentView();
       this.anchorServerClock(current);
       this.authoritySounds.consume(soundView(current));
+      this.consumeActivity(current);
       const revision = this.options.session.getSnapshot().revision ?? -1;
       if (revision !== this.lastRevision) {
         this.lastRevision = revision;
@@ -115,6 +128,8 @@ export class ScreenHost {
     this.unsubscribe?.();
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    if (this.activityTimer) clearTimeout(this.activityTimer);
+    this.activityTimer = null;
     Layout.clearAll();
     this.options.keyboard.close();
   }
@@ -129,6 +144,8 @@ export class ScreenHost {
     if (id === "tutorial" && current !== "tutorial") this.tutorialStep = 0;
     if (current === "tutorial" && id !== "tutorial") this.tutorialStep = 0;
     if (current === "eliminated" && id === "other-turn") this.spectating = true;
+    if (id !== "game" && id !== "other-turn") this.activityOpen = false;
+    if (id === "history") this.markActivityRead(this.currentView());
     if (["favor", "give-card", "defuse"].includes(current) && (id === "game" || id === "other-turn")) this.clearSelection();
     if (current !== id) this.navigation.push(current);
     this.override = id;
@@ -158,7 +175,7 @@ export class ScreenHost {
     this.context.setTransform(1, 0, 0, 1, 0, 0);
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     Layout.clear();
-    Layout.init(this.template(model), {
+    Layout.init(this.template(model, view), {
       ...UI_STYLE,
       topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
       actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
@@ -171,14 +188,18 @@ export class ScreenHost {
     this.bind(model, view);
   }
 
-  private template(model: ScreenModel): string {
+  private template(model: ScreenModel, view: ProductViewModel): string {
+    if (model.id === "home") return this.homeTemplate(model, view);
     const canGoBack = Boolean(this.navigation.length || this.override);
     const headerLeft = model.table
       ? `<button id="table-menu" class="tableMenu"><image class="headerIcon" src="assets/ui/icons/cream/list.png"></image></button>`
       : canGoBack
         ? `<button id="back" class="back"><image class="headerIcon" src="assets/ui/icons/cream/arrow-left.png"></image></button>`
         : `<view class="headerSpacer"></view>`;
-    const header = `<view class="header">${headerLeft}<view class="headerCopy"><text id="screen-eyebrow" class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view><view class="headerSpacer"></view></view>`;
+    const headerRight = model.table
+      ? `<button id="activity-toggle" class="activityHeaderButton" value="战报">${this.activityUnread ? `<text class="activityUnread" value="${Math.min(99, this.activityUnread)}"></text>` : ""}</button>`
+      : `<view class="headerSpacer"></view>`;
+    const header = `<view class="header">${headerLeft}<view class="headerCopy"><text id="screen-eyebrow" class="eyebrow" value="${escape(model.eyebrow ?? "")}"></text><text class="headerTitle" value="${escape(model.title)}"></text></view>${headerRight}</view>`;
     const subtitle = model.subtitle ? `<text class="subtitle" value="${escape(model.subtitle)}"></text>` : "";
     const heroVariant = heroVariantFor(model);
     const hero = model.heroImage || model.heroLabel
@@ -186,7 +207,7 @@ export class ScreenHost {
       : "";
     const players = model.players ? this.playersTemplate(model.players) : "";
     const tableHeight = this.tableHeight(model);
-    const table = model.table ? `${this.playersTemplate(model.table.players.filter((player) => player.id !== this.currentView().viewerId))}<canvas id="tableCanvas" class="tableCanvas" width="358" height="${tableHeight}"></canvas>` : "";
+    const table = model.table ? `${this.playersTemplate(model.table.players.filter((player) => player.id !== view.viewerId), view)}${this.activityBannerTemplate(view)}<canvas id="tableCanvas" class="tableCanvas" width="358" height="${tableHeight}"></canvas>` : "";
     const cards = model.cards
       ? `<view class="cardGrid">${chunk(model.cards, 3).map((row, rowIndex) => `<view class="cardGridRow">${row.map((card, columnIndex) => { const index = rowIndex * 3 + columnIndex; const selected = this.selectedTokens.includes(card.token); return `<button id="card-${index}" class="cardItem${selected ? " cardSelected" : ""}"><image class="cardImage" src="${escape(card.image)}"></image>${selected ? `<view class="cardCheck"><image class="cardCheckIcon" src="assets/ui/icons/ink/check.png"></image></view>` : ""}<text class="cardName" value="${escape(card.name)}"></text></button>`; }).join("")}</view>`).join("")}</view>`
       : "";
@@ -194,9 +215,31 @@ export class ScreenHost {
     const content = `${subtitle}${hero}${players}${table}${cards}${rows}`;
     const body = !model.table || model.scroll ? `<scrollview class="scroll" scrollY="true">${content}</scrollview>` : `<view class="body">${content}</view>`;
     const actions = this.actionDockTemplate(model);
-    const tableActions = model.table ? this.tableActionDockTemplate(model) : "";
+    const tableActions = model.table ? this.tableActionDockTemplate(model, view) : "";
+    const activityOverlay = model.table && this.activityOpen ? this.activityOverlayTemplate(view) : "";
     const error = this.error ? `<text id="error" class="error" value="${escape(this.error)}"></text>` : "";
-    return `<view class="app"><view class="topSafe"></view>${header}${body}${tableActions}${actions}${error}</view>`;
+    return `<view class="app"><view class="topSafe"></view>${header}${body}${tableActions}${actions}${activityOverlay}${error}</view>`;
+  }
+
+  private homeTemplate(model: ScreenModel, view: ProductViewModel): string {
+    const primary = model.actions?.[0];
+    const resumable = primary?.id === "resume";
+    const status = resumable ? this.homeSessionStatus(view) : null;
+    const resumeCard = status
+      ? `<button id="home-resume-card" class="homeResumeCard"><image class="homeResumeImage" src="assets/cards/card-back.png"></image><view class="homeResumeCopy"><text class="homeResumeTitle" value="未完成的牌局"></text><text class="homeResumeDetail" value="${escape(status)}"></text></view><text class="homeResumeLink" value="查看"></text></button>`
+      : `<view class="homeQuickStart"><text class="homeQuickStartLabel" value="2 - 5 人 · 原创回合制卡牌"></text></view>`;
+    const error = this.error ? `<text id="error" class="error" value="${escape(this.error)}"></text>` : "";
+    return `<view class="app"><view class="topSafe"></view><view class="homeScreen"><view class="homeBrand"><text class="homeTagline" value="${escape(model.eyebrow ?? "")}"></text><text class="homeTitle" value="${escape(model.title)}"></text><text class="homeWelcome" value="${escape(model.subtitle ?? "嗨，玩家")}"></text></view><view class="homeStage"><view class="homeSpeech"><text class="homeSpeechLead" value="准备好开局了吗？"></text><text class="homeSpeechDetail" value="小心出牌，别被炸毛！"></text></view><image class="homeHeroCard" src="assets/cards/card-back.png"></image><image class="homeCat" src="assets/cats/player.png"></image></view>${resumeCard}<view class="homeActions"><button id="home-primary" class="homePrimary" value="${escape(primary?.label ?? "创建房间")}"></button><button id="home-join" class="homeSecondary" value="加入房间"></button></view><view class="homeMore"><view class="homeMoreLine"></view><text class="homeMoreLabel" value="更多"></text><view class="homeMoreLine"></view></view><view class="homeUtilities"><button id="home-tutorial" class="homeUtility"><image class="homeUtilityCard" src="assets/cards/skip.png"></image><text class="homeUtilityLabel" value="新手教学"></text></button><view class="homeUtilityDivider"></view><button id="home-rules" class="homeUtility"><image class="homeUtilityCard" src="assets/cards/card-back.png"></image><text class="homeUtilityLabel" value="规则图鉴"></text></button><view class="homeUtilityDivider"></view><button id="home-settings" class="homeUtility"><view class="homeUtilityIconFrame"><image class="homeUtilityIcon" src="assets/ui/icons/cream/list.png"></image></view><text class="homeUtilityLabel" value="设置"></text></button></view></view>${error}</view>`;
+  }
+
+  private homeSessionStatus(view: ProductViewModel): string {
+    if (view.game.id || view.phase === "MATCH") {
+      const alive = view.players.filter((player) => player.alive !== false).length;
+      const playerCount = Math.max(view.players.length, alive);
+      return `${alive}/${playerCount} 人 · 第 ${Math.max(1, view.game.turnNumber)} 回合`;
+    }
+    if (view.room.id || view.phase === "LOBBY") return `房间 ${view.room.code || "进行中"} · 等待开局`;
+    return "牌局仍在进行";
   }
 
   private rowTemplate(model: ScreenModel, row: ScreenRow, index: number): string {
@@ -256,8 +299,11 @@ export class ScreenHost {
     return `<button id="action-${index}" class="${classes}" value="${escape(action.label)}"></button>`;
   }
 
-  private tableActionDockTemplate(model: ScreenModel): string {
-    if (!model.table?.myTurn) return `<view class="tableActionDock"><text class="tableDockHint" value="等待当前玩家行动"></text></view>`;
+  private tableActionDockTemplate(model: ScreenModel, view: ProductViewModel): string {
+    if (!model.table?.myTurn) {
+      const active = view.players.find((player) => player.id === view.game.turnPlayerId);
+      return `<view class="tableActionDock"><text class="tableDockHint" value="${escape(active ? `等待${active.name}行动` : "等待当前玩家行动")}"></text></view>`;
+    }
     if (!this.selectedTokens.length) return `<view class="tableActionDock"><text class="tableDockHint" value="选择一张牌，或从牌堆抽牌"></text></view>`;
 
     const action = model.actions?.[0];
@@ -274,14 +320,59 @@ export class ScreenHost {
     return `<view class="tableActionDock"><button id="table-cancel" class="tableCancelButton" value="取消"></button>${primary}</view>`;
   }
 
-  private playersTemplate(players: readonly { id: string; name: string; avatar?: string }[]): string {
-    return `<view class="players">${players.slice(0, 5).map((player) => `<view class="player"><image class="avatar" src="${escape(player.avatar ?? "assets/cats/player.png")}"></image><text class="playerName" value="${escape(player.name)}"></text></view>`).join("")}</view>`;
+  private playersTemplate(
+    players: readonly { id: string; name: string; avatar?: string; connected?: boolean }[],
+    view?: ProductViewModel,
+  ): string {
+    return `<view class="players">${players.slice(0, 5).map((player) => {
+      const active = player.id === view?.game.turnPlayerId;
+      const status = active ? (view!.game.turnsOwed > 1 ? `行动 ×${view!.game.turnsOwed}` : "行动中") : player.connected === false ? "重连中" : "";
+      return `<view class="player${active ? " playerActive" : ""}"><image class="avatar${active ? " avatarActive" : ""}" src="${escape(player.avatar ?? "assets/cats/player.png")}"></image><text class="playerName" value="${escape(player.name)}"></text><text class="playerStatus${active ? " playerStatusActive" : ""}" value="${escape(status)}"></text></view>`;
+    }).join("")}</view>`;
+  }
+
+  private activityBannerTemplate(view: ProductViewModel): string {
+    const item = latestActivity(view);
+    const title = item?.title ?? "等待第一位玩家行动";
+    const detail = item?.detail ?? "公开行动会显示在这里";
+    const tone = item ? capitalize(item.tone) : "Neutral";
+    const fresh = item?.sequence === this.highlightedActivitySequence;
+    return `<button id="activity-banner" class="activityBanner activityBanner${tone}${fresh ? " activityBannerFresh" : ""}"><view class="activityBannerCopy"><text class="activityBannerTitle" value="${escape(title)}"></text><text class="activityBannerDetail" value="${escape(detail)}"></text></view><text class="activityBannerLink" value="查看"></text></button>`;
+  }
+
+  private activityOverlayTemplate(view: ProductViewModel): string {
+    const items = activityTimeline(view, 7);
+    const rows = items.length
+      ? items.map((item) => this.activityTimelineRow(item)).join("")
+      : `<view class="activityEmpty"><text class="activityEmptyTitle" value="行动记录还是空的"></text><text class="activityEmptyDetail" value="公开行动发生后会按顺序出现在这里"></text></view>`;
+    return `<button id="activity-dismiss" class="activityBackdrop"></button><view class="activitySheet"><view class="activitySheetHeader"><view class="activitySheetCopy"><text class="activitySheetEyebrow" value="LIVE MATCH"></text><text class="activitySheetTitle" value="行动战报"></text></view><button id="activity-close" class="activityClose" value="关闭"></button></view><view class="activityPrivacy"><text class="activityPrivacyText" value="只记录公开信息，最新行动在最下方"></text></view><view class="activityTimeline">${rows}</view></view>`;
+  }
+
+  private activityTimelineRow(item: ActivityItem): string {
+    const tone = capitalize(item.tone);
+    return `<view class="activityTimelineRow"><view class="activityTimelineMarker activityTimelineMarker${tone}"></view><view class="activityTimelineCopy"><text class="activityTimelineTitle" value="${escape(item.title)}"></text><text class="activityTimelineDetail" value="${escape(item.detail)}"></text></view></view>`;
   }
 
   private bind(model: ScreenModel, view: ProductViewModel): void {
     const back = Layout.getElementById("back");
     if (back && (this.navigation.length || this.override)) back.on("click", () => this.goBack());
     Layout.getElementById("table-menu")?.on("click", () => this.show("game-menu"));
+    const openActivity = () => {
+      this.activityOpen = true;
+      this.markActivityRead(view);
+      this.options.media.impact("light");
+      this.render();
+    };
+    Layout.getElementById("activity-toggle")?.on("click", openActivity);
+    Layout.getElementById("activity-banner")?.on("click", openActivity);
+    const closeActivity = () => {
+      this.activityOpen = false;
+      this.options.media.impact("light");
+      this.render();
+    };
+    Layout.getElementById("activity-dismiss")?.on("click", closeActivity);
+    Layout.getElementById("activity-close")?.on("click", closeActivity);
+    if (model.id === "home") this.bindHomeActions(model, view);
     if (!model.table && !this.sending) model.actions?.slice(0, 4).forEach((action, index) => {
       if (model.id === "join" && action.id === "join" && this.joinCode.length !== 6) return;
       Layout.getElementById(`action-${index}`)?.on("click", () => void this.perform(action, view));
@@ -325,11 +416,30 @@ export class ScreenHost {
     if (model.table) this.attachTable(model, view);
   }
 
+  private bindHomeActions(model: ScreenModel, view: ProductViewModel): void {
+    if (this.sending) return;
+    const actionById = new Map((model.actions ?? []).map((action) => [action.id, action]));
+    const settingsAction = model.rows?.find((row) => row.id === "settings")?.action;
+    if (settingsAction) actionById.set("settings", settingsAction);
+    const bind = (elementId: string, actionId: string) => {
+      const action = actionById.get(actionId);
+      if (action) Layout.getElementById(elementId)?.on("click", () => void this.perform(action, view));
+    };
+    const primary = model.actions?.[0];
+    if (primary) Layout.getElementById("home-primary")?.on("click", () => void this.perform(primary, view));
+    if (primary?.id === "resume") Layout.getElementById("home-resume-card")?.on("click", () => void this.perform(primary, view));
+    bind("home-join", "join");
+    bind("home-tutorial", "tutorial");
+    bind("home-rules", "rules");
+    bind("home-settings", "settings");
+  }
+
   private attachTable(model: ScreenModel, view: ProductViewModel): void {
     const component = Layout.getElementById("tableCanvas") as LayoutCanvas | null;
     if (!component || !model.table) return;
     const tableHeight = this.tableHeight(model);
-    const state = { width: 358, height: tableHeight, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, selectedTokens: this.selectedTokens, handPage: this.handPage };
+    const active = view.players.find((player) => player.id === view.game.turnPlayerId);
+    const state = { width: 358, height: tableHeight, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, waitingLabel: active ? `等待${active.name}行动` : undefined, selectedTokens: this.selectedTokens, handPage: this.handPage };
     if (this.tableSurface) this.tableSurface.update(state);
     else this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
     this.unsubscribeTableInvalidation = this.tableSurface.subscribeInvalidation(() => {
@@ -395,7 +505,7 @@ export class ScreenHost {
     if (!model.table) return 0;
     const dockHeight = 96 + this.metrics.safeInsets.bottom;
     const supplementalRows = model.rows?.length ? 94 : 0;
-    return Math.max(370, 844 - this.metrics.safeInsets.top - 82 - 95 - dockHeight - supplementalRows);
+    return Math.max(340, 844 - this.metrics.safeInsets.top - 82 - 95 - ACTIVITY_BAR_HEIGHT - dockHeight - supplementalRows);
   }
 
   private async perform(action: ScreenAction, view: ProductViewModel): Promise<void> {
@@ -414,6 +524,12 @@ export class ScreenHost {
     try {
       if (action.intent.type === "NextTutorialStep") {
         this.tutorialStep += 1;
+        this.render();
+        return;
+      }
+      if (action.intent.type === "ResumeSession") {
+        this.override = null;
+        this.navigation.length = 0;
         this.render();
         return;
       }
@@ -586,6 +702,54 @@ export class ScreenHost {
     this.insertionPosition = 0;
   }
 
+  private primeActivity(view: ProductViewModel): void {
+    this.activityMatchId = view.game.id;
+    this.activitySequence = latestActivitySequence(view);
+    this.activityUnread = 0;
+    this.highlightedActivitySequence = 0;
+    this.activityLive = isLiveConnectivity(view.connectivity);
+  }
+
+  private consumeActivity(view: ProductViewModel): void {
+    if (!view.game.id) {
+      this.primeActivity(view);
+      this.activityOpen = false;
+      return;
+    }
+    if (view.game.id !== this.activityMatchId) {
+      this.primeActivity(view);
+      return;
+    }
+    const latest = latestActivitySequence(view);
+    const live = isLiveConnectivity(view.connectivity);
+    if (!live) {
+      this.activityLive = false;
+      return;
+    }
+    if (!this.activityLive) {
+      this.activityLive = true;
+      this.activitySequence = latest;
+      this.highlightedActivitySequence = 0;
+      return;
+    }
+    const fresh = view.events.filter((event) => event.sequence > this.activitySequence);
+    this.activitySequence = Math.max(this.activitySequence, latest);
+    if (!fresh.length) return;
+    this.highlightedActivitySequence = fresh.at(-1)!.sequence;
+    this.activityUnread = this.activityOpen ? 0 : Math.min(99, this.activityUnread + fresh.length);
+    if (this.activityTimer) clearTimeout(this.activityTimer);
+    this.activityTimer = setTimeout(() => {
+      this.activityTimer = null;
+      this.highlightedActivitySequence = 0;
+      this.render();
+    }, ACTIVITY_HIGHLIGHT_MS);
+  }
+
+  private markActivityRead(view: ProductViewModel): void {
+    this.activityUnread = 0;
+    this.activitySequence = Math.max(this.activitySequence, latestActivitySequence(view));
+  }
+
   private resolveId(view: ProductViewModel): ScreenId {
     const derived = deriveScreen(this.sceneContext(view));
     if (derived === "network") return "network";
@@ -611,6 +775,11 @@ function insertionDeckSize(view: ProductViewModel): number {
 
 function soundView(view: ProductViewModel) {
   return { matchId: view.game.id, connectivity: view.connectivity, events: view.events };
+}
+
+function isLiveConnectivity(connectivity: string): boolean {
+  const value = connectivity.toLowerCase();
+  return value === "online" || value === "local";
 }
 
 function cardIndexForRule(id: string): number {

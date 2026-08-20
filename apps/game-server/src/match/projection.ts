@@ -112,6 +112,15 @@ function isTransferParticipant(event: GameState["events"][number], viewerId: str
 }
 
 const PRIVATE_TRANSFER_EVENT_TYPES = new Set(["CARD_STOLEN", "CARD_GIVEN"]);
+const PUBLIC_COMMITTED_CARD_EVENTS = new Set(["CARDS_COMMITTED", "ACTION_CANCELLED", "ACTION_RESOLVED"]);
+
+function publicCommittedCardTypes(state: GameState, event: GameState["events"][number]): readonly Card["type"][] {
+  if (!PUBLIC_COMMITTED_CARD_EVENTS.has(event.type) || !Array.isArray(event.cardIds)) return [];
+  const discard = new Map(state.discard.map((card) => [card.id, card.type]));
+  return event.cardIds
+    .map((cardId) => typeof cardId === "string" ? discard.get(cardId) : undefined)
+    .filter((cardType): cardType is Card["type"] => Boolean(cardType));
+}
 
 function publicEvents(state: GameState, viewerId: string) {
   const publicTypes = new Set([
@@ -122,13 +131,22 @@ function publicEvents(state: GameState, viewerId: string) {
   return state.events.filter((event) => publicTypes.has(event.type)).map((event) => {
     const isPrivateTransfer = PRIVATE_TRANSFER_EVENT_TYPES.has(event.type);
     const maySeeCardType = !isPrivateTransfer || isTransferParticipant(event, viewerId);
+    const maySeeTransferParticipants = isPrivateTransfer && isTransferParticipant(event, viewerId);
+    const committedCardTypes = publicCommittedCardTypes(state, event);
     return {
       sequence: event.sequence,
       type: event.type,
-      ...(typeof event.actorId === "string" ? { actorId: event.actorId } : typeof event.playerId === "string" ? { actorId: event.playerId } : {}),
-      ...(event.type !== "CARD_DRAWN" && maySeeCardType && typeof event.cardType === "string" ? { cardType: event.cardType as Card["type"] } : {}),
+      ...(typeof event.actorId === "string" ? { actorId: event.actorId } : typeof event.playerId === "string" ? { actorId: event.playerId } : maySeeTransferParticipants && typeof event.fromId === "string" ? { actorId: event.fromId } : {}),
+      ...(committedCardTypes.length === 1 ? { cardType: committedCardTypes[0] } : event.type !== "CARD_DRAWN" && maySeeCardType && typeof event.cardType === "string" ? { cardType: event.cardType as Card["type"] } : {}),
+      ...(committedCardTypes.length ? { cardTypes: committedCardTypes } : {}),
       ...(Array.isArray(event.cardIds) ? { count: event.cardIds.length } : {}),
       ...(typeof event.reason === "string" ? { reason: event.reason } : {}),
+      ...(typeof event.targetId === "string" ? { targetId: event.targetId } : {}),
+      ...(maySeeTransferParticipants && typeof event.fromId === "string" ? { fromId: event.fromId } : {}),
+      ...(maySeeTransferParticipants && typeof event.toId === "string" ? { toId: event.toId } : {}),
+      ...(typeof event.declaredCardType === "string" ? { declaredCardType: event.declaredCardType as Card["type"] } : {}),
+      ...(typeof event.mode === "string" ? { mode: event.mode } : {}),
+      ...(typeof event.winnerId === "string" ? { winnerId: event.winnerId } : {}),
     };
   });
 }

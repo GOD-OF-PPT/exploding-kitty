@@ -333,13 +333,23 @@ function parseSnapshotLegalAction(input: unknown, path: string): void {
 
 function parseSnapshotEvent(input: unknown, path: string): void {
   const value = record(input, path);
-  exact(value, ["sequence", "type", "actorId", "cardType", "count", "reason"], path);
+  exact(value, [
+    "sequence", "type", "actorId", "cardType", "cardTypes", "count", "reason", "targetId",
+    "fromId", "toId", "declaredCardType", "mode", "winnerId",
+  ], path);
   integer(value.sequence, `${path}.sequence`, 1);
   text(value.type, `${path}.type`, { max: 64, pattern: /^[A-Z0-9_]+$/ });
   optionalText(value.actorId, `${path}.actorId`);
   if (value.cardType !== undefined) parseCardType(value.cardType, `${path}.cardType`);
+  if (value.cardTypes !== undefined) list(value.cardTypes, `${path}.cardTypes`, (cardType, cardTypePath) => parseCardType(cardType, cardTypePath), { max: 3 });
   if (value.count !== undefined) integer(value.count, `${path}.count`, 0, 56);
   optionalText(value.reason, `${path}.reason`, 64);
+  optionalText(value.targetId, `${path}.targetId`);
+  optionalText(value.fromId, `${path}.fromId`);
+  optionalText(value.toId, `${path}.toId`);
+  if (value.declaredCardType !== undefined) parseCardType(value.declaredCardType, `${path}.declaredCardType`);
+  optionalText(value.mode, `${path}.mode`, 32);
+  optionalText(value.winnerId, `${path}.winnerId`);
 }
 
 function parseSnapshotRanking(input: unknown, path: string): void {
