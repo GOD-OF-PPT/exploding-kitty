@@ -109,7 +109,7 @@ const screens: Record<ScreenId, SceneDefinition> = {
     };
   } },
   join: { id: "join", build: (context) => ({ id: "join", eyebrow: "JOIN THE CHAOS", title: COPY.join, subtitle: "输入好友发来的 6 位房间码", heroImage: "assets/cats/a-ju.png", rows: [{ id: "room-code", title: "房间码", detail: context.joinCode || "点击输入", badge: context.joinCode?.length === 6 ? "可加入" : "6 位数字" }], actions: [intent("join", "进入房间", "JoinRoom"), nav("back", "返回", "play-mode", "ink")] }) },
-  "lobby-host": { id: "lobby-host", build: (context) => ({ id: "lobby-host", eyebrow: `ROOM #${context.view.room.code}`, title: COPY.lobby, subtitle: "你是房主，所有人准备后即可开始", rows: avatarRows(context).map((row) => { const player = context.view.players.find((entry) => entry.id === row.id); return player?.bot ? { ...row, detail: "点击移除这个 Bot", action: intent(`remove-${row.id}`, "移除", "RemoveBot", { playerId: row.id }, "red") } : row; }), actions: [intent("share", "分享房间码", "ShareRoom", {}, "yellow"), ...(context.view.room.allowBots && context.view.players.length < context.view.room.maxPlayers ? [intent("bot", "加入 Bot", "AddBot", {}, "cream")] : []), ...(context.view.players.length >= 2 && context.view.players.every((player) => player.ready) ? [intent("start", "开始游戏", "StartMatch", {}, "cyan")] : []), intent("leave", "离开房间", "LeaveRoom", {}, "ink")], scroll: true }) },
+  "lobby-host": { id: "lobby-host", build: (context) => ({ id: "lobby-host", eyebrow: `ROOM #${context.view.room.code}`, title: COPY.lobby, subtitle: "你是房主，所有人准备后即可开始", rows: avatarRows(context, "已准备").map((row) => { const player = context.view.players.find((entry) => entry.id === row.id); return player?.bot ? { ...row, detail: "点击移除这个 Bot", action: intent(`remove-${row.id}`, "移除", "RemoveBot", { playerId: row.id }, "red") } : row; }), actions: [intent("share", "分享房间码", "ShareRoom", {}, "yellow"), ...(context.view.room.allowBots && context.view.players.length < context.view.room.maxPlayers ? [intent("bot", "加入 Bot", "AddBot", {}, "cream")] : []), ...(context.view.players.length >= 2 && context.view.players.every((player) => player.ready) ? [intent("start", "开始游戏", "StartMatch", {}, "cyan")] : []), intent("leave", "离开房间", "LeaveRoom", {}, "ink")], scroll: true }) },
   "lobby-member": { id: "lobby-member", build: (context) => { const ready = context.view.players.find((player) => player.id === context.view.viewerId)?.ready ?? false; return { id: "lobby-member", eyebrow: `ROOM #${context.view.room.code}`, title: COPY.lobby, subtitle: "房主正在调整规则", rows: avatarRows(context), actions: [intent("ready", ready ? "取消准备" : "我准备好了", "SetReady", { ready: !ready }), nav("rules", COPY.rules, "rules", "cream"), intent("leave", "离开房间", "LeaveRoom", {}, "ink")], scroll: true }; } },
   game: { id: "game", build: (context) => table(context, true) },
   "other-turn": { id: "other-turn", build: (context) => { const active = context.view.players.find((player) => player.id === context.view.game.turnPlayerId); return { ...table(context, false), id: "other-turn", subtitle: active ? `等待${active.name}行动…` : "等待其他玩家行动…" }; } },
@@ -190,7 +190,54 @@ const screens: Record<ScreenId, SceneDefinition> = {
   "card-detail": { id: "card-detail", build: (context) => { const selectedRule = RULE_ROWS[context.selectedCard ?? 0]; const detail = selectedRule ? RULE_DETAILS[selectedRule.id] : undefined; if (detail) return { id: "card-detail", eyebrow: detail.eyebrow, title: detail.title, subtitle: detail.subtitle, ...(detail.image ? { heroImage: detail.image } : {}), rows: detail.rows, actions: [nav("back", "返回图鉴", "rules", "cream")], scroll: true }; const card = cardForRule(selectedRule?.id) ?? CARD_CATALOG[0]!; return { id: "card-detail", eyebrow: card.type, title: card.name, subtitle: card.type === "ATTACK" ? "结束你的回合，让下一位玩家承担两个回合。可被否决，攻击债务可以继续叠加。" : "完整牌效与数字平台补充规则。", heroImage: card.image, rows: [{ id: "count", title: "基础牌组数量", badge: `${cardCount(card.type)} 张` }, { id: "nope", title: "可否决", badge: card.type === "DEFUSE" || card.type === "EXPLODING_KITTEN" ? "否" : "是" }], actions: [nav("back", "返回图鉴", "rules", "cream")], scroll: true }; } },
   history: { id: "history", build: (context) => ({ id: "history", eyebrow: "PUBLIC EVENTS", title: "行动记录", subtitle: "只展示所有玩家都能看到的信息", rows: activityTimeline(context.view, context.view.events.length).map((entry) => ({ id: `event-${entry.sequence}`, title: entry.title, detail: entry.detail, badge: activityBadge(entry.tone) })), actions: [nav("back", "返回菜单", "game-menu", "cream")], scroll: true }) },
   "game-menu": { id: "game-menu", build: (context) => ({ id: "game-menu", eyebrow: `ROOM #${context.view.room.code}`, title: "对局菜单", rows: [{ id: "history", title: "行动记录", detail: "查看本局公开行动", action: nav("history", "打开", "history") }, { id: "rules", title: COPY.rules, detail: "卡牌、组合与平台规则", action: nav("rules", "打开", "rules") }, { id: "settings", title: "声音与振动", detail: "只影响当前设备", action: nav("settings", "打开", "settings") }, { id: "network", title: "网络状态", detail: "连接与同步信息", action: nav("network", "打开", "network") }], actions: [...(can(context, "Concede") ? [intent("concede", "认输并继续观战", "Concede", {}, "red")] : []), nav("back", "返回牌桌", "game", "cream")], scroll: true }) },
-  network: { id: "network", build: (context) => { const retrying = context.view.connectivity.toLowerCase() !== "online"; return { id: "network", eyebrow: "对局仍在服务器继续", title: retrying ? "正在找回牌桌…" : "连接稳定", subtitle: "倒计时以服务端为准，重新连接后会拉取你的最新私有快照。", heroLabel: retrying ? "SYNC" : "ONLINE", rows: [{ id: "state", title: "连接状态", badge: context.view.connectivity }, { id: "revision", title: "同步策略", detail: "全量私有快照", badge: "安全" }], actions: retrying ? [intent("retry", "立即重试", "Reconnect")] : [nav("back", "返回", "home", "cream")] }; } },
+  network: {
+    id: "network",
+    build: (context) => {
+      const connectivity = context.view.connectivity.toLowerCase();
+      const local = connectivity === "local";
+      const online = connectivity === "online";
+      const retrying = !local && !online;
+      const active = context.view.players.find((player) => player.id === context.view.game.turnPlayerId);
+      const turnRow: ScreenRow = {
+        id: "turn",
+        title: "当前回合",
+        detail: active ? `${active.name} 正在行动` : local ? "等待本机回合状态" : "等待服务端回合状态",
+        badge: `第 ${context.view.game.turnNumber} 回合`,
+      };
+
+      if (local) {
+        return {
+          id: "network",
+          eyebrow: "本地演示对局",
+          title: "本地状态正常",
+          subtitle: "本局由本机演示会话驱动，不连接对局服务器；当前回合和私有状态均来自本机。",
+          heroLabel: "本机",
+          rows: [
+            { id: "state", title: "连接状态", detail: "未连接远程服务器", badge: "本地演示" },
+            turnRow,
+            { id: "revision", title: "状态来源", detail: "本机内存中的演示会话", badge: "本机" },
+          ],
+          actions: [nav("back", "返回", "game-menu", "cream")],
+        };
+      }
+
+      return {
+        id: "network",
+        eyebrow: "服务端权威对局",
+        title: retrying ? "正在恢复当前牌桌…" : "连接稳定",
+        subtitle: retrying
+          ? "对局仍由服务器继续处理。重连后会同步当前回合与你的最新私有状态，不会代你自动出牌。"
+          : "当前已与服务器同步；倒计时和行动结果以服务端为准。",
+        heroLabel: retrying ? "正在同步" : "已连接",
+        rows: [
+          { id: "state", title: "连接状态", detail: retrying ? "网络恢复后会自动同步" : "可正常继续对局", badge: retrying ? "离线，等待重连" : "在线" },
+          turnRow,
+          { id: "revision", title: "恢复方式", detail: "同步完整私有快照", badge: "安全" },
+        ],
+        actions: retrying ? [intent("retry", "立即重试", "Reconnect")] : [nav("back", "返回", "game-menu", "cream")],
+      };
+    },
+  },
   settings: { id: "settings", build: (context) => ({
     id: "settings",
     eyebrow: "THIS DEVICE",
