@@ -1,7 +1,7 @@
 import { inflateSync } from "node:zlib";
 
 const RASTER_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
-const ROLES = new Set(["background", "full-card", "avatar", "hero", "icon"]);
+const ROLES = new Set(["background", "full-card", "avatar", "hero", "icon", "ui-crop"]);
 const FITS = new Set(["contain", "cover"]);
 const EDGE_POLICIES = new Set(["bleed", "framed", "transparent-safe"]);
 const PNG_SIGNATURE = "89504e470d0a1a0a";
@@ -116,6 +116,7 @@ function validateRasterSpec(file, spec) {
     || (spec.role === "avatar" && spec.fit === "contain" && spec.edgePolicy === "transparent-safe" && spec.targetDpr === 3 && spec.maxCropRatio === 0)
     || (spec.role === "hero" && spec.fit === "contain" && spec.edgePolicy === "transparent-safe" && spec.targetDpr === 3 && spec.maxCropRatio === 0)
     || (spec.role === "icon" && spec.fit === "contain" && spec.edgePolicy === "transparent-safe" && spec.targetDpr >= 2 && spec.maxCropRatio === 0)
+    || (spec.role === "ui-crop" && spec.fit === "contain" && spec.edgePolicy === "bleed" && spec.targetDpr === 3 && spec.maxCropRatio === 0)
   );
   if (!rolePolicyValid) throw new Error(`ASSET_RASTER_ROLE_POLICY_INVALID:${file}:${spec.role}`);
   const minimumSlot = minimumProductionSlot(file, spec.role);
@@ -135,6 +136,7 @@ function minimumProductionSlot(file, role) {
   if (file === "cards/danger.png") return { width: 218, height: 311 };
   if (role === "full-card") return { width: 210, height: 300 };
   if (role === "avatar") return { width: 285, height: 285 };
+  if (role === "ui-crop") return { width: 1, height: 1 };
   if (
     file === "ui/icons/cream/device-mobile-hero.png"
     || file === "ui/icons/cream/check-hero.png"

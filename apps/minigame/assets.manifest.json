@@ -22,6 +22,13 @@
     "sounds/nope.wav",
     "sounds/select.wav",
     "ui/backgrounds/comic-bg-390x844.jpg",
+    "ui/home/hero.webp",
+    "ui/home/rules.png",
+    "ui/home/settings.png",
+    "ui/home/status-left.webp",
+    "ui/home/status-right.webp",
+    "ui/home/status.png",
+    "ui/home/tutorial.png",
     "ui/icons/cream/arrow-clockwise.png",
     "ui/icons/cream/arrow-left.png",
     "ui/icons/cream/book-open.png",
@@ -270,6 +277,111 @@
       },
       "targetDpr": 3,
       "fit": "cover",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/home/hero.webp": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 1170,
+        "height": 1584
+      },
+      "maxCssSize": {
+        "width": 390,
+        "height": 528
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/home/rules.png": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 216,
+        "height": 174
+      },
+      "maxCssSize": {
+        "width": 72,
+        "height": 58
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/home/settings.png": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 186,
+        "height": 174
+      },
+      "maxCssSize": {
+        "width": 62,
+        "height": 58
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/home/status-left.webp": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 120,
+        "height": 168
+      },
+      "maxCssSize": {
+        "width": 40,
+        "height": 56
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/home/status-right.webp": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 120,
+        "height": 168
+      },
+      "maxCssSize": {
+        "width": 40,
+        "height": 56
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/home/status.png": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 93,
+        "height": 132
+      },
+      "maxCssSize": {
+        "width": 31,
+        "height": 44
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/home/tutorial.png": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 174,
+        "height": 174
+      },
+      "maxCssSize": {
+        "width": 58,
+        "height": 58
+      },
+      "targetDpr": 3,
+      "fit": "contain",
       "maxCropRatio": 0,
       "edgePolicy": "bleed"
     },
@@ -864,7 +976,14 @@
     "sounds/danger.wav": "3aab00e22f51771645abcf8ae018ff4d871624c67d17bb146aa9387f7be34e32",
     "sounds/nope.wav": "a94fefcc884085a82d8d9de4649c7f241118ef2b60650798643f68d3d47bc84d",
     "sounds/select.wav": "9472c9a3477fac53d1ea48867baebce4720c2188a1546fb5b97c6ffbd5607472",
-    "ui/backgrounds/comic-bg-390x844.jpg": "135312469e0cfa0b327e346e0cb22acc25ac1e183fd93e7f928deef1b28ea214",
+    "ui/backgrounds/comic-bg-390x844.jpg": "bc092cd424bff0fa690161cc89820a70368a53cdff36545159867530c9ed6550",
+    "ui/home/hero.webp": "38c05440e846b78de680280274663a8eb241fcf307bdcdba014715d27fb78bac",
+    "ui/home/rules.png": "fa1e91c7331add1b16de582e3e04060edea5bbf54f8a38fa80c1573c594a3a2b",
+    "ui/home/settings.png": "758b15cfdddfe39862eb8421fe7a8cb9bb4d0bc79dfec72b8173a19564e58c17",
+    "ui/home/status-left.webp": "4f7ba5812341f4285d0fc71d7cdd5e82e86a0b177627f521bc349c16f0a2c097",
+    "ui/home/status-right.webp": "5daca1e663df364f1c16f2608c19e04769ba01d68148b42beb3cbf38b8510d78",
+    "ui/home/status.png": "2a058423e99badb5ef47217f4fd02a0ddc5541356091e31fbf13b0b295a0a05b",
+    "ui/home/tutorial.png": "b33932b9d83d7997717f4faa85f656e4089b48b576ad32b10dec54c61bfc78c6",
     "ui/icons/cream/arrow-clockwise.png": "4d542c28b3b355cbe5d38016981fa77f57f4a4159078aad0da0f0ecabd3c9c49",
     "ui/icons/cream/arrow-left.png": "d9c890abe909cc476a3bf0a564b04207851e51c69e0f5fdc90a79abcae304040",
     "ui/icons/cream/book-open.png": "5747720dca2d730c39d2e22dadc9d4f2772c9e47c78726ad5da20b99971cad08",

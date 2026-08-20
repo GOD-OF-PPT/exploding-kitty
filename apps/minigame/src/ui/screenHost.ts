@@ -244,7 +244,6 @@ export class ScreenHost {
     Layout.init(useProductSurface ? this.template(model, view) : rendered.template, useProductSurface
       ? {
         ...UI_STYLE,
-        ...this.homeSafeStyles(model),
         topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
         actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
         tableActionDock: { ...UI_STYLE.tableActionDock, height: 96 + this.metrics.safeInsets.bottom, paddingBottom: 12 + this.metrics.safeInsets.bottom },
@@ -302,39 +301,22 @@ export class ScreenHost {
     const primary = model.actions?.[0];
     const resumable = primary?.id === "resume";
     const status = resumable ? this.homeSessionStatus(view) : null;
-    const resumeCard = status
-      ? `<button id="home-resume-card" class="homeResumeCard"><image class="homeResumeImage" src="assets/cards/card-back.png"></image><view class="homeResumeCopy"><text class="homeResumeTitle" value="未完成的牌局"></text><text class="homeResumeDetail" value="${escape(status)}"></text></view><text class="homeResumeLink" value="查看"></text></button>`
-      : `<view class="homeQuickStart"><text class="homeQuickStartLabel" value="2 - 5 人 · 原创回合制卡牌"></text></view>`;
+    const statusCard = status
+      ? `<button id="home-resume-card" class="homeResumeCard"><image class="homeStatusIcon" src="assets/ui/home/status.png"></image><view class="homeResumeCopy"><text class="homeResumeTitle" value="你有一场未完成的牌局"></text><text class="homeResumeDetail" value="${escape(status)}"></text></view><text class="homeResumeLink" value="查看详情 ›"></text></button>`
+      : `<view class="homeQuickStart"><image class="homeStatusIcon" src="assets/ui/home/status.png"></image><view class="homeQuickStartCopy"><text class="homeQuickStartTitle" value="快速开局"></text><text class="homeQuickStartDetail" value="2 - 5 人 · 原创回合制卡牌"></text></view><text class="homeQuickStartReady" value="准备就绪"></text></view>`;
+    const statusBar = `<view class="homeStatusRow"><image class="homeStatusSide" src="assets/ui/home/status-left.webp"></image>${statusCard}<image class="homeStatusSide" src="assets/ui/home/status-right.webp"></image></view>`;
     const error = this.error ? `<text id="error" class="error" value="${escape(this.error)}"></text>` : "";
-    return `<view class="app"><view class="topSafe"></view><view class="homeScreen"><view class="homeBrand"><text class="homeTagline" value="${escape(model.eyebrow ?? "")}"></text><text class="homeTitle" value="${escape(model.title)}"></text><text class="homeWelcome" value="${escape(model.subtitle ?? "嗨，玩家")}"></text></view><view class="homeStage"><view class="homeSpeech"><text class="homeSpeechLead" value="准备好开局了吗？"></text><text class="homeSpeechDetail" value="小心出牌，别被炸毛！"></text></view><image class="homeHeroCard" src="assets/cards/card-back.png"></image><image class="homeCat" src="assets/cats/player.png"></image></view>${resumeCard}<view class="homeActions"><button id="home-primary" class="homePrimary" value="${escape(primary?.label ?? "创建房间")}"></button><button id="home-join" class="homeSecondary" value="加入房间"></button></view><view class="homeMore"><view class="homeMoreLine"></view><text class="homeMoreLabel" value="更多"></text><view class="homeMoreLine"></view></view><view class="homeUtilities"><button id="home-tutorial" class="homeUtility"><image class="homeUtilityCard" src="assets/cards/skip.png"></image><text class="homeUtilityLabel" value="新手教学"></text></button><view class="homeUtilityDivider"></view><button id="home-rules" class="homeUtility"><image class="homeUtilityCard" src="assets/cards/card-back.png"></image><text class="homeUtilityLabel" value="规则图鉴"></text></button><view class="homeUtilityDivider"></view><button id="home-settings" class="homeUtility"><view class="homeUtilityIconFrame"><image class="homeUtilityIcon" src="assets/ui/icons/cream/list.png"></image></view><text class="homeUtilityLabel" value="设置"></text></button></view></view>${error}</view>`;
+    return `<view class="app"><view class="homeScreen"><image class="homeHero" src="assets/ui/home/hero.webp"></image>${statusBar}<view class="homeActions"><button id="home-primary" class="homePrimary" value="${escape(primary?.label ?? "创建房间")}"></button><button id="home-join" class="homeSecondary" value="加入房间"></button></view><view class="homeMore"><view class="homeMoreLine"></view><text class="homeMoreLabel" value="更多"></text><view class="homeMoreLine"></view></view><view class="homeUtilities"><button id="home-tutorial" class="homeUtility homeUtilityTutorial"><image class="homeUtilityImage homeUtilityImageTutorial" src="assets/ui/home/tutorial.png"></image><text class="homeUtilityLabel homeUtilityLabelTutorial" value="新手教学"></text></button><view class="homeUtilityDivider"></view><button id="home-rules" class="homeUtility homeUtilityRules"><image class="homeUtilityImage homeUtilityImageRules" src="assets/ui/home/rules.png"></image><text class="homeUtilityLabel homeUtilityLabelRules" value="规则图鉴"></text></button><view class="homeUtilityDivider"></view><button id="home-settings" class="homeUtility homeUtilitySettings"><image class="homeUtilityImage homeUtilityImageSettings" src="assets/ui/home/settings.png"></image><text class="homeUtilityLabel homeUtilityLabelSettings" value="设置"></text></button></view></view>${error}</view>`;
   }
 
   private homeSessionStatus(view: ProductViewModel): string {
     if (view.game.id || view.phase === "MATCH") {
       const alive = view.players.filter((player) => player.alive !== false).length;
       const playerCount = Math.max(view.players.length, alive);
-      return `${alive}/${playerCount} 人 · 第 ${Math.max(1, view.game.turnNumber)} 回合`;
+      return `对局中 · ${alive}/${playerCount}人 · 第${Math.max(1, view.game.turnNumber)}回合`;
     }
     if (view.room.id || view.phase === "LOBBY") return `房间 ${view.room.code || "进行中"} · 等待开局`;
     return "牌局仍在进行";
-  }
-
-  private homeSafeStyles(model: ScreenModel): Record<string, (typeof UI_STYLE)[string]> {
-    if (model.id !== "home") return {};
-    const pressure = Math.max(0, this.metrics.safeInsets.top - 26) + this.metrics.safeInsets.bottom;
-    const brandReduction = Math.min(28, Math.ceil(pressure * 0.4));
-    const stageReduction = Math.min(42, Math.max(0, pressure - brandReduction));
-    const utilityReduction = Math.min(16, Math.max(0, pressure - brandReduction - stageReduction));
-    const catSize = 312 - stageReduction;
-    return {
-      homeScreen: { ...UI_STYLE.homeScreen, paddingBottom: 12 + this.metrics.safeInsets.bottom },
-      homeBrand: { ...UI_STYLE.homeBrand, height: 158 - brandReduction },
-      homeStage: { ...UI_STYLE.homeStage, height: 330 - stageReduction },
-      homeCat: { ...UI_STYLE.homeCat, left: Math.round((358 - catSize) / 2), width: catSize, height: catSize },
-      homeHeroCard: { ...UI_STYLE.homeHeroCard, top: 174 - Math.round(stageReduction * 0.65) },
-      homeUtilities: { ...UI_STYLE.homeUtilities, height: 108 - utilityReduction },
-      homeUtility: { ...UI_STYLE.homeUtility, height: 100 - utilityReduction },
-    };
   }
 
   private activityAvailable(model: ScreenModel, view: ProductViewModel): boolean {
