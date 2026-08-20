@@ -27,7 +27,20 @@ const ULTRA_SHORT_BURST_WIDTH = 188;
 const CARD_WIDTH = 92.4;
 const CARD_HEIGHT = 132;
 const COMPACT_DENSE_HAND_THRESHOLD = 334;
+const COMPACT_DENSE_CARD_WIDTH = 56;
+const ULTRA_SHORT_SIX_CARD_WIDTH = 50;
+const ULTRA_SHORT_DENSE_CARD_WIDTH = 44;
+const DENSE_ROW_GAP = 6;
+const DENSE_COMPACT_TOP_OFFSET = 22;
+const DENSE_FULL_TOP_OFFSET = 60;
+const ULTRA_SHORT_SIX_TOP_OFFSET = 22;
+const ULTRA_SHORT_DENSE_TOP_OFFSET = 8;
 const MIN_CARD_TOUCH_SIZE = 44;
+const DENSE_HAND_ROW_LENGTH = 5;
+const SIX_CARD_ROW_LENGTH = 3;
+const DENSE_HIT_INSET = 4;
+const DENSE_SELECTION_INSET = 5;
+const DENSE_SELECTION_LINE_WIDTH = 4;
 const HAND_PAGE_SIZE = 5;
 const HAND_TRAY_CARD_WIDTH = 68;
 const HAND_TRAY_COMPACT_CARD_WIDTH = 44;
@@ -35,8 +48,10 @@ const HAND_TRAY_GAP = 6;
 const HAND_TRAY_HEADER_HEIGHT = 70;
 const HAND_TRAY_COMPACT_HEADER_HEIGHT = 36;
 const HAND_PAGE_CONTROL_HEIGHT = 38;
-const SELECTED_LIFT = 18;
+const PAGED_SELECTED_LIFT = 18;
 const FOCUSED_CARD_SCALE = 1.65;
+const DENSE_SELECTED_LIFT = 55;
+const DENSE_SELECTED_SCALE = 1.05;
 const CARD_ROTATION_ORIGIN = 1.6;
 const WAITING_ALPHA = 0.48;
 const DISABLED_CARD_ALPHA = 0.72;
@@ -54,7 +69,7 @@ export type TableSurfaceState = Readonly<{
   hand: readonly CardModel[];
   players: readonly PlayerModel[];
   myTurn: boolean;
-  canDraw: boolean;
+  canDraw?: boolean;
   turnsOwed: number;
   waitingLabel?: string;
   selectedTokens?: readonly string[];
@@ -97,6 +112,8 @@ type CardSlot = Readonly<{
   focused: boolean;
   layoutScale: number;
   artworkInset: number;
+  hitTarget?: Rect;
+  interactionMode: "paged" | "dense";
 }>;
 
 export class CardTableSurface {
@@ -146,6 +163,14 @@ export class CardTableSurface {
   cardAt(x: number, y: number): CardModel | null {
     if (!this.state.myTurn) return null;
     const slots = this.paintOrder(this.handSlots());
+    if (!this.usesPagedHand()) {
+      const denseHand = slots.some((slot) => slot.hitTarget);
+      for (const slot of slots) {
+        if (!slot.hitTarget || !pointInRect(slot.hitTarget, x, y)) continue;
+        return slot.card.playable ? slot.card : null;
+      }
+      if (denseHand) return null;
+    }
     for (let index = slots.length - 1; index >= 0; index -= 1) {
       const slot = slots[index]!;
       if (!pointInCard(slot, x, y)) continue;
@@ -155,15 +180,26 @@ export class CardTableSurface {
   }
 
   drawAt(x: number, y: number): boolean {
-    return this.state.canDraw && pointInRect(this.tableLayout().drawBurst, x, y);
+    return this.usesPagedHand()
+      && this.canDraw()
+      && pointInRect(this.tableLayout().drawBurst, x, y);
   }
 
   pageDeltaAt(x: number, y: number): -1 | 0 | 1 {
+    if (!this.usesPagedHand()) return 0;
     const pagination = this.paginationLayout();
     if (pagination.pageCount <= 1) return 0;
     if (pagination.currentPage > 0 && pointInRect(pagination.previous, x, y)) return -1;
     if (pagination.currentPage < pagination.pageCount - 1 && pointInRect(pagination.next, x, y)) return 1;
     return 0;
+  }
+
+  private usesPagedHand(): boolean {
+    return this.state.handPage !== undefined;
+  }
+
+  private canDraw(): boolean {
+    return this.usesPagedHand() ? this.state.canDraw === true : this.state.myTurn;
   }
 
   private resize(width: number, height: number, requestedRenderScale?: number): void {
@@ -196,7 +232,8 @@ export class CardTableSurface {
 
   private draw(): void {
     const { ctx } = this;
-    const { width, height, deckCount, discard, myTurn, canDraw, turnsOwed } = this.state;
+    const { width, height, deckCount, discard, myTurn, turnsOwed } = this.state;
+    const canDraw = this.canDraw();
     const layout = this.tableLayout();
     ctx.clearRect(0, 0, width, height);
 
@@ -231,7 +268,7 @@ export class CardTableSurface {
     this.drawHandZone(layout);
 
     for (const slot of this.paintOrder(this.handSlots(layout))) this.drawCard(slot, !myTurn || !slot.card.playable);
-    this.drawPagination(layout);
+    if (this.usesPagedHand()) this.drawPagination(layout);
   }
 
   private tableLayout(): TableLayout {
@@ -277,8 +314,6 @@ export class CardTableSurface {
       burstY = handTop - 70 * scale;
       pileLabelGap = 31 * scale;
     }
-    ctx.fillStyle = "rgba(12, 11, 9, 0.78)";
-    ctx.fillRect(0, 0, width, height);
 
     const pileWidth = 97 * tableScale;
     const pileHeight = 140 * tableScale;
@@ -467,21 +502,32 @@ export class CardTableSurface {
     ctx.fillRect(0, layout.handTop, width, height - layout.handTop);
 
     ctx.save();
-    ctx.translate(width / 2, layout.handTop);
+    const dividerOffset = this.usesPagedHand()
+      ? 0
+      : layout.compactDenseHand ? 0 : 27.5 * layout.scale;
+    ctx.translate(width / 2, layout.handTop + dividerOffset);
     ctx.rotate(-Math.PI / 180);
     ctx.fillStyle = COLORS.ink;
     ctx.fillRect(-width / 2 - 2 * layout.scale, -2.5 * layout.scale, width + 4 * layout.scale, 5 * layout.scale);
     ctx.restore();
     this.drawHandCount(layout, hand.length);
-    this.drawHandInstruction(layout);
+    if (this.usesPagedHand()) this.drawHandInstruction(layout);
   }
 
   private drawHandCount(layout: TableLayout, count: number): void {
     const { ctx } = this;
     const centerX = this.state.width / 2;
     const compact = this.state.height - layout.handTop < 190 * layout.scale;
-    const baseline = layout.handTop + (compact ? 12 : 22) * layout.scale;
-    this.setFont(Math.max(10, (compact ? 9 : 11) * layout.scale), 800, false);
+    const baseline = this.usesPagedHand()
+      ? layout.handTop + (compact ? 12 : 22) * layout.scale
+      : layout.handTop + (layout.compactDenseHand ? 5 : 45) * layout.scale;
+    this.setFont(
+      this.usesPagedHand()
+        ? Math.max(10, (compact ? 9 : 11) * layout.scale)
+        : layout.compactDenseHand ? Math.max(10, 9 * layout.scale) : Math.max(11, 9 * layout.scale),
+      800,
+      false,
+    );
     ctx.textBaseline = "middle";
     ctx.textAlign = "right";
     ctx.fillStyle = COLORS.cream;
@@ -549,7 +595,7 @@ export class CardTableSurface {
     ctx.translate(originX, originY);
     ctx.rotate(rotation);
     ctx.scale(slot.scale, slot.scale);
-    if (selected) {
+    if (selected && (slot.interactionMode === "paged" || !slot.hitTarget)) {
       ctx.fillStyle = COLORS.yellow;
       roundedRect(ctx, left - 4 * layoutScale, top - 4 * layoutScale, width + 8 * layoutScale, height + 8 * layoutScale, 10 * layoutScale);
       ctx.fill();
@@ -598,7 +644,7 @@ export class CardTableSurface {
       Math.max(1, labelWidth - 4 * layoutScale),
     );
     ctx.globalAlpha = priorAlpha;
-    if (selected) {
+    if (selected && slot.interactionMode === "paged") {
       const radius = Math.max(8, 11 * layoutScale);
       const badgeX = left + width - radius * 0.85;
       const badgeY = top + height - radius * 0.85;
@@ -618,11 +664,27 @@ export class CardTableSurface {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.stroke();
+    } else if (selected && slot.hitTarget) {
+      const selectionInset = DENSE_SELECTION_INSET * layoutScale;
+      ctx.strokeStyle = COLORS.yellow;
+      ctx.lineWidth = DENSE_SELECTION_LINE_WIDTH * layoutScale;
+      ctx.strokeRect(
+        left + selectionInset,
+        top + selectionInset,
+        width - selectionInset * 2,
+        height - selectionInset * 2,
+      );
     }
     ctx.restore();
   }
 
   private handSlots(layout = this.tableLayout()): CardSlot[] {
+    return this.usesPagedHand()
+      ? this.pagedHandSlots(layout)
+      : this.denseHandSlots(layout);
+  }
+
+  private pagedHandSlots(layout: TableLayout): CardSlot[] {
     const { width, height, hand, selectedTokens = [] } = this.state;
     if (hand.length === 0) return [];
     const selected = new Set(selectedTokens);
@@ -652,7 +714,7 @@ export class CardTableSurface {
         );
     const center = (visible.length - 1) / 2;
     const top = layout.handTop + headerHeight;
-    const selectedLift = (compact ? Math.min(6, SELECTED_LIFT) : SELECTED_LIFT) * layout.scale;
+    const selectedLift = (compact ? Math.min(6, PAGED_SELECTED_LIFT) : PAGED_SELECTED_LIFT) * layout.scale;
     const focusedToken = [...selectedTokens].reverse().find((token) => visible.some((card) => card.token === token));
     const focusedScale = compact ? 1.12 : FOCUSED_CARD_SCALE;
     const otherCenters: number[] = [];
@@ -688,261 +750,12 @@ export class CardTableSurface {
         focused: isFocused,
         layoutScale: layout.scale,
         artworkInset,
+        interactionMode: "paged",
       };
     });
   }
 
-  private pageCount(): number {
-    return Math.max(1, Math.ceil(this.state.hand.length / HAND_PAGE_SIZE));
-  }
-
-  private currentPage(): number {
-    return Math.max(0, Math.min(this.pageCount() - 1, Math.floor(this.state.handPage ?? 0)));
-  }
-
-  private paginationLayout(layout = this.tableLayout()): PaginationLayout {
-    const controlSize = MIN_CARD_TOUCH_SIZE * layout.scale;
-    const y = Math.max(layout.handTop, this.state.height - controlSize);
-    return {
-      currentPage: this.currentPage(),
-      pageCount: this.pageCount(),
-      previous: { x: 4 * layout.scale, y, width: controlSize, height: controlSize },
-      next: { x: this.state.width - controlSize - 4 * layout.scale, y, width: controlSize, height: controlSize },
-      centerY: y + controlSize / 2,
-    };
-  }
-
-  private paintOrder(slots: CardSlot[]): CardSlot[] {
-    return [
-      ...slots.filter((slot) => !slot.selected),
-      ...slots.filter((slot) => slot.selected && !slot.focused),
-      ...slots.filter((slot) => slot.focused),
-    ];
-  }
-
-  private setFont(size: number, weight: number, display: boolean): void {
-    const family = display && this.state.fontFamily ? `"${this.state.fontFamily}"` : "sans-serif";
-    this.ctx.font = `${weight} ${size}px ${family}`;
-  }
-
-  private drawPile(
-    rect: Rect,
-    source: string | undefined,
-    kind: "draw" | "discard",
-    count: number | undefined,
-    dim: boolean,
-    scale: number,
-    labelGap: number,
-  ): void {
-    const { ctx } = this;
-    const priorAlpha = ctx.globalAlpha;
-    ctx.save();
-    if (dim) ctx.globalAlpha = priorAlpha * WAITING_ALPHA;
-    drawOffsetShadow(ctx, rect.x, rect.y, rect.width, rect.height, 8 * scale, 10 * scale, "#6a5a48");
-    drawOffsetShadow(ctx, rect.x, rect.y, rect.width, rect.height, 5 * scale, 6 * scale, "#000000");
-
-    const inset = 3 * scale;
-    const image = source ? this.images.get(source) : undefined;
-    const filterContext = ctx as CanvasRenderingContext2D & { filter?: string };
-    const priorFilter = filterContext.filter;
-    ctx.save();
-    roundedRect(ctx, rect.x + inset, rect.y + inset, rect.width - inset * 2, rect.height - inset * 2, 5 * scale);
-    ctx.clip();
-    if (dim && typeof priorFilter === "string") filterContext.filter = "grayscale(70%)";
-    if (kind === "draw" && dim) ctx.globalAlpha = priorAlpha * DIMMED_DRAW_IMAGE_ALPHA;
-    ctx.fillStyle = kind === "draw" ? COLORS.redDark : COLORS.ink;
-    ctx.fillRect(rect.x + inset, rect.y + inset, rect.width - inset * 2, rect.height - inset * 2);
-    if (isReady(image)) {
-      // A discard is semantic game state, and the card back has the same
-      // canonical 7:10 contract. Keep both complete instead of cropping them
-      // to an incidental pile-frame ratio.
-      drawImageContain(ctx, image, rect.x + inset, rect.y + inset, rect.width - inset * 2, rect.height - inset * 2);
-    }
-    if (typeof priorFilter === "string") filterContext.filter = priorFilter;
-    ctx.globalAlpha = dim ? priorAlpha * WAITING_ALPHA : priorAlpha;
-    if (kind === "draw") {
-      // The card back remains intentionally ominous even on the active turn;
-      // the adjusted image alpha preserves the same result when the disabled
-      // pile is composited without allocating another offscreen canvas.
-      ctx.fillStyle = `rgba(0, 0, 0, ${DRAW_PILE_SHADE})`;
-      ctx.fillRect(rect.x + inset, rect.y + inset, rect.width - inset * 2, rect.height - inset * 2);
-    }
-    ctx.restore();
-    ctx.strokeStyle = COLORS.cream;
-    ctx.lineWidth = 4 * scale;
-    roundedRect(ctx, rect.x + 2 * scale, rect.y + 2 * scale, rect.width - 4 * scale, rect.height - 4 * scale, 6 * scale);
-    ctx.stroke();
-
-    const centerX = rect.x + rect.width / 2;
-    const labelY = rect.y + rect.height + labelGap;
-    ctx.textBaseline = "alphabetic";
-    if (kind === "draw") {
-      this.setFont(Math.max(11, 11 * scale), 800, false);
-      ctx.fillStyle = COLORS.cream;
-      ctx.textAlign = "right";
-      ctx.fillText("牌堆", centerX + scale, labelY);
-      this.setFont(Math.max(14, 18 * scale), 900, false);
-      ctx.fillStyle = COLORS.yellow;
-      ctx.textAlign = "left";
-      ctx.fillText(String(count ?? 0), centerX + 5 * scale, labelY);
-    } else {
-      this.setFont(Math.max(11, 11 * scale), 800, false);
-      ctx.fillStyle = COLORS.cream;
-      ctx.textAlign = "center";
-      ctx.fillText("弃牌堆", centerX, labelY);
-    }
-    ctx.globalAlpha = priorAlpha;
-    ctx.restore();
-  }
-
-  private drawDrawBurst(rect: Rect, myTurn: boolean, turnsOwed: number, scale: number): void {
-    const { ctx } = this;
-    const label = !myTurn ? "现在不是你的回合" : turnsOwed > 1 ? "抽牌 · 完成 1 回合" : "抽一张";
-    const priorAlpha = ctx.globalAlpha;
-    ctx.save();
-    if (!myTurn) ctx.globalAlpha = priorAlpha * WAITING_ALPHA;
-    burstPath(ctx, rect.x + 4 * scale, rect.y + 4 * scale, rect.width, rect.height);
-    ctx.fillStyle = "#000000";
-    ctx.fill();
-    burstPath(ctx, rect.x, rect.y, rect.width, rect.height);
-    ctx.fillStyle = myTurn ? COLORS.yellow : "#5d5348";
-    ctx.fill();
-    ctx.fillStyle = myTurn ? COLORS.ink : "#d5c7af";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const centerX = rect.x + rect.width / 2;
-    const centerY = rect.y + rect.height / 2;
-    const collapsed = rect.height < 44;
-    if (myTurn && turnsOwed > 1 && collapsed) {
-      this.setFont(13, 700, true);
-      ctx.fillText("抽牌", centerX, centerY - 7, Math.max(1, rect.width - 14));
-      ctx.fillText("完成 1 回合", centerX, centerY + 8, Math.max(1, rect.width - 14));
-    } else {
-      const activeFontSize = turnsOwed > 1 ? 20 : 26;
-      const minimumFontSize = myTurn ? (turnsOwed > 1 ? 15 : 16) : 12;
-      this.setFont(Math.max(minimumFontSize, (myTurn ? activeFontSize : 15) * scale), 700, true);
-      ctx.fillText(label, centerX, centerY + scale, Math.max(1, rect.width - 14));
-    }
-    ctx.globalAlpha = priorAlpha;
-    ctx.restore();
-  }
-
-  private drawHandZone(layout: TableLayout): void {
-    const { ctx } = this;
-    const { width, height, hand } = this.state;
-    const gradient = ctx.createLinearGradient(0, layout.handTop, 0, height);
-    gradient.addColorStop(0, "rgba(218, 48, 31, 0)");
-    gradient.addColorStop(0.2, COLORS.red);
-    gradient.addColorStop(1, COLORS.redDark);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, layout.handTop, width, height - layout.handTop);
-
-    ctx.save();
-    const dividerOffset = layout.compactDenseHand ? 0 : 27.5 * layout.scale;
-    ctx.translate(width / 2, layout.handTop + dividerOffset);
-    ctx.rotate(-Math.PI / 180);
-    ctx.fillStyle = COLORS.ink;
-    ctx.fillRect(-width / 2 - 2 * layout.scale, -2.5 * layout.scale, width + 4 * layout.scale, 5 * layout.scale);
-    ctx.restore();
-    this.drawHandCount(layout, hand.length);
-  }
-
-  private drawHandCount(layout: TableLayout, count: number): void {
-    const { ctx } = this;
-    const centerX = this.state.width / 2;
-    const baseline = layout.handTop + (layout.compactDenseHand ? 5 : 45) * layout.scale;
-    this.setFont(
-      layout.compactDenseHand ? Math.max(10, 9 * layout.scale) : Math.max(11, 9 * layout.scale),
-      800,
-      false,
-    );
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "right";
-    ctx.fillStyle = COLORS.cream;
-    ctx.fillText("你的手牌", centerX + 8 * layout.scale, baseline);
-    ctx.textAlign = "left";
-    ctx.fillStyle = COLORS.yellow;
-    ctx.fillText(String(count), centerX + 13 * layout.scale, baseline);
-  }
-
-  private drawCard(slot: CardSlot, dim: boolean): void {
-    const { ctx } = this;
-    const { x, y, width, height, rotation, card, selected, layoutScale, artworkInset } = slot;
-    const originX = x + width / 2;
-    const originY = y + height * CARD_ROTATION_ORIGIN;
-    const left = -width / 2;
-    const top = -height * CARD_ROTATION_ORIGIN;
-    const priorAlpha = ctx.globalAlpha;
-
-    ctx.save();
-    if (dim) ctx.globalAlpha = priorAlpha * DISABLED_CARD_ALPHA;
-    ctx.translate(originX, originY);
-    ctx.rotate(rotation);
-    ctx.scale(slot.scale, slot.scale);
-    if (selected && !slot.hitTarget) {
-      ctx.fillStyle = COLORS.yellow;
-      roundedRect(ctx, left - 4 * layoutScale, top - 4 * layoutScale, width + 8 * layoutScale, height + 8 * layoutScale, 10 * layoutScale);
-      ctx.fill();
-    }
-    drawOffsetShadow(ctx, left, top, width, height, 4 * layoutScale, 5 * layoutScale, "#000000");
-
-    const inset = artworkInset;
-    const image = this.images.get(card.image);
-    const filterContext = ctx as CanvasRenderingContext2D & { filter?: string };
-    const priorFilter = filterContext.filter;
-    ctx.save();
-    roundedRect(ctx, left + inset, top + inset, width - inset * 2, height - inset * 2, 5 * layoutScale);
-    ctx.clip();
-    if (dim && typeof priorFilter === "string") filterContext.filter = "grayscale(70%)";
-    ctx.fillStyle = COLORS.cream;
-    ctx.fillRect(left + inset, top + inset, width - inset * 2, height - inset * 2);
-    if (isReady(image)) {
-      // Hand cards communicate legal state. Cropping even a small part can
-      // remove the identifying illustration or border, so semantic card art
-      // is always drawn with its entire source rectangle.
-      drawImageContain(ctx, image, left + inset, top + inset, width - inset * 2, height - inset * 2);
-    }
-    if (typeof priorFilter === "string") filterContext.filter = priorFilter;
-    ctx.restore();
-    ctx.strokeStyle = COLORS.ink;
-    ctx.lineWidth = 3 * layoutScale;
-    roundedRect(ctx, left + 1.5 * layoutScale, top + 1.5 * layoutScale, width - 3 * layoutScale, height - 3 * layoutScale, 6.5 * layoutScale);
-    ctx.stroke();
-
-    this.setFont(Math.max(8, Math.min(13 * layoutScale, width * 0.18)), 800, true);
-    const labelWidth = Math.min(width - 12 * layoutScale, (card.name.length * 13 + 16) * layoutScale);
-    const labelHeight = Math.min(24 * layoutScale, Math.max(16 * layoutScale, width * 0.36));
-    ctx.fillStyle = COLORS.cream;
-    ctx.strokeStyle = COLORS.ink;
-    ctx.lineWidth = 2 * layoutScale;
-    roundedRect(ctx, left + 5 * layoutScale, top + 5 * layoutScale, labelWidth, labelHeight, 2 * layoutScale);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = COLORS.ink;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(
-      card.name,
-      left + 5 * layoutScale + labelWidth / 2,
-      top + 5 * layoutScale + labelHeight / 2,
-      Math.max(1, labelWidth - 4 * layoutScale),
-    );
-    ctx.globalAlpha = priorAlpha;
-    if (selected && slot.hitTarget) {
-      const selectionInset = DENSE_SELECTION_INSET * layoutScale;
-      ctx.strokeStyle = COLORS.yellow;
-      ctx.lineWidth = DENSE_SELECTION_LINE_WIDTH * layoutScale;
-      ctx.strokeRect(
-        left + selectionInset,
-        top + selectionInset,
-        width - selectionInset * 2,
-        height - selectionInset * 2,
-      );
-    }
-    ctx.restore();
-  }
-
-  private handSlots(layout = this.tableLayout()): CardSlot[] {
+  private denseHandSlots(layout: TableLayout): CardSlot[] {
     const { width, height, hand, selectedTokens = [] } = this.state;
     if (hand.length === 0) return [];
     const selected = new Set(selectedTokens);
@@ -1026,7 +839,7 @@ export class CardTableSurface {
         ? Math.max(MIN_CARD_TOUCH_SIZE + DENSE_HIT_INSET, splitSixSpread)
         : denseHand
           ? Math.max(MIN_CARD_TOUCH_SIZE + DENSE_HIT_INSET, naturalSpread)
-        : naturalSpread;
+          : naturalSpread;
       const angleStep = Math.min(4, 28 / Math.max(1, rowLength - 1)) * Math.PI / 180;
       const rowStart = handIndex;
       handIndex += rowLength;
@@ -1037,12 +850,13 @@ export class CardTableSurface {
         return {
           card,
           x,
-          y: rowTop - (isSelected && !denseHand ? SELECTED_LIFT * layout.scale : 0),
+          y: rowTop - (isSelected && !denseHand ? DENSE_SELECTED_LIFT * layout.scale : 0),
           width: cardWidth,
           height: cardHeight,
           rotation: denseHand || isSelected ? 0 : (index - center) * angleStep,
-          scale: isSelected && !denseHand ? SELECTED_SCALE : 1,
+          scale: isSelected && !denseHand ? DENSE_SELECTED_SCALE : 1,
           selected: isSelected,
+          focused: false,
           layoutScale: layout.scale,
           artworkInset,
           hitTarget: denseHand ? {
@@ -1059,129 +873,48 @@ export class CardTableSurface {
             width: MIN_CARD_TOUCH_SIZE,
             height: MIN_CARD_TOUCH_SIZE,
           } : undefined,
+          interactionMode: "dense" as const,
         };
       });
     }).flat();
   }
 
+  private pageCount(): number {
+    return Math.max(1, Math.ceil(this.state.hand.length / HAND_PAGE_SIZE));
+  }
+
+  private currentPage(): number {
+    return Math.max(0, Math.min(this.pageCount() - 1, Math.floor(this.state.handPage ?? 0)));
+  }
+
+  private paginationLayout(layout = this.tableLayout()): PaginationLayout {
+    const controlSize = MIN_CARD_TOUCH_SIZE * layout.scale;
+    const y = Math.max(layout.handTop, this.state.height - controlSize);
+    return {
+      currentPage: this.currentPage(),
+      pageCount: this.pageCount(),
+      previous: { x: 4 * layout.scale, y, width: controlSize, height: controlSize },
+      next: { x: this.state.width - controlSize - 4 * layout.scale, y, width: controlSize, height: controlSize },
+      centerY: y + controlSize / 2,
+    };
+  }
+
   private paintOrder(slots: CardSlot[]): CardSlot[] {
-    if (slots.some((slot) => slot.hitTarget)) return slots;
-    return [...slots.filter((slot) => !slot.selected), ...slots.filter((slot) => slot.selected)];
+    if (!this.usesPagedHand()) {
+      if (slots.some((slot) => slot.hitTarget)) return slots;
+      return [...slots.filter((slot) => !slot.selected), ...slots.filter((slot) => slot.selected)];
+    }
+    return [
+      ...slots.filter((slot) => !slot.selected),
+      ...slots.filter((slot) => slot.selected && !slot.focused),
+      ...slots.filter((slot) => slot.focused),
+    ];
   }
 
   private setFont(size: number, weight: number, display: boolean): void {
     const family = display && this.state.fontFamily ? `"${this.state.fontFamily}"` : "sans-serif";
     this.ctx.font = `${weight} ${size}px ${family}`;
   }
-}
-
-function normalizedRenderScale(value: number | undefined): number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 1;
-}
-
-function backingSize(logicalSize: number, renderScale: number): number {
-  return Math.max(1, Math.round(logicalSize * renderScale));
-}
-
-function pointInCard(slot: CardSlot, x: number, y: number): boolean {
-  const originX = slot.x + slot.width / 2;
-  const originY = slot.y + slot.height * CARD_ROTATION_ORIGIN;
-  const dx = x - originX;
-  const dy = y - originY;
-  const cosine = Math.cos(slot.rotation);
-  const sine = Math.sin(slot.rotation);
-  const localX = (dx * cosine + dy * sine) / slot.scale + slot.width / 2;
-  const localY = (-dx * sine + dy * cosine) / slot.scale + slot.height * CARD_ROTATION_ORIGIN;
-  const padding = 4 * slot.layoutScale;
-  return localX >= -padding
-    && localX <= slot.width + padding
-    && localY >= -padding
-    && localY <= slot.height + padding;
-}
-
-function pointInRect(rect: Rect, x: number, y: number): boolean {
-  return x >= rect.x
-    && x < rect.x + rect.width
-    && y >= rect.y
-    && y < rect.y + rect.height;
-}
-
-function isReady(image: HTMLImageElement | undefined): image is HTMLImageElement {
-  if (!image) return false;
-  return (image.width || image.naturalWidth) > 0 && (image.height || image.naturalHeight) > 0;
-}
-
-function drawImageContain(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-): void {
-  const sourceWidth = image.naturalWidth || image.width;
-  const sourceHeight = image.naturalHeight || image.height;
-  const scale = Math.min(width / sourceWidth, height / sourceHeight);
-  const drawWidth = sourceWidth * scale;
-  const drawHeight = sourceHeight * scale;
-  ctx.drawImage(
-    image,
-    x + (width - drawWidth) / 2,
-    y + (height - drawHeight) / 2,
-    drawWidth,
-    drawHeight,
-  );
-}
-
-function drawImageCover(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  focalX = 0.5,
-  focalY = 0.5,
-): void {
-  const sourceWidth = image.naturalWidth || image.width;
-  const sourceHeight = image.naturalHeight || image.height;
-  const scale = Math.max(width / sourceWidth, height / sourceHeight);
-  const cropWidth = width / scale;
-  const cropHeight = height / scale;
-  const sourceX = Math.max(0, Math.min(sourceWidth - cropWidth, (sourceWidth - cropWidth) * focalX));
-  const sourceY = Math.max(0, Math.min(sourceHeight - cropHeight, (sourceHeight - cropHeight) * focalY));
-  ctx.drawImage(image, sourceX, sourceY, cropWidth, cropHeight, x, y, width, height);
-}
-
-function burstPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
-  const points = [
-    [0, 0.32], [0.08, 0.27], [0.05, 0.08], [0.21, 0.14], [0.29, 0], [0.38, 0.15],
-    [0.53, 0.03], [0.64, 0.16], [0.79, 0.02], [0.84, 0.23], [1, 0.28], [0.93, 0.49],
-    [1, 0.71], [0.85, 0.76], [0.82, 1], [0.66, 0.88], [0.54, 1], [0.43, 0.87],
-    [0.29, 1], [0.23, 0.82], [0.05, 0.91], [0.08, 0.66], [0, 0.56],
-  ] as const;
-  ctx.beginPath();
-  ctx.moveTo(x + points[0][0] * width, y + points[0][1] * height);
-  for (let index = 1; index < points.length; index += 1) {
-    const point = points[index]!;
-    ctx.lineTo(x + point[0] * width, y + point[1] * height);
-  }
-  ctx.closePath();
-}
-
-function drawOffsetShadow(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  offsetX: number,
-  offsetY: number,
-  color: string,
-): void {
-  ctx.fillStyle = color;
-  ctx.fillRect(x + width, y + offsetY, offsetX, height);
-  ctx.fillRect(x + offsetX, y + height, Math.max(0, width - offsetX), offsetY);
 }
 
 function normalizedRenderScale(value: number | undefined): number {
