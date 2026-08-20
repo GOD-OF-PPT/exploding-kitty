@@ -7,14 +7,24 @@ import {
   materializeProductAction,
   selectionCanExtend,
 } from "@exploding-kitty/presentation-model";
-import type { WxKeyboardAdapter, WxMediaAdapter, WxShareAdapter, WxLike } from "../platform";
+import type {
+  WxDeviceOrientationEvent,
+  WxKeyboardAdapter,
+  WxLike,
+  WxMediaAdapter,
+  WxShareAdapter,
+  WxWindowResizeEvent,
+} from "../platform";
 import type { GameSession, RawProductView, ScreenAction, ScreenId, ScreenModel, ScreenRow } from "./model";
 import { normalizeProductView, type ProductViewModel } from "./normalize";
 import { buildScreen, deriveScreen } from "./sceneRegistry";
 import { CardTableSurface } from "./cardTableSurface";
+import { UI_STYLE } from "./theme";
 import { applyLayoutTransform, extractCssPoint, resolveCanvasMetrics, sizeDisplayCanvas, type CanvasMetrics } from "./canvasMetrics";
 import { AuthoritativeSoundPlayer, SOUND_ASSETS } from "./soundEffects";
 import { activityTimeline, latestActivity, latestActivitySequence, type ActivityItem } from "./activityFeed";
+import { registerFitImage } from "./rendering/fitImage";
+import { renderScene } from "./rendering/rendererRegistry";
 
 type ScreenHostOptions = Readonly<{
   wx: WxLike;
@@ -26,8 +36,16 @@ type ScreenHostOptions = Readonly<{
   canvas?: HTMLCanvasElement;
 }>;
 
+type ScrollElement = LayoutElement & Readonly<{
+  scrollTop: number;
+  scrollTo(left?: number, top?: number, animate?: boolean): void;
+}>;
+
+type TableSize = Readonly<{ width: number; height: number }>;
+
 const ACTIVITY_BAR_HEIGHT = 48;
 const ACTIVITY_HIGHLIGHT_MS = 2_400;
+const DEFAULT_TABLE_SIZE: TableSize = { width: 368, height: 520 };
 const MATCH_ACTIVITY_SCREEN_IDS = new Set<ScreenId>([
   "game", "other-turn", "attack", "response", "favor", "give-card", "future", "explosion", "defuse", "eliminated",
   "game-menu", "rules", "card-detail", "settings", "network",
@@ -49,6 +67,7 @@ export class ScreenHost {
   private joinCode: string;
   private roomDraft = { maxPlayers: 4, turnSeconds: 45, allowBots: true };
   private tableSurface: CardTableSurface | null = null;
+  private lastTableSize: TableSize | null = null;
   private unsubscribeTableInvalidation: (() => void) | null = null;
   private unsubscribe: (() => void) | null = null;
   private started = false;
@@ -62,6 +81,12 @@ export class ScreenHost {
   private timer: ReturnType<typeof setInterval> | null = null;
   private clockAnchor = { serverAt: Date.now(), localAt: Date.now() };
   private readonly authoritySounds: AuthoritativeSoundPlayer;
+  private readonly displayFont: string;
+  private readonly scrollPositions = new Map<ScreenId, number>();
+  private lastRenderedId: ScreenId | null = null;
+  private windowResizeSubscribed = false;
+  private orientationSubscribed = false;
+  private readonly handleDisplayChange = (event?: WxWindowResizeEvent | WxDeviceOrientationEvent) => this.refreshDisplayMetrics(event);
   private activityOpen = false;
   private activityMatchId = "";
   private activitySequence = 0;
@@ -83,46 +108,58 @@ export class ScreenHost {
     this.context = context;
     this.authoritySounds = new AuthoritativeSoundPlayer(options.media);
     this.displayFont = loadDisplayFont(options.wx);
-    registerFitImage(Layout);
+    try { registerFitImage(Layout); }
+    catch { /* Unit-test and legacy layout shims may not expose custom components. */ }
   }
 
   start(): void {
-    this.handleLaunchQuery(this.options.wx.getLaunchOptionsSync?.().query);
-    const initialSnapshot = this.options.session.getSnapshot();
-    const initial = normalizeProductView(initialSnapshot.view, initialSnapshot.connectivity);
-    this.lastRevision = initialSnapshot.revision ?? -1;
-    this.anchorServerClock(initial);
-    this.authoritySounds.prime(soundView(initial));
-    this.primeActivity(initial);
-    this.offerResumeIfNeeded(initial, initialSnapshot.lifecycle);
-    this.unsubscribe = this.options.session.subscribe(() => {
-      const snapshot = this.options.session.getSnapshot();
-      const current = normalizeProductView(snapshot.view, snapshot.connectivity);
-      this.anchorServerClock(current);
-      this.authoritySounds.consume(soundView(current));
-      this.consumeActivity(current);
-      const revision = snapshot.revision ?? -1;
-      if (revision !== this.lastRevision) {
-        const preserveResumeNavigation = this.resumeGateOpen;
-        this.lastRevision = revision;
-        this.clearSelection();
-        this.handPage = 0;
-        if (!preserveResumeNavigation) {
-          this.override = null;
-          this.navigation.length = 0;
+    if (this.disposed || this.started || this.starting) return;
+    this.starting = true;
+    try {
+      this.subscribeDisplayChanges();
+      this.handleLaunchQuery(this.options.wx.getLaunchOptionsSync?.().query);
+      const initialSnapshot = this.options.session.getSnapshot();
+      const initial = normalizeProductView(initialSnapshot.view, initialSnapshot.connectivity);
+      this.lastRevision = initialSnapshot.revision ?? -1;
+      this.anchorServerClock(initial);
+      this.authoritySounds.prime(soundView(initial));
+      this.primeActivity(initial);
+      this.offerResumeIfNeeded(initial, initialSnapshot.lifecycle);
+      this.unsubscribe = this.options.session.subscribe(() => {
+        const snapshot = this.options.session.getSnapshot();
+        const current = normalizeProductView(snapshot.view, snapshot.connectivity);
+        this.anchorServerClock(current);
+        this.authoritySounds.consume(soundView(current));
+        this.consumeActivity(current);
+        const revision = snapshot.revision ?? -1;
+        if (revision !== this.lastRevision) {
+          const preserveResumeNavigation = this.resumeGateOpen;
+          this.lastRevision = revision;
+          this.clearSelection();
+          this.handPage = 0;
+          if (!preserveResumeNavigation) {
+            this.override = null;
+            this.navigation.length = 0;
+          }
+          if (!current.eliminated) this.spectating = false;
         }
-        if (!current.eliminated) this.spectating = false;
-      }
-      this.offerResumeIfNeeded(current, snapshot.lifecycle);
+        this.offerResumeIfNeeded(current, snapshot.lifecycle);
+        this.openInvitationIfReady();
+        this.render();
+      });
       this.openInvitationIfReady();
       this.render();
-    });
-    this.openInvitationIfReady();
-    this.render();
-    this.timer = setInterval(() => {
-      const view = this.currentView();
-      if (view.game.deadline || Number.isFinite(Number(view.pending?.deadline))) this.refreshCountdown(view);
-    }, 1_000);
+      this.timer = setInterval(() => {
+        const view = this.currentView();
+        if (view.game.deadline || Number.isFinite(Number(view.pending?.deadline))) this.refreshCountdown(view);
+      }, 1_000);
+      this.started = true;
+    } catch (error) {
+      this.releaseRuntimeResources();
+      throw error;
+    } finally {
+      this.starting = false;
+    }
   }
 
   handleLaunchQuery(query?: Record<string, string>): void {
@@ -140,13 +177,9 @@ export class ScreenHost {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.unsubscribeTableInvalidation?.();
-    this.unsubscribeTableInvalidation = null;
-    this.unsubscribe?.();
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
-    if (this.activityTimer) clearTimeout(this.activityTimer);
-    this.activityTimer = null;
+    this.started = false;
+    this.starting = false;
+    this.releaseRuntimeResources();
     Layout.clearAll();
     this.options.keyboard.close();
   }
@@ -187,22 +220,39 @@ export class ScreenHost {
     const view = this.currentView();
     const id = this.resolveId(view);
     const model = buildScreen(id, this.sceneContext(view));
+    const previousScroll = Layout.getElementById("scene-scroll") as ScrollElement | null;
+    if (previousScroll && this.lastRenderedId) this.scrollPositions.set(this.lastRenderedId, previousScroll.scrollTop);
     this.unsubscribeTableInvalidation?.();
     this.unsubscribeTableInvalidation = null;
     this.context.setTransform(1, 0, 0, 1, 0, 0);
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     Layout.clear();
-    Layout.init(this.template(model, view), {
-      ...UI_STYLE,
-      ...this.homeSafeStyles(model),
-      topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
-      actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
-      tableActionDock: { ...UI_STYLE.tableActionDock, height: 96 + this.metrics.safeInsets.bottom, paddingBottom: 12 + this.metrics.safeInsets.bottom },
-      tableCanvas: { ...UI_STYLE.tableCanvas, height: this.tableHeight(model), minHeight: this.tableHeight(model), maxHeight: this.tableHeight(model) },
-      activitySheet: { ...UI_STYLE.activitySheet, paddingBottom: this.metrics.safeInsets.bottom },
-      activityTimeline: { ...UI_STYLE.activityTimeline, height: Math.max(238, 280 - this.metrics.safeInsets.bottom) },
+    const rendered = renderScene(model, {
+      height: this.metrics.logicalHeight,
+      safeTop: this.metrics.safeInsets.top,
+      safeBottom: this.metrics.safeInsets.bottom,
+      capsule: this.metrics.capsuleRect,
+      canGoBack: Boolean(this.navigation.length || this.override),
+      selectedTokens: this.selectedTokens,
+      error: this.error,
+      viewerId: view.viewerId,
+      displayFont: this.displayFont,
     });
-    Layout.init(rendered.template, rendered.styles);
+    const useProductSurface = model.id === "home"
+      || this.activityAvailable(model, view)
+      || Boolean(model.rows?.some((row) => row.control));
+    Layout.init(useProductSurface ? this.template(model, view) : rendered.template, useProductSurface
+      ? {
+        ...UI_STYLE,
+        ...this.homeSafeStyles(model),
+        topSafe: { ...UI_STYLE.topSafe, height: this.metrics.safeInsets.top },
+        actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
+        tableActionDock: { ...UI_STYLE.tableActionDock, height: 96 + this.metrics.safeInsets.bottom, paddingBottom: 12 + this.metrics.safeInsets.bottom },
+        tableCanvas: { ...UI_STYLE.tableCanvas, height: this.tableHeight(model), minHeight: this.tableHeight(model), maxHeight: this.tableHeight(model) },
+        activitySheet: { ...UI_STYLE.activitySheet, paddingBottom: this.metrics.safeInsets.bottom },
+        activityTimeline: { ...UI_STYLE.activityTimeline, height: Math.max(238, 280 - this.metrics.safeInsets.bottom) },
+      }
+      : rendered.styles);
     applyLayoutTransform(this.context, this.metrics);
     Layout.updateViewPort(this.metrics.viewport);
     Layout.layout(this.context);
@@ -404,27 +454,27 @@ export class ScreenHost {
 
   private bind(model: ScreenModel, view: ProductViewModel): void {
     const back = Layout.getElementById("back");
-    if (back && (this.navigation.length || this.override)) back.on("click", () => this.goBack());
-    Layout.getElementById("table-menu")?.on("click", () => this.show("game-menu"));
+    if (back && (this.navigation.length || this.override)) bindClickTree(back, () => this.goBack());
+    bindClickTree(Layout.getElementById("table-menu"), () => this.show("game-menu"));
     const openActivity = () => {
       this.activityOpen = true;
       this.markActivityRead(view);
       this.options.media.impact("light");
       this.render();
     };
-    Layout.getElementById("activity-toggle")?.on("click", openActivity);
-    Layout.getElementById("activity-banner")?.on("click", openActivity);
+    bindClickTree(Layout.getElementById("activity-toggle"), openActivity);
+    bindClickTree(Layout.getElementById("activity-banner"), openActivity);
     const closeActivity = () => {
       this.activityOpen = false;
       this.options.media.impact("light");
       this.render();
     };
-    Layout.getElementById("activity-dismiss")?.on("click", closeActivity);
-    Layout.getElementById("activity-close")?.on("click", closeActivity);
+    bindClickTree(Layout.getElementById("activity-dismiss"), closeActivity);
+    bindClickTree(Layout.getElementById("activity-close"), closeActivity);
     if (model.id === "home") this.bindHomeActions(model, view);
     if (!model.table && !this.sending) model.actions?.slice(0, 4).forEach((action, index) => {
       if (model.id === "join" && action.id === "join" && this.joinCode.length !== 6) return;
-      Layout.getElementById(`action-${index}`)?.on("click", () => void this.perform(action, view));
+      bindClickTree(Layout.getElementById(`action-${index}`), () => void this.perform(action, view));
     });
     Layout.getElementById("table-cancel")?.on("click", () => {
       this.clearSelection();
@@ -438,11 +488,11 @@ export class ScreenHost {
       const element = Layout.getElementById(`row-${index}`);
       const control = row.control;
       if (control?.kind === "stepper") {
-        Layout.getElementById(`row-${index}-down`)?.on("click", () => void this.perform(control.decrement, view));
-        Layout.getElementById(`row-${index}-up`)?.on("click", () => void this.perform(control.increment, view));
+        bindClickTree(Layout.getElementById(`row-${index}-down`), () => void this.perform(control.decrement, view));
+        bindClickTree(Layout.getElementById(`row-${index}-up`), () => void this.perform(control.increment, view));
       } else if (control?.kind === "toggle") {
-        element?.on("click", () => void this.perform(control.action, view));
-      } else if (row.action) element?.on("click", () => {
+        bindClickTree(element, () => void this.perform(control.action, view));
+      } else if (row.action) bindClickTree(element, () => {
         if (model.id === "rules") this.selectedCard = cardIndexForRule(row.id);
         void this.perform(row.action!, view);
       });
@@ -472,11 +522,11 @@ export class ScreenHost {
     if (settingsAction) actionById.set("settings", settingsAction);
     const bind = (elementId: string, actionId: string) => {
       const action = actionById.get(actionId);
-      if (action) Layout.getElementById(elementId)?.on("click", () => void this.perform(action, view));
+      if (action) bindClickTree(Layout.getElementById(elementId), () => void this.perform(action, view));
     };
     const primary = model.actions?.[0];
-    if (primary) Layout.getElementById("home-primary")?.on("click", () => void this.perform(primary, view));
-    if (primary?.id === "resume") Layout.getElementById("home-resume-card")?.on("click", () => void this.perform(primary, view));
+    if (primary) bindClickTree(Layout.getElementById("home-primary"), () => void this.perform(primary, view));
+    if (primary?.id === "resume") bindClickTree(Layout.getElementById("home-resume-card"), () => void this.perform(primary, view));
     bind("home-join", "join");
     bind("home-tutorial", "tutorial");
     bind("home-rules", "rules");
@@ -486,9 +536,17 @@ export class ScreenHost {
   private attachTable(model: ScreenModel, view: ProductViewModel): void {
     const component = Layout.getElementById("tableCanvas") as LayoutCanvas | null;
     if (!component || !model.table) return;
-    const tableHeight = this.tableHeight(model);
-    const active = view.players.find((player) => player.id === view.game.turnPlayerId);
-    const state = { width: 358, height: tableHeight, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, waitingLabel: active ? `等待${active.name}行动` : undefined, selectedTokens: this.selectedTokens, handPage: this.handPage };
+    const width = validLayoutSize(component.layoutBox.width)
+      ?? this.lastTableSize?.width
+      ?? DEFAULT_TABLE_SIZE.width;
+    const height = validLayoutSize(component.layoutBox.height)
+      ?? this.lastTableSize?.height
+      ?? DEFAULT_TABLE_SIZE.height;
+    this.lastTableSize = { width, height };
+    const active = view.players?.find((player) => player.id === view.game.turnPlayerId);
+    const state = { width, height, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, waitingLabel: active ? `等待${active.name}行动` : undefined, selectedTokens: this.selectedTokens, handPage: this.handPage, fontFamily: this.displayFont };
+    this.unsubscribeTableInvalidation?.();
+    this.unsubscribeTableInvalidation = null;
     if (this.tableSurface) this.tableSurface.update(state);
     else this.tableSurface = new CardTableSurface(() => this.options.wx.createCanvas(), this.options.wx.createImage?.bind(this.options.wx), state);
     this.unsubscribeTableInvalidation = this.tableSurface.subscribeInvalidation(() => {
@@ -501,8 +559,8 @@ export class ScreenHost {
       const touch = extractCssPoint(event);
       if (!touch || !this.tableSurface) return;
       const rect = Layout.getElementViewportRect(component as unknown as LayoutElement);
-      const x = (touch.x - rect.left) * (358 / rect.width);
-      const y = (touch.y - rect.top) * (tableHeight / rect.height);
+      const x = (touch.x - rect.left) * (width / rect.width);
+      const y = (touch.y - rect.top) * (height / rect.height);
       const pageDelta = this.tableSurface.pageDeltaAt(x, y);
       if (pageDelta) {
         this.handPage += pageDelta;
@@ -588,6 +646,8 @@ export class ScreenHost {
   }
 
   private releaseRuntimeResources(): void {
+    this.started = false;
+
     const unsubscribeTableInvalidation = this.unsubscribeTableInvalidation;
     this.unsubscribeTableInvalidation = null;
     try { unsubscribeTableInvalidation?.(); }
@@ -602,6 +662,13 @@ export class ScreenHost {
     this.timer = null;
     if (timer !== null) {
       try { clearInterval(timer); }
+      catch { /* Keep releasing the remaining resources. */ }
+    }
+
+    const activityTimer = this.activityTimer;
+    this.activityTimer = null;
+    if (activityTimer !== null) {
+      try { clearTimeout(activityTimer); }
       catch { /* Keep releasing the remaining resources. */ }
     }
     this.unsubscribeDisplayChanges();
@@ -708,8 +775,7 @@ export class ScreenHost {
       if (action.intent.type === "CycleInsertionPosition") {
         const deckSize = insertionDeckSize(view);
         const positionCount = deckSize + 1;
-        const rawDelta = Number(action.intent.delta ?? 1);
-        const delta = Number.isFinite(rawDelta) && rawDelta < 0 ? -1 : 1;
+        const delta = Number(action.intent.delta) < 0 ? -1 : 1;
         this.insertionPosition = (this.insertionPosition + delta + positionCount) % positionCount;
         this.render(); return;
       }
@@ -935,6 +1001,56 @@ const RULE_INDEX: Readonly<Record<string, number>> = {
   flow: 0, danger: 1, defuse: 2, nope: 3, attack: 4, favor: 5,
   shuffle: 6, skip: 7, future: 8, cats: 9, combos: 10, platform: 11,
 };
+
+function readCapsuleRect(wx: WxLike) {
+  try { return wx.getMenuButtonBoundingClientRect?.() ?? null; }
+  catch { return null; }
+}
+
+function readSystemInfo(wx: WxLike): Partial<ReturnType<WxLike["getSystemInfoSync"]>> {
+  try {
+    return wx.getSystemInfoSync() ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function readResizeSize(event?: WxWindowResizeEvent | WxDeviceOrientationEvent): WxWindowResizeEvent {
+  if (!event || typeof event !== "object") return {};
+  const resize = event as WxWindowResizeEvent;
+  return {
+    windowWidth: positiveDisplayValue(resize.windowWidth)
+      ?? positiveDisplayValue(resize.size?.windowWidth)
+      ?? undefined,
+    windowHeight: positiveDisplayValue(resize.windowHeight)
+      ?? positiveDisplayValue(resize.size?.windowHeight)
+      ?? undefined,
+  };
+}
+
+function positiveDisplayValue(value: unknown): number | null {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+}
+
+function loadDisplayFont(wx: WxLike): string {
+  try {
+    const family = wx.loadFont?.("assets/fonts/zcool-kuaile-minigame-subset.ttf");
+    if (family) return family;
+  } catch { /* Use the system face when the packaged font cannot be loaded. */ }
+  return "sans-serif";
+}
+
+/**
+ * The canvas layout engine dispatches to the deepest hit element and does not
+ * bubble clicks to a parent button. Binding the complete visual subtree makes
+ * its icon, label and artwork share the same interaction target.
+ */
+function bindClickTree(element: LayoutElement | null, listener: () => void): void {
+  if (!element) return;
+  element.on("click", listener);
+  for (const child of element.children) bindClickTree(child, listener);
+}
 
 type IndexedAction = Readonly<{ action: ScreenAction; index: number }>;
 
