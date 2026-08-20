@@ -12,7 +12,6 @@ import type { GameSession, RawProductView, ScreenAction, ScreenId, ScreenModel, 
 import { normalizeProductView, type ProductViewModel } from "./normalize";
 import { buildScreen, deriveScreen } from "./sceneRegistry";
 import { CardTableSurface } from "./cardTableSurface";
-import { UI_STYLE } from "./theme";
 import { applyLayoutTransform, extractCssPoint, resolveCanvasMetrics, sizeDisplayCanvas, type CanvasMetrics } from "./canvasMetrics";
 import { AuthoritativeSoundPlayer, SOUND_ASSETS } from "./soundEffects";
 import { activityTimeline, latestActivity, latestActivitySequence, type ActivityItem } from "./activityFeed";
@@ -37,7 +36,7 @@ const MATCH_ACTIVITY_SCREEN_IDS = new Set<ScreenId>([
 export class ScreenHost {
   private readonly canvas: HTMLCanvasElement;
   private readonly context: CanvasRenderingContext2D;
-  private readonly metrics: CanvasMetrics;
+  private metrics: CanvasMetrics;
   private readonly navigation: ScreenId[] = [];
   private override: ScreenId | null = null;
   private selectedTokens: string[] = [];
@@ -52,6 +51,8 @@ export class ScreenHost {
   private tableSurface: CardTableSurface | null = null;
   private unsubscribeTableInvalidation: (() => void) | null = null;
   private unsubscribe: (() => void) | null = null;
+  private started = false;
+  private starting = false;
   private disposed = false;
   private error: string | null = null;
   private sending = false;
@@ -74,13 +75,15 @@ export class ScreenHost {
   constructor(private readonly options: ScreenHostOptions) {
     this.joinCode = options.initialJoinCode ?? "";
     this.invitationPending = /^\d{6}$/.test(this.joinCode);
-    this.metrics = resolveCanvasMetrics(options.wx.getSystemInfoSync());
+    this.metrics = resolveCanvasMetrics(options.wx.getSystemInfoSync(), readCapsuleRect(options.wx));
     this.canvas = options.canvas ?? options.wx.createCanvas();
     sizeDisplayCanvas(this.canvas, this.metrics);
     const context = this.canvas.getContext("2d");
     if (!context) throw new Error("CANVAS_2D_UNAVAILABLE");
     this.context = context;
     this.authoritySounds = new AuthoritativeSoundPlayer(options.media);
+    this.displayFont = loadDisplayFont(options.wx);
+    registerFitImage(Layout);
   }
 
   start(): void {
@@ -135,6 +138,7 @@ export class ScreenHost {
   }
 
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
     this.unsubscribeTableInvalidation?.();
     this.unsubscribeTableInvalidation = null;
@@ -198,9 +202,14 @@ export class ScreenHost {
       activitySheet: { ...UI_STYLE.activitySheet, paddingBottom: this.metrics.safeInsets.bottom },
       activityTimeline: { ...UI_STYLE.activityTimeline, height: Math.max(238, 280 - this.metrics.safeInsets.bottom) },
     });
+    Layout.init(rendered.template, rendered.styles);
     applyLayoutTransform(this.context, this.metrics);
     Layout.updateViewPort(this.metrics.viewport);
     Layout.layout(this.context);
+    const nextScroll = Layout.getElementById("scene-scroll") as ScrollElement | null;
+    const savedScrollTop = this.scrollPositions.get(id) ?? 0;
+    if (nextScroll && savedScrollTop > 0) nextScroll.scrollTo(0, savedScrollTop, false);
+    this.lastRenderedId = id;
     this.bind(model, view);
   }
 
@@ -437,9 +446,9 @@ export class ScreenHost {
         if (model.id === "rules") this.selectedCard = cardIndexForRule(row.id);
         void this.perform(row.action!, view);
       });
-      else if (row.id === "room-code") element?.on("click", () => void this.editRoomCode());
+      else if (row.id === "room-code") bindClickTree(element, () => void this.editRoomCode());
     });
-    model.cards?.forEach((card, index) => Layout.getElementById(`card-${index}`)?.on("click", () => {
+    model.cards?.forEach((card, index) => bindClickTree(Layout.getElementById(`card-${index}`), () => {
       if (model.id !== "give-card") return;
       const allowed = view.legalActionDetails.some((action) => action.type === "ChooseCard" && action.cardTokens?.includes(card.token));
       if (!allowed) {
@@ -548,6 +557,80 @@ export class ScreenHost {
     return Math.max(340, 844 - this.metrics.safeInsets.top - 82 - 95 - ACTIVITY_BAR_HEIGHT - dockHeight - supplementalRows);
   }
 
+  private subscribeDisplayChanges(): void {
+    const { wx } = this.options;
+    if (!this.windowResizeSubscribed && wx.onWindowResize && wx.offWindowResize) {
+      try {
+        wx.onWindowResize(this.handleDisplayChange);
+        this.windowResizeSubscribed = true;
+      } catch { /* Older runtimes can expose a stub that throws. */ }
+    }
+    if (!this.orientationSubscribed && wx.onDeviceOrientationChange && wx.offDeviceOrientationChange) {
+      try {
+        wx.onDeviceOrientationChange(this.handleDisplayChange);
+        this.orientationSubscribed = true;
+      } catch { /* Window resize remains sufficient when orientation events are unavailable. */ }
+    }
+  }
+
+  private unsubscribeDisplayChanges(): void {
+    const { wx } = this.options;
+    if (this.windowResizeSubscribed) {
+      try { wx.offWindowResize?.(this.handleDisplayChange); }
+      catch { /* Disposal must continue even when the platform rejects unbinding. */ }
+      this.windowResizeSubscribed = false;
+    }
+    if (this.orientationSubscribed) {
+      try { wx.offDeviceOrientationChange?.(this.handleDisplayChange); }
+      catch { /* Disposal must continue even when the platform rejects unbinding. */ }
+      this.orientationSubscribed = false;
+    }
+  }
+
+  private releaseRuntimeResources(): void {
+    const unsubscribeTableInvalidation = this.unsubscribeTableInvalidation;
+    this.unsubscribeTableInvalidation = null;
+    try { unsubscribeTableInvalidation?.(); }
+    catch { /* Keep releasing the remaining resources. */ }
+
+    const unsubscribe = this.unsubscribe;
+    this.unsubscribe = null;
+    try { unsubscribe?.(); }
+    catch { /* Keep releasing the remaining resources. */ }
+
+    const timer = this.timer;
+    this.timer = null;
+    if (timer !== null) {
+      try { clearInterval(timer); }
+      catch { /* Keep releasing the remaining resources. */ }
+    }
+    this.unsubscribeDisplayChanges();
+  }
+
+  private refreshDisplayMetrics(event?: WxWindowResizeEvent | WxDeviceOrientationEvent): void {
+    if (this.disposed) return;
+    let next: CanvasMetrics;
+    try {
+      const snapshot = readSystemInfo(this.options.wx);
+      const eventSize = readResizeSize(event);
+      next = resolveCanvasMetrics({
+        ...snapshot,
+        windowWidth: eventSize.windowWidth
+          ?? positiveDisplayValue(snapshot.windowWidth)
+          ?? this.metrics.cssWidth,
+        windowHeight: eventSize.windowHeight
+          ?? positiveDisplayValue(snapshot.windowHeight)
+          ?? this.metrics.cssHeight,
+        pixelRatio: positiveDisplayValue(snapshot.pixelRatio) ?? this.metrics.pixelRatio,
+      }, readCapsuleRect(this.options.wx));
+    } catch {
+      return;
+    }
+    this.metrics = next;
+    sizeDisplayCanvas(this.canvas, next);
+    this.render();
+  }
+
   private async perform(action: ScreenAction, view: ProductViewModel): Promise<void> {
     this.error = null;
     if (action.back) {
@@ -624,7 +707,10 @@ export class ScreenHost {
       }
       if (action.intent.type === "CycleInsertionPosition") {
         const deckSize = insertionDeckSize(view);
-        this.insertionPosition = (this.insertionPosition + 1) % (deckSize + 1);
+        const positionCount = deckSize + 1;
+        const rawDelta = Number(action.intent.delta ?? 1);
+        const delta = Number.isFinite(rawDelta) && rawDelta < 0 ? -1 : 1;
+        this.insertionPosition = (this.insertionPosition + delta + positionCount) % positionCount;
         this.render(); return;
       }
       if (action.intent.type === "ShareRoom") {
@@ -820,6 +906,10 @@ export class ScreenHost {
     if (!["online", "local"].includes(view.connectivity.toLowerCase())) return;
     this.override = "join";
   }
+}
+
+function validLayoutSize(value: number): number | null {
+  return Number.isFinite(value) && value > 0 ? Math.max(1, Math.round(value)) : null;
 }
 
 function insertionDeckSize(view: ProductViewModel): number {

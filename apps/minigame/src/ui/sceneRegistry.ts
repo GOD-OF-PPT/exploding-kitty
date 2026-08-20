@@ -27,10 +27,16 @@ export type SceneDefinition = Readonly<{
 const BACK_IDS = new Set(["back"]);
 const nav = (id: string, label: string, next: ScreenId, tone: ScreenAction["tone"] = "cream"): ScreenAction => ({ id, label, next, tone, ...(BACK_IDS.has(id) ? { back: true } : {}) });
 const intent = (id: string, label: string, type: string, payload: Record<string, unknown> = {}, tone: ScreenAction["tone"] = "yellow"): ScreenAction => ({ id, label, intent: { type, ...payload }, tone });
-const avatarRows = (context: SceneContext): ScreenRow[] => context.view.players.map((player) => ({
+const inactive = (id: string, label: string, tone: ScreenAction["tone"] = "ink"): ScreenAction => ({ id, label, tone });
+const avatarRows = (
+  context: SceneContext,
+  viewerReadyDetail = "正在准备",
+): ScreenRow[] => context.view.players.map((player) => ({
   id: player.id,
-  title: `${player.name}${player.host ? " · 房主" : player.bot ? " · BOT" : ""}`,
-  detail: player.ready ? "已准备" : "等待准备",
+  title: `${player.id === context.view.viewerId ? "你" : player.name}${player.host ? " · 房主" : player.bot ? " · BOT" : ""}`,
+  detail: player.id === context.view.viewerId
+    ? player.ready ? viewerReadyDetail : "尚未准备"
+    : player.ready ? "已准备" : "等待准备",
   badge: `${player.handCount} 张`,
   image: player.avatar,
 }));

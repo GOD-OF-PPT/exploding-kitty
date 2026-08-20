@@ -51,6 +51,8 @@ WebSocket 固定连接 `/v1/session`。云托管生产模式由 `connectContaine
 ```powershell
 # 旧批量缩放脚本仅用于生成裁切起点；需要 ImageMagick，结果必须重新做视觉校准，不能直接覆盖发布素材
 apps/minigame/scripts/optimize-assets.ps1
+# DISPLAY_FONT 生产文案变化后，从锁定的 @fontsource 源重新生成单一 TTF；需要 FontTools
+npm --workspace @exploding-kitty/minigame run assets:subset-font
 npm --workspace @exploding-kitty/minigame run check:assets
 ```
 

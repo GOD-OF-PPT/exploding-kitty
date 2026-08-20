@@ -30,6 +30,26 @@ export type WxCloudSocketResult = Readonly<{
   errMsg?: string;
 }>;
 
+export type WxMenuButtonRect = Readonly<{
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}>;
+
+export type WxWindowSize = Readonly<{
+  windowWidth?: number;
+  windowHeight?: number;
+}>;
+
+export type WxWindowResizeEvent = WxWindowSize & Readonly<{
+  size?: WxWindowSize;
+}>;
+
+export type WxDeviceOrientationEvent = Readonly<{ value: string }>;
+
 export interface WxCloudLike {
   init(options?: { env?: string; traceUser?: boolean }): void | Promise<void>;
   callContainer(options: {
@@ -61,9 +81,15 @@ export interface WxLike {
     safeArea?: { left: number; top: number; right: number; bottom: number; width: number; height: number };
     platform?: string;
   };
+  getMenuButtonBoundingClientRect?(): WxMenuButtonRect;
   getLaunchOptionsSync?(): { query?: Record<string, string>; scene?: number };
+  onWindowResize?(listener: (event: WxWindowResizeEvent) => void): void;
+  offWindowResize?(listener: (event: WxWindowResizeEvent) => void): void;
+  onDeviceOrientationChange?(listener: (event: WxDeviceOrientationEvent) => void): void;
+  offDeviceOrientationChange?(listener: (event: WxDeviceOrientationEvent) => void): void;
   createCanvas(): HTMLCanvasElement;
   createImage?(): HTMLImageElement;
+  loadFont?(source: string): string | null;
   login(options: { timeout?: number; success: (result: { code: string }) => void; fail: (error: WxResult) => void }): void;
   request(options: {
     url: string;

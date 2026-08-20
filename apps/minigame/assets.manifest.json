@@ -15,6 +15,8 @@
     "cats/player.png",
     "cats/tuan-zi.png",
     "cats/xiao-hui.png",
+    "fonts/OFL-1.1.txt",
+    "fonts/zcool-kuaile-minigame-subset.ttf",
     "sounds/action.wav",
     "sounds/danger.wav",
     "sounds/nope.wav",
@@ -25,6 +27,849 @@
     "ui/icons/ink/caret-right.png",
     "ui/icons/ink/check.png"
   ],
+  "rasterContractVersion": 1,
+  "raster": {
+    "cat-cast.png": {
+      "role": "hero",
+      "intrinsic": {
+        "width": 1560,
+        "height": 488
+      },
+      "maxCssSize": {
+        "width": 390,
+        "height": 122
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "cards/attack.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 210,
+        "height": 300
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cards/card-back.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 210,
+        "height": 300
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cards/danger.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 218,
+        "height": 311
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cards/defuse.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 210,
+        "height": 300
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cards/peek.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 210,
+        "height": 300
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cards/reverse.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 210,
+        "height": 300
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cards/shuffle.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 210,
+        "height": 300
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cards/skip.png": {
+      "role": "full-card",
+      "intrinsic": {
+        "width": 658,
+        "height": 940
+      },
+      "maxCssSize": {
+        "width": 210,
+        "height": 300
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "framed"
+    },
+    "cats/a-ju.png": {
+      "role": "avatar",
+      "intrinsic": {
+        "width": 1024,
+        "height": 1024
+      },
+      "maxCssSize": {
+        "width": 285,
+        "height": 285
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "cats/player.png": {
+      "role": "avatar",
+      "intrinsic": {
+        "width": 1024,
+        "height": 1024
+      },
+      "maxCssSize": {
+        "width": 285,
+        "height": 285
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "cats/tuan-zi.png": {
+      "role": "avatar",
+      "intrinsic": {
+        "width": 1024,
+        "height": 1024
+      },
+      "maxCssSize": {
+        "width": 285,
+        "height": 285
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "cats/xiao-hui.png": {
+      "role": "avatar",
+      "intrinsic": {
+        "width": 1024,
+        "height": 1024
+      },
+      "maxCssSize": {
+        "width": 285,
+        "height": 285
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/backgrounds/comic-bg-390x844.jpg": {
+      "role": "background",
+      "intrinsic": {
+        "width": 1170,
+        "height": 2532
+      },
+      "maxCssSize": {
+        "width": 390,
+        "height": 844
+      },
+      "targetDpr": 3,
+      "fit": "cover",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/icons/cream/arrow-clockwise.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/arrow-left.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/book-open.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/caret-right.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/check-hero.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 320,
+        "height": 320
+      },
+      "maxCssSize": {
+        "width": 106,
+        "height": 106
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/check.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/device-mobile-hero.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 320,
+        "height": 320
+      },
+      "maxCssSize": {
+        "width": 106,
+        "height": 106
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/device-mobile.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/eye.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/gear.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/graduation-cap.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 68,
+        "height": 68
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/hash.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/info.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/list.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/lock.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/plus.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/share-network.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/sign-out.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/speaker-high.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/cream/users-three.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/arrow-clockwise.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/arrow-left.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/book-open.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/caret-right.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/check.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/device-mobile.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/eye.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/gear.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/graduation-cap.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 68,
+        "height": 68
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/hash.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/info.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/list.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/lock.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/plus.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/share-network.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/sign-out.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/speaker-high.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    },
+    "ui/icons/ink/users-three.png": {
+      "role": "icon",
+      "intrinsic": {
+        "width": 64,
+        "height": 64
+      },
+      "maxCssSize": {
+        "width": 27,
+        "height": 27
+      },
+      "targetDpr": 2,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "transparent-safe"
+    }
+  },
+  "sha256": {
+    "cat-cast.png": "f4b6944d4406189ba4659505f1f18edb81e36e97fc5ece21edef9a7f402842fa",
+    "cards/attack.png": "8cf561b106555a6e4471b095ae28c6f902e7bb5273659db23e6d3e4918e50ef5",
+    "cards/card-back.png": "802f21d1e6642f5b859b28a8cc0acdd33fbf719787ab177137e7ee2e6f60d849",
+    "cards/danger.png": "3a3ce8e6f567f3cf9b5252f6a374119e930ddaf3e0030c2a108fee35e564b9af",
+    "cards/defuse.png": "4bacbca8ed6701aff21287265d4d3131c95a4b05aa72485e4a4950211c791451",
+    "cards/peek.png": "5fc7dd134ca399962661ccbfbf821601867b10c07684c86e34a48480ca0a509b",
+    "cards/reverse.png": "c78e36009911d558ab722a990a8545c66af2cda32ca0a1f79fcb89c69c8af552",
+    "cards/shuffle.png": "1289fe70b259f66d9f7c0a311045e856d99dce99f30a308c293e4c60a026c084",
+    "cards/skip.png": "c3509befcc103052478ccca51ace77e29e3757c15f244cbccbfc24cc1da1eb73",
+    "cats/a-ju.png": "0320d26c1d540c4914bca5d59fbdd437966d83aa4d52ea7c99d246382c03951e",
+    "cats/player.png": "f8fb143cf2acdd9d23128ece00967a33829c88c1dd9e1f801dda12dba64a23d3",
+    "cats/tuan-zi.png": "c4297f04c4231f2e1ee55b2ba8f08aa403dc2819ea42dcc01098e928b0b7ac89",
+    "cats/xiao-hui.png": "f425cf55be962a109a0dff4af209c6fc86eb03d85847a20c09f29d7301c8b54d",
+    "fonts/OFL-1.1.txt": "fedb735f9b624acc40c8b926a8220dc0992a9034c48a5175ebee2f9e6ea942ef",
+    "fonts/zcool-kuaile-minigame-subset.ttf": "d95d1aab13d4fca64bb8f1853f5c44c364d9df044caf9378456473dacea4914e",
+    "sounds/action.wav": "67808f02845b847c783cda80da054c6436adb1ede6f3e1c6204c7c420fdbc519",
+    "sounds/danger.wav": "3aab00e22f51771645abcf8ae018ff4d871624c67d17bb146aa9387f7be34e32",
+    "sounds/nope.wav": "a94fefcc884085a82d8d9de4649c7f241118ef2b60650798643f68d3d47bc84d",
+    "sounds/select.wav": "9472c9a3477fac53d1ea48867baebce4720c2188a1546fb5b97c6ffbd5607472",
+    "ui/backgrounds/comic-bg-390x844.jpg": "f3da42c0b329a670ca8c292b5f469eb92719291be516388d7ac2a6461f042cc6",
+    "ui/icons/cream/arrow-clockwise.png": "4d542c28b3b355cbe5d38016981fa77f57f4a4159078aad0da0f0ecabd3c9c49",
+    "ui/icons/cream/arrow-left.png": "d9c890abe909cc476a3bf0a564b04207851e51c69e0f5fdc90a79abcae304040",
+    "ui/icons/cream/book-open.png": "5747720dca2d730c39d2e22dadc9d4f2772c9e47c78726ad5da20b99971cad08",
+    "ui/icons/cream/caret-right.png": "bd668d71ac5c44a3d636741fc22527378b36f56fb3f0bdeb4e12dc51be7c45f6",
+    "ui/icons/cream/check-hero.png": "8ae01b6694dc5b3fe194b050c66d7a79a7031472936ebc3aaf0ffa610a9a6591",
+    "ui/icons/cream/check.png": "37702adf9cbb289e4a0672e792116157f3c3dd64e9284f14e82bc4522116b9a6",
+    "ui/icons/cream/device-mobile-hero.png": "0c1dfeb36d805dd68929c9ed2d7b3c366d9a37d31b9324895fa7a39c8f430aa9",
+    "ui/icons/cream/device-mobile.png": "c98ee872a9d472b90c99b6ed8cd77ca3823e7cb6117c75ce70e606a54fdd5510",
+    "ui/icons/cream/eye.png": "b5472a00cc2be8abc88c94ecfe9a87144f23624fc43c63a3bbc2a69cbd2b728b",
+    "ui/icons/cream/gear.png": "e81f849bca75951112efc9e23170094be79b533949ef629fddebb9d64f7f6e23",
+    "ui/icons/cream/graduation-cap.png": "d327d9c754e3e1d26f62ee62f5a577be91727d3102c04e05004fcaf6f221ce54",
+    "ui/icons/cream/hash.png": "b2f0071919ee39cdb737ac462ecd8ccd3ac6a46c9fe3fb52376f5bc3d47faac5",
+    "ui/icons/cream/info.png": "9fe63e097f6e1979b55f889f1de1d348b0411d539705e1097763f93746b91c2f",
+    "ui/icons/cream/list.png": "8f847bccd5ec51f3b0850a5e9cb070a643c47a40c8b0c0bb6a540f6e41ace840",
+    "ui/icons/cream/lock.png": "9cdaedbd9a2a833560add405d4fe49caa1f985facf6720c1d7806d68b995bf2f",
+    "ui/icons/cream/plus.png": "c1c2811473dd798de29ccc1518a2b605c0496ec6e59f029a9b269a40ab9434fc",
+    "ui/icons/cream/share-network.png": "d096f9a93f2c189b92612db4152f3ba617fae6a16c2470ba97be30b6dfe928e2",
+    "ui/icons/cream/sign-out.png": "ea1a9370bf252dc749711309b9329fc1942084879df5048a36c380bea779770c",
+    "ui/icons/cream/speaker-high.png": "c89540743a86efa7e38432b463262d8b2af139a53fe1491c881cdceec10b1d44",
+    "ui/icons/cream/users-three.png": "ef5730718816186acb6c03c8a8ae94904b8c6c9c498f6e368c31d1ae45d18cf8",
+    "ui/icons/ink/arrow-clockwise.png": "0c7740323a663cb37b5f5444f9e2027fdd077473293cf4c1e73f77fc0433ca07",
+    "ui/icons/ink/arrow-left.png": "167f84b778267d9511ff6710894cab808b3cc4d0352e6678e63084f0629eec84",
+    "ui/icons/ink/book-open.png": "4c897721b1d0bc01e7655a6572ba486e087173dfd8c5b0a4c607d33ccb394c9c",
+    "ui/icons/ink/caret-right.png": "bfb7cc4bc2dd132de3a5081d56b26c424b1d93335fb5eaad8b77a90bd9319246",
+    "ui/icons/ink/check.png": "2166df6f652470ef52ef9988f8cee8332b42618ccb6bdc49b2d3185dacc65728",
+    "ui/icons/ink/device-mobile.png": "4794a20c8d62423152cc1dbd8ca17926c5525c2ba90debfc16e279a37fa80b63",
+    "ui/icons/ink/eye.png": "7e55703308724f047300b8e453eb8cf54d69b10ded41ecb69763db4c26c0fa29",
+    "ui/icons/ink/gear.png": "23df6df48e184e2ede7c9965b946a1e9b9aa96a157c7eb50d0e44e7a59a1857d",
+    "ui/icons/ink/graduation-cap.png": "e65e43872c79adde0cb87ab8249cbe9dc8d1304b31b7a9de14085373c8ca0b6f",
+    "ui/icons/ink/hash.png": "4a77ee3dce85e332dcede177e03f7e88d58a894d59d90fefe6675b2c5d609746",
+    "ui/icons/ink/info.png": "c7f78721f7877f6025d31eec70a080d71d719bc315a90de8dcc9637aa03f96f0",
+    "ui/icons/ink/list.png": "7b9af6a2602b356ea2e059671c3b2b999d5f3320b7490d5ac4f1fa5f94090c54",
+    "ui/icons/ink/lock.png": "0cea456a0e1ab2f4da39ce243a820891d1c563eb20ed505027b17e32cd187977",
+    "ui/icons/ink/plus.png": "cfd70ff00127e3de7a6a4b20bc96637baa3f2c889c3433d6c1c54a646d2f5ee6",
+    "ui/icons/ink/share-network.png": "d800dd15efbb877c5169f30c4235e31fcadd99f894884a56b183b69a19972e35",
+    "ui/icons/ink/sign-out.png": "09e7f308d5dbd58ab48f5eaa4679648c83004b172dac22f54a7c8045cfa0fa98",
+    "ui/icons/ink/speaker-high.png": "3e779d280a4d3cb7c60d490515d0408e296674aea9c6b00287083e8aca37d414",
+    "ui/icons/ink/users-three.png": "8b2f33d8dddccf30fe701f675b89220868c7d6efd708f88f9cb0ae75a53984d4"
+  },
   "budgets": {
     "developmentBytes": 15000000,
     "releaseTargetBytes": 3800000,

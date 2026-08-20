@@ -44,6 +44,24 @@ describe("scene registry", () => {
     expect(buildScreen("result", { view: member }).actions?.[0]?.intent?.type).toBe("VoteRestart");
   });
 
+  it("only lets a host start when at least two players are all ready", () => {
+    const room = { ownerId: "host", code: "246810", maxPlayers: 4, allowBots: true };
+    const players = [
+      { id: "host", name: "你", ready: true },
+      { id: "member", name: "团子", ready: true },
+    ];
+    const ready = normalizeProductView({ phase: "LOBBY", viewerId: "host", room, players }, "online");
+    const waiting = normalizeProductView({
+      phase: "LOBBY",
+      viewerId: "host",
+      room,
+      players: [players[0], { ...players[1], ready: false }],
+    }, "online");
+
+    expect(buildScreen("lobby-host", { view: ready }).actions?.some((action) => action.intent?.type === "StartMatch")).toBe(true);
+    expect(buildScreen("lobby-host", { view: waiting }).actions?.some((action) => action.intent?.type === "StartMatch")).toBe(false);
+  });
+
   it("routes authoritative pending states and attack debt into reachable scenes", () => {
     const base = { phase: "MATCH", viewerId: "you", matchId: "m1", you: { id: "you", alive: true, hand: [] }, turn: { id: "t1", playerId: "you", remaining: 1 } };
     const cases = [
