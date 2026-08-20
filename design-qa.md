@@ -30,15 +30,17 @@
 ## Primary Interactions Tested
 
 - `继续牌局`：恢复到当前对局的准确派生页面。
+- 晚到权威快照：缓存首页处于恢复中时不会提前消费恢复提示，收到 `MATCH` 快照后仍显示 `继续牌局`。
 - `创建房间`：直接进入房间设置，不再经过“开一局 → 模式选择”。
 - `加入房间`：进入 6 位房间码输入页。
 - `新手教学`、`规则图鉴`、`设置`：均进入对应页面。
+- 牌局工具页：规则、卡牌详情、设置、网络和对局菜单持续显示最新行动与战报入口。
 - Browser console: 无 warning 或 error。
 
 ## WeChat Platform Evidence
 
 - 微信开发者工具 CLI 已使用正式 AppID `wxd8938809dbb08d94` 成功打开 `apps/minigame`，并对生产构建执行 `preview`。
-- 预览上传信息：总大小 `3,433,051` bytes；生产包内包含云托管环境 `prod-d0g8qcwrb047789af`、服务 `exploding-kitty-api` 与 `cloudContainer`，不包含 `localhost` 或 `127.0.0.1`。
+- 预览上传信息：总大小 `3,259,180` bytes，在 4 MiB 基准下保留超过 20% 余量；生产包内包含云托管环境 `prod-d0g8qcwrb047789af`、服务 `exploding-kitty-api` 与 `cloudContainer`，不包含 `localhost` 或 `127.0.0.1`。
 - 尚未取得微信开发者工具渲染截图，以及 iOS / Android 真机截图；因此首页视觉与触摸验收仍按 `docs/ACCEPTANCE.md` 标记为 blocked。
 
 ## Focused Region Comparison

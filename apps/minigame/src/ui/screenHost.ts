@@ -31,6 +31,7 @@ const ACTIVITY_BAR_HEIGHT = 48;
 const ACTIVITY_HIGHLIGHT_MS = 2_400;
 const MATCH_ACTIVITY_SCREEN_IDS = new Set<ScreenId>([
   "game", "other-turn", "attack", "response", "favor", "give-card", "future", "explosion", "defuse", "eliminated",
+  "game-menu", "rules", "card-detail", "settings", "network",
 ]);
 
 export class ScreenHost {
@@ -84,18 +85,20 @@ export class ScreenHost {
 
   start(): void {
     this.handleLaunchQuery(this.options.wx.getLaunchOptionsSync?.().query);
-    const initial = this.currentView();
-    this.lastRevision = this.options.session.getSnapshot().revision ?? -1;
+    const initialSnapshot = this.options.session.getSnapshot();
+    const initial = normalizeProductView(initialSnapshot.view, initialSnapshot.connectivity);
+    this.lastRevision = initialSnapshot.revision ?? -1;
     this.anchorServerClock(initial);
     this.authoritySounds.prime(soundView(initial));
     this.primeActivity(initial);
-    this.offerResumeIfNeeded(initial);
+    this.offerResumeIfNeeded(initial, initialSnapshot.lifecycle);
     this.unsubscribe = this.options.session.subscribe(() => {
-      const current = this.currentView();
+      const snapshot = this.options.session.getSnapshot();
+      const current = normalizeProductView(snapshot.view, snapshot.connectivity);
       this.anchorServerClock(current);
       this.authoritySounds.consume(soundView(current));
       this.consumeActivity(current);
-      const revision = this.options.session.getSnapshot().revision ?? -1;
+      const revision = snapshot.revision ?? -1;
       if (revision !== this.lastRevision) {
         const preserveResumeNavigation = this.resumeGateOpen;
         this.lastRevision = revision;
@@ -107,7 +110,7 @@ export class ScreenHost {
         }
         if (!current.eliminated) this.spectating = false;
       }
-      this.offerResumeIfNeeded(current);
+      this.offerResumeIfNeeded(current, snapshot.lifecycle);
       this.openInvitationIfReady();
       this.render();
     });
@@ -789,7 +792,7 @@ export class ScreenHost {
     this.activitySequence = Math.max(this.activitySequence, latestActivitySequence(view));
   }
 
-  private offerResumeIfNeeded(view: ProductViewModel): void {
+  private offerResumeIfNeeded(view: ProductViewModel, lifecycle: string): void {
     if (!this.resumeOfferPending || !view.authenticated) return;
     if (view.phase === "MATCH" || view.phase === "LOBBY") {
       this.resumeOfferPending = false;
@@ -798,7 +801,7 @@ export class ScreenHost {
       this.override = "home";
       return;
     }
-    if (view.phase === "HOME" && isLiveConnectivity(view.connectivity)) this.resumeOfferPending = false;
+    if (view.phase === "HOME" && lifecycle.toLowerCase() === "active") this.resumeOfferPending = false;
   }
 
   private resolveId(view: ProductViewModel): ScreenId {
