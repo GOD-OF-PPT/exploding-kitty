@@ -40,7 +40,7 @@
 ## WeChat Platform Evidence
 
 - 微信开发者工具 CLI 已使用正式 AppID `wxd8938809dbb08d94` 成功打开 `apps/minigame`，并对生产构建执行 `preview`。
-- 预览上传信息：总大小 `3,259,180` bytes，在 4 MiB 基准下保留超过 20% 余量；生产包内包含云托管环境 `prod-d0g8qcwrb047789af`、服务 `exploding-kitty-api` 与 `cloudContainer`，不包含 `localhost` 或 `127.0.0.1`。
+- 预览上传信息：总大小 `3,259,639` bytes，在 4 MiB 基准下保留超过 20% 余量；生产包内包含云托管环境 `prod-d0g8qcwrb047789af`、服务 `exploding-kitty-api` 与 `cloudContainer`，不包含 `localhost` 或 `127.0.0.1`。
 - 尚未取得微信开发者工具渲染截图，以及 iOS / Android 真机截图；因此首页视觉与触摸验收仍按 `docs/ACCEPTANCE.md` 标记为 blocked。
 
 ## Focused Region Comparison
