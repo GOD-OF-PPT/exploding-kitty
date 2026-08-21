@@ -156,6 +156,7 @@ function sourcesFrom(template: string, model: ScreenModel): string[] {
     sources.add("assets/ui/backgrounds/comic-bg-390x844.jpg");
     sources.add("assets/cards/card-back.png");
     if (model.table.discard?.image) sources.add(model.table.discard.image);
+    if (model.table.feedback?.card?.image) sources.add(model.table.feedback.card.image);
     for (const card of model.table.hand) sources.add(card.image);
   }
   return [...sources].sort();
@@ -198,6 +199,7 @@ async function attachTableSurface(
     waitingLabel: model.subtitle ?? model.title,
     selectedTokens,
     fontFamily: displayFont,
+    feedback: model.table.feedback,
   };
   const surface = new CardTableSurface(
     () => document.createElement("canvas"),

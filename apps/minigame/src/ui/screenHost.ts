@@ -15,7 +15,7 @@ import type {
   WxShareAdapter,
   WxWindowResizeEvent,
 } from "../platform";
-import type { GameSession, RawProductView, ScreenAction, ScreenId, ScreenModel, ScreenRow } from "./model";
+import type { CardModel, GameSession, RawProductView, ScreenAction, ScreenId, ScreenModel, ScreenRow } from "./model";
 import { normalizeProductView, type ProductViewModel } from "./normalize";
 import { buildScreen, deriveScreen } from "./sceneRegistry";
 import { CardTableSurface } from "./cardTableSurface";
@@ -45,11 +45,22 @@ type TableSize = Readonly<{ width: number; height: number }>;
 
 const ACTIVITY_BAR_HEIGHT = 48;
 const ACTIVITY_HIGHLIGHT_MS = 2_400;
+const PLAY_CONFIRM_HOLD_MS = 1_200;
 const DEFAULT_TABLE_SIZE: TableSize = { width: 368, height: 520 };
 const MATCH_ACTIVITY_SCREEN_IDS = new Set<ScreenId>([
   "game", "other-turn", "attack", "response", "favor", "give-card", "future", "explosion", "defuse", "eliminated",
   "game-menu", "rules", "card-detail", "settings", "network",
 ]);
+
+type LocalPlayFeedback = Readonly<{
+  afterSequence: number;
+  sequence: number;
+  title: string;
+  detail: string;
+  tone: "action" | "success";
+  phase: "committing" | "settled";
+  card?: CardModel;
+}>;
 
 export class ScreenHost {
   private readonly canvas: HTMLCanvasElement;
@@ -94,6 +105,8 @@ export class ScreenHost {
   private highlightedActivitySequence = 0;
   private activityLive = false;
   private activityTimer: ReturnType<typeof setTimeout> | null = null;
+  private playFeedback: LocalPlayFeedback | null = null;
+  private playFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private resumeOfferPending = true;
   private resumeGateOpen = false;
 
@@ -413,11 +426,11 @@ export class ScreenHost {
   }
 
   private activityBannerTemplate(view: ProductViewModel): string {
-    const item = latestActivity(view);
+    const item = this.visibleActivity(view);
     const title = item?.title ?? "等待第一位玩家行动";
     const detail = item?.detail ?? "公开行动会显示在这里";
     const tone = item ? capitalize(item.tone) : "Neutral";
-    const fresh = item?.sequence === this.highlightedActivitySequence;
+    const fresh = Boolean(this.playFeedback) || item?.sequence === this.highlightedActivitySequence;
     return `<button id="activity-banner" class="activityBanner activityBanner${tone}${fresh ? " activityBannerFresh" : ""}"><view class="activityBannerCopy"><text class="activityBannerTitle" value="${escape(title)}"></text><text class="activityBannerDetail" value="${escape(detail)}"></text></view><text class="activityBannerLink" value="查看"></text></button>`;
   }
 
@@ -526,7 +539,7 @@ export class ScreenHost {
       ?? DEFAULT_TABLE_SIZE.height;
     this.lastTableSize = { width, height };
     const active = view.players?.find((player) => player.id === view.game.turnPlayerId);
-    const state = { width, height, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction), turnsOwed: model.table.turnsOwed, waitingLabel: active ? `等待${active.name}行动` : undefined, selectedTokens: this.selectedTokens, handPage: this.handPage, fontFamily: this.displayFont };
+    const state = { width, height, renderScale: this.metrics.renderScale, deckCount: model.table.deckCount, discard: model.table.discard, hand: model.table.hand, players: model.table.players, myTurn: model.table.myTurn, canDraw: Boolean(model.table.drawAction) && !this.sending, turnsOwed: model.table.turnsOwed, waitingLabel: active ? `等待${active.name}行动` : undefined, selectedTokens: this.selectedTokens, handPage: this.handPage, fontFamily: this.displayFont, feedback: this.tableFeedback(view) };
     this.unsubscribeTableInvalidation?.();
     this.unsubscribeTableInvalidation = null;
     if (this.tableSurface) this.tableSurface.update(state);
@@ -538,6 +551,7 @@ export class ScreenHost {
     component.canvas = this.tableSurface.element;
     component.update();
     component.on("click", (event: unknown) => {
+      if (this.sending) return;
       const touch = extractCssPoint(event);
       if (!touch || !this.tableSurface) return;
       const rect = Layout.getElementViewportRect(component as unknown as LayoutElement);
@@ -651,6 +665,13 @@ export class ScreenHost {
     this.activityTimer = null;
     if (activityTimer !== null) {
       try { clearTimeout(activityTimer); }
+      catch { /* Keep releasing the remaining resources. */ }
+    }
+
+    const playFeedbackTimer = this.playFeedbackTimer;
+    this.playFeedbackTimer = null;
+    if (playFeedbackTimer !== null) {
+      try { clearTimeout(playFeedbackTimer); }
       catch { /* Keep releasing the remaining resources. */ }
     }
     this.unsubscribeDisplayChanges();
@@ -780,6 +801,7 @@ export class ScreenHost {
       const materialized = this.materialize(action.intent, view);
       if (!this.isLocallyAllowed(String(materialized.type), view)) throw new Error("ACTION_NOT_AVAILABLE");
       if (this.sending) return;
+      if (materialized.type === "PlayCards") this.beginPlayFeedback(view);
       this.sending = true;
       this.render();
       const result = await this.options.session.send(materialized as ClientAction).finally(() => { this.sending = false; });
@@ -788,12 +810,14 @@ export class ScreenHost {
       if (materialized.type === "StartTutorial") {
         this.tutorialStep = 0;
       }
+      if (materialized.type === "PlayCards") this.confirmPlayFeedback(this.currentView());
       this.clearSelection();
       this.override = null;
       this.navigation.length = 0;
       this.options.media.impact(materialized.type === "PlayNope" ? "heavy" : "medium");
       this.render();
     } catch (error) {
+      this.clearPlayFeedback();
       this.error = error instanceof Error ? error.message : "ACTION_FAILED";
       this.render();
     }
@@ -911,6 +935,11 @@ export class ScreenHost {
     const fresh = view.events.filter((event) => event.sequence > this.activitySequence);
     this.activitySequence = Math.max(this.activitySequence, latest);
     if (!fresh.length) return;
+    if (this.playFeedback && fresh.some((event) => (
+      event.sequence > this.playFeedback!.afterSequence
+      && event.type === "CARDS_COMMITTED"
+      && event.actorId === view.viewerId
+    ))) this.clearPlayFeedback();
     this.highlightedActivitySequence = fresh.at(-1)!.sequence;
     this.activityUnread = this.activityOpen ? 0 : Math.min(99, this.activityUnread + fresh.length);
     if (this.activityTimer) clearTimeout(this.activityTimer);
@@ -924,6 +953,72 @@ export class ScreenHost {
   private markActivityRead(view: ProductViewModel): void {
     this.activityUnread = 0;
     this.activitySequence = Math.max(this.activitySequence, latestActivitySequence(view));
+  }
+
+  private visibleActivity(view: ProductViewModel): ActivityItem | LocalPlayFeedback | null {
+    return this.playFeedback ?? latestActivity(view);
+  }
+
+  private tableFeedback(view: ProductViewModel): NonNullable<NonNullable<ScreenModel["table"]>["feedback"]> | undefined {
+    const item = this.visibleActivity(view);
+    if (!item) return undefined;
+    return {
+      title: item.title,
+      detail: item.detail,
+      tone: item.tone,
+      ...(this.playFeedback ? {
+        phase: this.playFeedback.phase,
+        ...(this.playFeedback.card ? { card: this.playFeedback.card } : {}),
+      } : {}),
+    };
+  }
+
+  private beginPlayFeedback(view: ProductViewModel): void {
+    if (this.playFeedbackTimer) clearTimeout(this.playFeedbackTimer);
+    this.playFeedbackTimer = null;
+    const cards = this.selectedTokens
+      .map((token) => view.hand.find((card) => card.token === token))
+      .filter((card): card is CardModel => Boolean(card));
+    this.playFeedback = {
+      afterSequence: latestActivitySequence(view),
+      sequence: latestActivitySequence(view) + 1,
+      title: `正在打出${playedCardsLabel(cards)}`,
+      detail: "牌已送往弃牌堆 · 正在结算",
+      tone: "action",
+      phase: "committing",
+      ...(cards.at(-1) ? { card: cards.at(-1) } : {}),
+    };
+  }
+
+  private confirmPlayFeedback(view: ProductViewModel): void {
+    if (!this.playFeedback) return;
+    const authoritative = view.events.some((event) => (
+      event.sequence > this.playFeedback!.afterSequence
+      && event.type === "CARDS_COMMITTED"
+      && event.actorId === view.viewerId
+    ));
+    if (authoritative) {
+      this.clearPlayFeedback();
+      return;
+    }
+    this.playFeedback = {
+      ...this.playFeedback,
+      title: this.playFeedback.title.replace(/^正在打出/u, "已打出"),
+      detail: "指令已送达 · 等待公开结算",
+      tone: "success",
+      phase: "settled",
+    };
+    this.playFeedbackTimer = setTimeout(() => {
+      this.playFeedbackTimer = null;
+      this.playFeedback = null;
+      this.render();
+    }, PLAY_CONFIRM_HOLD_MS);
+  }
+
+  private clearPlayFeedback(): void {
+    if (this.playFeedbackTimer) clearTimeout(this.playFeedbackTimer);
+    this.playFeedbackTimer = null;
+    this.playFeedback = null;
   }
 
   private offerResumeIfNeeded(view: ProductViewModel, lifecycle: string): void {
@@ -958,6 +1053,13 @@ export class ScreenHost {
 
 function validLayoutSize(value: number): number | null {
   return Number.isFinite(value) && value > 0 ? Math.max(1, Math.round(value)) : null;
+}
+
+function playedCardsLabel(cards: readonly CardModel[]): string {
+  if (!cards.length) return "所选牌";
+  if (cards.length === 1) return `「${cards[0]!.name}」`;
+  if (cards.every((card) => card.type === cards[0]!.type)) return `${cards.length} 张「${cards[0]!.name}」`;
+  return cards.map((card) => `「${card.name}」`).join(" + ");
 }
 
 function insertionDeckSize(view: ProductViewModel): number {

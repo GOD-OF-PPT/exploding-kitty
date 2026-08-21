@@ -95,8 +95,29 @@ export function activityTimeline(view: ProductViewModel, limit = 12): readonly A
 }
 
 export function latestActivity(view: ProductViewModel): ActivityItem | null {
-  const event = view.events.at(-1);
-  return event ? activityItem(event, view) : null;
+  const events = view.events ?? [];
+  const event = events.at(-1);
+  if (!event) return null;
+  const latest = activityItem(event, view);
+  if (event.type !== "TURN_STARTED") return latest;
+
+  let action: PublicEvent | undefined;
+  for (let index = events.length - 2; index >= 0; index -= 1) {
+    const candidate = events[index]!;
+    if (candidate.type === "TURN_STARTED") break;
+    if (candidate.type === "CARDS_COMMITTED") {
+      action = candidate;
+      break;
+    }
+    if (!action && CARRIED_ACTION_TYPES.has(candidate.type)) action = candidate;
+  }
+  if (!action) return latest;
+  const carried = activityItem(action, view);
+  return {
+    ...carried,
+    sequence: event.sequence,
+    detail: `${carried.detail} · ${latest.title}`,
+  };
 }
 
 export function latestActivitySequence(view: ProductViewModel): number {
@@ -132,3 +153,18 @@ function playedCardTitle(actor: string, cardNames: readonly string[], fallbackCa
   }
   return `${actor}打出${cardNames.map((name) => `「${name}」`).join(" + ")}`;
 }
+
+const CARRIED_ACTION_TYPES = new Set([
+  "CARDS_COMMITTED",
+  "NOPE_PLAYED",
+  "ACTION_CANCELLED",
+  "ACTION_RESOLVED",
+  "CARD_STOLEN",
+  "CARD_GIVEN",
+  "COMBO_MISSED",
+  "CARD_DRAWN",
+  "DECK_SHUFFLED",
+  "EXPLODING_KITTEN_REVEALED",
+  "DEFUSE_CONSUMED",
+  "PLAYER_ELIMINATED",
+]);
