@@ -258,6 +258,18 @@ export class ScreenHost {
       || this.activityAvailable(model, view)
       || Boolean(model.rows?.some((row) => row.control))
     );
+    const activitySheetHeight = Math.min(422, Math.max(320, Math.round(this.metrics.logicalHeight * 0.52)));
+    const activityRuntimeStyles = model.id === "defuse"
+      ? {
+        activityBackdrop: { ...UI_STYLE.activityBackdrop, height: this.metrics.logicalHeight },
+        activitySheet: { ...UI_STYLE.activitySheet, top: this.metrics.logicalHeight - activitySheetHeight, height: activitySheetHeight, paddingBottom: this.metrics.safeInsets.bottom },
+        activityTimeline: { ...UI_STYLE.activityTimeline, height: Math.max(166, activitySheetHeight - 148 - this.metrics.safeInsets.bottom) },
+      }
+      : {
+        activityBackdrop: { ...UI_STYLE.activityBackdrop },
+        activitySheet: { ...UI_STYLE.activitySheet, paddingBottom: this.metrics.safeInsets.bottom },
+        activityTimeline: { ...UI_STYLE.activityTimeline, height: Math.max(238, 280 - this.metrics.safeInsets.bottom) },
+      };
     Layout.init(useProductSurface ? this.template(model, view) : rendered.template, useProductSurface
       ? {
         ...UI_STYLE,
@@ -266,8 +278,7 @@ export class ScreenHost {
         actionDock: { ...UI_STYLE.actionDock, paddingBottom: 16 + this.metrics.safeInsets.bottom },
         tableActionDock: { ...UI_STYLE.tableActionDock, height: 96 + this.metrics.safeInsets.bottom, paddingBottom: 12 + this.metrics.safeInsets.bottom },
         tableCanvas: { ...UI_STYLE.tableCanvas, height: this.tableHeight(model), minHeight: this.tableHeight(model), maxHeight: this.tableHeight(model) },
-        activitySheet: { ...UI_STYLE.activitySheet, paddingBottom: this.metrics.safeInsets.bottom },
-        activityTimeline: { ...UI_STYLE.activityTimeline, height: Math.max(238, 280 - this.metrics.safeInsets.bottom) },
+        ...activityRuntimeStyles,
       }
       : rendered.styles);
     applyLayoutTransform(this.context, this.metrics);
@@ -283,6 +294,7 @@ export class ScreenHost {
   private template(model: ScreenModel, view: ProductViewModel): string {
     if (model.id === "home") return this.homeTemplate(model, view);
     if (model.id === "create") return this.createTemplate(model);
+    if (model.id === "defuse") return this.defuseTemplate(model, view);
     const activityAvailable = this.activityAvailable(model, view);
     const canGoBack = Boolean(this.navigation.length || this.override);
     const headerLeft = model.table
@@ -364,6 +376,7 @@ export class ScreenHost {
   private createStepperAtLimit(row: ScreenRow | undefined, direction: -1 | 1): boolean {
     if (row?.id === "players") return direction < 0 ? this.roomDraft.maxPlayers <= 2 : this.roomDraft.maxPlayers >= 5;
     if (row?.id === "timer") return direction < 0 ? this.roomDraft.turnSeconds <= 30 : this.roomDraft.turnSeconds >= 60;
+    if (row?.id === "position") return direction < 0 ? this.insertionPosition <= 0 : this.insertionPosition >= insertionDeckSize(this.currentView());
     return false;
   }
 
@@ -371,7 +384,91 @@ export class ScreenHost {
     return `<view class="createReviewRow"><image class="createReviewBullet" src="assets/ui/create/burst.png"></image><text class="createReviewText" value="${escape(label)}"></text>${divider ? `<view class="createReviewDivider"></view>` : ""}</view>`;
   }
 
+  private defuseTemplate(model: ScreenModel, view: ProductViewModel): string {
+    const rowIndex = Math.max(0, model.rows?.findIndex((row) => row.id === "position") ?? 0);
+    const deckSize = insertionDeckSize(view);
+    const position = Math.max(0, Math.min(deckSize, this.insertionPosition));
+    const location = insertionLocation(position, deckSize);
+    const downDisabled = this.sending || position <= 0;
+    const upDisabled = this.sending || position >= deckSize;
+    const actionIndex = Math.max(0, model.actions?.findIndex((action) => action.id === "insert") ?? 0);
+    const action = model.actions?.[actionIndex];
+    const headerRight = `<button id="activity-toggle" class="activityHeaderButton" value="战报">${this.activityUnread ? `<text class="activityUnread" value="${Math.min(99, this.activityUnread)}"></text>` : ""}</button>`;
+    const primary = action && !this.sending
+      ? `<button id="action-${actionIndex}" class="defusePrimary"><image class="defusePrimaryBackground" src="assets/ui/create/cta-bg.webp"></image><view class="defusePrimaryCopy"><text class="defusePrimaryLabel" value="${escape(action.label)}"></text><text class="defusePrimaryHint" value="确认：${escape(location.label)}"></text></view></button>`
+      : `<view class="defusePrimary defusePrimaryDisabled"><image class="defusePrimaryBackground" src="assets/ui/create/cta-bg.webp"></image><view class="defusePrimaryCopy"><text class="defusePrimaryLabel" value="${this.sending ? "处理中…" : "等待服务器确认"}"></text><text class="defusePrimaryHint" value="请勿退出当前页面"></text></view></view>`;
+    const overlay = this.activityOpen ? this.activityOverlayTemplate(view) : "";
+    const error = this.error ? `<text id="error" class="error defuseError" value="${escape(this.error)}"></text>` : "";
+    return `<view class="app defuseScreen"><view class="topSafe"></view><view class="defuseHeader"><view class="defuseHeaderSpacer"></view><view class="defuseHeaderCopy"><image class="defuseHeaderAccent" src="assets/ui/create/header-accent.webp"></image><text id="screen-eyebrow" class="defuseEyebrow" value="${escape(model.eyebrow ?? "秘密操作")}"></text><text class="defuseHeaderTitle" value="${escape(model.title)}"></text></view>${headerRight}</view><view class="defuseActivityWrap">${this.activityBannerTemplate(view)}</view><view class="defuseBody"><view class="defuseSecretStage"><view class="defuseSecretStrip"><image class="defuseSecretIcon" src="assets/ui/icons/cream/lock.png"></image><view class="defuseSecretCopy"><text class="defuseSecretTitle" value="拆弹已生效"></text><text class="defuseSecretDetail" value="插入位置只有你知道"></text></view><text class="defuseSecretBadge" value="仅你可见"></text></view><view class="defuseTransferRow"><view class="defuseTransferBlock"><image class="defuseDangerCard" src="assets/cards/danger.png"></image><text class="defuseTransferLabel defuseDangerLabel" value="危险牌"></text></view><view class="defuseTransferArrow"><view class="defuseTransferArrowBox"><image class="defuseTransferArrowIcon" src="assets/ui/icons/ink/caret-right.png"></image></view><text class="defuseTransferArrowText" value="秘密放回"></text></view><view class="defuseTransferBlock defuseDeckBlock"><image class="defuseDeckCard" src="assets/cards/card-back.png"></image><text class="defuseTransferLabel defuseDeckLabel" value="牌堆 · ${deckSize} 张"></text></view></view></view><view class="defusePicker"><view class="defusePickerHeader"><view class="defusePickerCopy"><text class="defusePickerTitle" value="选择插入位置"></text><text class="defusePickerDetail" value="共 ${deckSize + 1} 个可选位置"></text></view><text class="defusePickerCount" value="${position + 1} / ${deckSize + 1}"></text></view><view class="defusePositionGuide"><text class="defuseEndpoint" value="${deckSize ? "牌堆顶" : "空牌堆"}"></text><view class="defuseGuideTrack"><view class="defuseGuideFill"></view><view class="defuseGuideMarker"></view></view><text class="defuseEndpoint" value="${deckSize ? "牌堆底" : "唯一位置"}"></text></view><view id="row-${rowIndex}" class="defusePositionControl"><button id="row-${rowIndex}-down" class="defuseStepButton${downDisabled ? " defuseStepButtonDisabled" : ""}" value="− 牌顶"></button><view class="defuseCurrentPosition"><text class="defuseCurrentLabel" value="${escape(location.label)}"></text><text class="defuseCurrentDetail" value="${escape(location.detail)}"></text></view><button id="row-${rowIndex}-up" class="defuseStepButton${upDisabled ? " defuseStepButtonDisabled" : ""}" value="+ 牌底"></button></view></view></view><view class="defuseActionDock">${primary}</view>${overlay}${error}</view>`;
+  }
+
   private productRuntimeStyles(model: ScreenModel): Record<string, (typeof UI_STYLE)[string]> {
+    if (model.id === "defuse") {
+      const fontFamily = this.displayFont;
+      const compact = this.metrics.logicalHeight < 800;
+      const short = this.metrics.logicalHeight < 700;
+      const deckSize = insertionDeckSize(this.currentView());
+      const ratio = deckSize > 0 ? Math.max(0, Math.min(1, this.insertionPosition / deckSize)) : 0.5;
+      const headerHeight = short ? 78 : compact ? 90 : 100;
+      const activityHeight = short ? 46 : compact ? 52 : 54;
+      const dockHeight = (short ? 96 : compact ? 117 : 128) + this.metrics.safeInsets.bottom;
+      const shared = {
+        defuseScreen: { ...UI_STYLE.defuseScreen, height: this.metrics.logicalHeight },
+        defuseHeader: { ...UI_STYLE.defuseHeader, height: headerHeight },
+        defuseActivityWrap: { ...UI_STYLE.defuseActivityWrap, height: activityHeight },
+        defuseBody: { ...UI_STYLE.defuseBody, height: Math.max(0, this.metrics.logicalHeight - this.metrics.safeInsets.top - headerHeight - activityHeight - dockHeight), minHeight: 0, flexGrow: 0, flexShrink: 0 },
+        defuseHeaderTitle: { ...UI_STYLE.defuseHeaderTitle, fontFamily },
+        defuseSecretTitle: { ...UI_STYLE.defuseSecretTitle, fontFamily },
+        defuseTransferLabel: { ...UI_STYLE.defuseTransferLabel, fontFamily },
+        defusePickerTitle: { ...UI_STYLE.defusePickerTitle, fontFamily },
+        defusePickerCount: { ...UI_STYLE.defusePickerCount, fontFamily },
+        defuseCurrentLabel: { ...UI_STYLE.defuseCurrentLabel, fontFamily },
+        defusePrimaryLabel: { ...UI_STYLE.defusePrimaryLabel, fontFamily },
+        defuseGuideFill: { ...UI_STYLE.defuseGuideFill, width: Math.max(4, Math.round(202 * ratio)) },
+        defuseGuideMarker: { ...UI_STYLE.defuseGuideMarker, left: Math.round(188 * ratio) },
+        defuseActionDock: { ...UI_STYLE.defuseActionDock, height: dockHeight, paddingBottom: 12 + this.metrics.safeInsets.bottom },
+      };
+      if (!compact) return shared;
+      const compactStyles = {
+        ...shared,
+        defuseHeaderCopy: { ...UI_STYLE.defuseHeaderCopy, height: 88, paddingTop: 5 },
+        defuseHeaderAccent: { ...UI_STYLE.defuseHeaderAccent, top: 27, height: 55 },
+        defuseEyebrow: { ...UI_STYLE.defuseEyebrow, height: 18, lineHeight: 18 },
+        defuseHeaderTitle: { ...UI_STYLE.defuseHeaderTitle, height: 47, lineHeight: 45, fontSize: 31, fontFamily },
+        defuseActivityWrap: { ...UI_STYLE.defuseActivityWrap, height: 52 },
+        defuseSecretStage: { ...UI_STYLE.defuseSecretStage, height: 200 },
+        defuseSecretStrip: { ...UI_STYLE.defuseSecretStrip, height: 36 },
+        defuseTransferRow: { ...UI_STYLE.defuseTransferRow, height: 164 },
+        defuseTransferBlock: { ...UI_STYLE.defuseTransferBlock, height: 158 },
+        defuseDangerCard: { ...UI_STYLE.defuseDangerCard, width: 96, height: 137 },
+        defuseDeckCard: { ...UI_STYLE.defuseDeckCard, width: 78, height: 111 },
+        defusePicker: { ...UI_STYLE.defusePicker, height: 198 },
+      };
+      if (!short) return compactStyles;
+      return {
+        ...compactStyles,
+        defuseHeader: { ...UI_STYLE.defuseHeader, height: 78 },
+        defuseHeaderCopy: { ...UI_STYLE.defuseHeaderCopy, height: 76, paddingTop: 0 },
+        defuseHeaderAccent: { ...UI_STYLE.defuseHeaderAccent, top: 21, height: 49 },
+        defuseHeaderTitle: { ...UI_STYLE.defuseHeaderTitle, height: 43, lineHeight: 41, fontSize: 28, fontFamily },
+        defuseActivityWrap: { ...UI_STYLE.defuseActivityWrap, height: 46 },
+        defuseSecretStage: { ...UI_STYLE.defuseSecretStage, height: 150 },
+        defuseSecretStrip: { ...UI_STYLE.defuseSecretStrip, height: 34 },
+        defuseTransferRow: { ...UI_STYLE.defuseTransferRow, height: 116 },
+        defuseTransferBlock: { ...UI_STYLE.defuseTransferBlock, height: 112 },
+        defuseDangerCard: { ...UI_STYLE.defuseDangerCard, width: 68, height: 97 },
+        defuseDeckCard: { ...UI_STYLE.defuseDeckCard, width: 56, height: 80 },
+        defusePicker: { ...UI_STYLE.defusePicker, height: 170, paddingTop: 4, paddingBottom: 4 },
+        defusePickerHeader: { ...UI_STYLE.defusePickerHeader, height: 36 },
+        defusePositionGuide: { ...UI_STYLE.defusePositionGuide, height: 32 },
+        defusePositionControl: { ...UI_STYLE.defusePositionControl, height: 64 },
+        defuseStepButton: { ...UI_STYLE.defuseStepButton, height: 56, lineHeight: 53 },
+        defuseCurrentPosition: { ...UI_STYLE.defuseCurrentPosition, height: 58 },
+        defuseActionDock: { ...UI_STYLE.defuseActionDock, height: dockHeight, paddingTop: 0, paddingBottom: 7 + this.metrics.safeInsets.bottom },
+        defusePrimary: { ...UI_STYLE.defusePrimary, height: 76 },
+        defusePrimaryBackground: { ...UI_STYLE.defusePrimaryBackground, height: 96 },
+      };
+    }
     if (model.id !== "create") return {};
     const fontFamily = this.displayFont;
     const compact = this.metrics.logicalHeight < 820;
@@ -720,6 +817,7 @@ export class ScreenHost {
     const eyebrow = Layout.getElementById<LayoutText>("screen-eyebrow");
     const value = model.eyebrow ?? "";
     if (!eyebrow || eyebrow.value === value) return;
+    if (this.activityOpen) return;
 
     eyebrow.value = value;
     // Text.value marks the entire Layout tree dirty. Its box is fixed, so repaint
@@ -728,7 +826,10 @@ export class ScreenHost {
     const box = eyebrow.layoutBox;
     this.context.save();
     applyLayoutTransform(this.context, this.metrics);
-    this.context.fillStyle = String(UI_STYLE.app?.backgroundColor ?? "#171514");
+    const countdownBackground = model.id === "defuse"
+      ? UI_STYLE.defuseScreen?.backgroundColor
+      : UI_STYLE.app?.backgroundColor;
+    this.context.fillStyle = String(countdownBackground ?? "#171514");
     this.context.fillRect(box.absoluteX - 1, box.absoluteY - 1, box.width + 2, box.height + 2);
     eyebrow.repaint();
     this.context.restore();
@@ -1195,6 +1296,13 @@ function playedCardsLabel(cards: readonly CardModel[]): string {
 function insertionDeckSize(view: ProductViewModel): number {
   const pendingSize = Number(view.pending?.kind === "DEFUSE_INSERTION" ? view.pending.deckSize : Number.NaN);
   return Number.isSafeInteger(pendingSize) && pendingSize >= 0 ? pendingSize : view.game.drawPileCount;
+}
+
+function insertionLocation(position: number, deckSize: number): Readonly<{ label: string; detail: string }> {
+  if (deckSize === 0) return { label: "唯一位置", detail: "空牌堆将从这里开始" };
+  if (position === 0) return { label: "牌堆顶", detail: "下一次抽牌就会遇到" };
+  if (position === deckSize) return { label: "牌堆底", detail: `压在当前 ${deckSize} 张牌下面` };
+  return { label: `第 ${position + 1} 张`, detail: `压在第 ${position} 张牌下面` };
 }
 
 function soundView(view: ProductViewModel) {

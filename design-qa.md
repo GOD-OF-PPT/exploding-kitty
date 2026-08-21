@@ -181,4 +181,71 @@
 - [x] 标准屏、带安全区短屏和用户截图同尺寸 `385 × 494` 适配通过
 - [x] 字体、资产、云托管配置、包体和微信 CLI preview 通过
 
+---
+
+## 秘密插牌页 Design QA
+
+- reported screenshot: `C:\Users\KSG\AppData\Local\Temp\codex-clipboard-020a2353-0111-4779-a984-a31eeef3f5ad.png`
+- final implementation: `.codex-tmp/defuse-audit/defuse-countdown-fixed-383x770.png`
+- standard safe-area implementation: `.codex-tmp/defuse-audit/defuse-final-390x844.png`
+- short-screen implementation: `.codex-tmp/defuse-audit/defuse-short-389x584.png`
+- middle-position state: `.codex-tmp/defuse-audit/defuse-middle-383x770.png`
+- bottom-position state: `.codex-tmp/defuse-audit/defuse-bottom-383x770.png`
+- battle-report state: `.codex-tmp/defuse-audit/defuse-activity-countdown-fixed-383x770.png`
+- final side-by-side comparison: `.codex-tmp/defuse-audit/defuse-before-after-383x770.png`
+- viewport/state: 用户截图同尺寸 `383 × 770`、标准安全区 `390 × 844`、超短屏 `389 × 584`；覆盖牌堆顶、中间、牌堆底和战报展开状态
+
+### Visual Truth
+
+用户截图定义旧页面的信息、状态和主要交互问题；已完成的创建房间页与设置页定义本轮采用的漫画视觉系统。新版没有改变“拆弹后选择危险牌插回位置”的产品语义，而是把危险牌、牌堆、秘密状态、位置范围和确认结果显式可视化。
+
+### Findings
+
+没有遗留的 P0、P1 或 P2 问题。
+
+- Information hierarchy: 页面按“倒计时与战报—秘密状态—危险牌放回牌堆—位置选择—确认”组织，关键任务无需从说明文字中推断。
+- Position semantics: 真实范围为 `0..deckSize`，即四张牌时明确提供五个位置；牌堆顶、牌堆底和中间位置都有独立文案，当前选择同时显示序号、进度和落点含义。
+- Controls: 两侧按钮分别表达向牌堆顶和牌堆底移动；达到边界后采用禁用视觉并阻止越界。提交按钮在确认前重复当前落点，减少误操作。
+- Game continuity: 实时倒计时继续使用 `screen-eyebrow`，战报入口、未读数、最新事件横幅、详情遮罩和关闭逻辑全部保留。
+- Responsive layout: `383 × 770`、`390 × 844` 与 `389 × 584` 均完整显示主 CTA；战报抽屉按逻辑屏高计算，短屏仍能看到最新事件，无遮挡或裁切。
+- Assets and visual system: 复用项目真实危险牌、牌背、锁、箭头、标题笔刷和 CTA 位图；未使用 emoji、内联 SVG、CSS 假图标或占位图。黑、奶油、亮黄、青色、红色和硬边框与现有漫画页面一致。
+
+## Comparison History
+
+1. Initial diagnosis — 原页面以单张牌背、通用步进器和大面积空白表达秘密插牌，无法直观看出危险牌正在回到牌堆，也不能快速判断当前位置与牌堆顶/底的关系。
+2. Pass 1 — 建立危险牌到牌堆的视觉转移、秘密状态条、五位置进度和双向控制；确认生产模型只包含一行 `position`，删除旧三行假设。
+3. Interaction pass — 发现按钮子文本会被递归点击绑定导致单击双增量，改为按钮自身 `value`，验证每次点击只移动一个位置。
+4. Responsive pass — 根据真实逻辑屏高调整标题、卡面、选择器、CTA 和战报抽屉；短屏与安全区状态均一屏完成核心任务。
+5. Countdown repaint pass — 修复局部倒计时重绘使用旧页面背景色造成的亮色块；战报打开时暂停隐藏标题的局部重绘，关闭战报后完整渲染会立即恢复最新倒计时，避免遮罩穿透和低端真机闪烁。
+6. Final comparison — `.codex-tmp/defuse-audit/defuse-before-after-383x770.png` 并排检查后，P0/P1/P2 清零；修复后等待多次倒计时刷新并重新捕获主页面和战报页，浏览器 Canvas 控制台 0 warning、0 error。
+
+## Primary Interactions Tested
+
+- 牌堆顶减号保持位置 `0`，不会越界
+- 连续加号按 `1 → 2 → 3 → 4` 单步移动
+- 牌堆底加号保持位置 `4`，不会越界
+- 从牌堆底减号回到位置 `3`
+- 提交精确发出 `{ "type": "InsertKitten", "promptId": "insert-audit", "position": 3 }`
+- 战报展开、最新事件可见、关闭后恢复主操作页
+
+## Build and Platform Evidence
+
+- TypeScript 全仓检查通过。
+- 小游戏测试 `651/651` 通过；prototype 测试 `48/48` 通过；未新增测试。
+- Production 与 preview 构建通过，资产检查为 69 个资产、63 个光栅契约、字体 297 个需求字符且 0 缺字。
+- 最终包鉴权方式为 `cloudContainer`，包含环境 `prod-d0g8qcwrb047789af` 和服务 `exploding-kitty-api`，不包含 `localhost` 或 `127.0.0.1`。
+- 背景图在显示尺寸下完成无可见损失重压缩；对比证据为 `.codex-tmp/defuse-audit/comic-bg-q42-comparison.png`。
+- 微信开发者工具 CLI 使用 AppID `wxd8938809dbb08d94` 成功 preview；平台统计 `3,347,834` bytes，低于 `3,355,443` bytes 的 20% 余量门槛。
+- 新二维码：`.codex-tmp/wechat-preview/defuse-preview-qrcode.png`。
+- 浏览器真实 ScreenHost 实现级视觉与交互 QA 已通过；微信平台最终视觉复核仍需扫码后的最新真机截图，因此该平台复核项当前为 blocked，不影响本次实现级验收结论。
+
+## Implementation Checklist
+
+- [x] 真实运行时使用专用秘密插牌模板，不再复用通用产品页结构
+- [x] 危险牌、牌堆、秘密状态与插入位置建立直接视觉关系
+- [x] `0..deckSize` 边界、单步移动和提交 payload 验证通过
+- [x] 倒计时、战报入口、未读状态和详情遮罩完整保留
+- [x] 用户截图同尺寸、标准安全区和超短屏适配通过
+- [x] 字体、资产、云托管配置、包体和微信 CLI preview 通过
+
 final result: passed
