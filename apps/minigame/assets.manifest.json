@@ -24,7 +24,8 @@
     "ui/backgrounds/comic-bg-390x844.jpg",
     "ui/create/burst.png",
     "ui/create/cta-bg.webp",
-    "ui/create/header-accent.png",
+    "ui/create/header-accent.webp",
+    "ui/create/paper-panel.webp",
     "ui/home/hero.webp",
     "ui/home/rules.png",
     "ui/home/settings.png",
@@ -301,27 +302,42 @@
     "ui/create/cta-bg.webp": {
       "role": "ui-crop",
       "intrinsic": {
-        "width": 1074,
-        "height": 258
+        "width": 1146,
+        "height": 360
       },
       "maxCssSize": {
-        "width": 358,
-        "height": 86
+        "width": 382,
+        "height": 120
       },
       "targetDpr": 3,
       "fit": "contain",
       "maxCropRatio": 0,
       "edgePolicy": "bleed"
     },
-    "ui/create/header-accent.png": {
+    "ui/create/header-accent.webp": {
       "role": "ui-crop",
       "intrinsic": {
         "width": 1074,
-        "height": 210
+        "height": 252
       },
       "maxCssSize": {
-        "width": 280,
-        "height": 55
+        "width": 358,
+        "height": 84
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
+    "ui/create/paper-panel.webp": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 1128,
+        "height": 738
+      },
+      "maxCssSize": {
+        "width": 376,
+        "height": 246
       },
       "targetDpr": 3,
       "fit": "contain",
@@ -1025,9 +1041,10 @@
     "sounds/nope.wav": "a94fefcc884085a82d8d9de4649c7f241118ef2b60650798643f68d3d47bc84d",
     "sounds/select.wav": "9472c9a3477fac53d1ea48867baebce4720c2188a1546fb5b97c6ffbd5607472",
     "ui/backgrounds/comic-bg-390x844.jpg": "27b71649a795c114f5ec5fb58e1013bbb8a9d2fa03c1c81b80b749f15e433100",
-    "ui/create/burst.png": "30b15566df6369644d94f79fd5c01da1dcee37186ccf4d145a1b92c247897ef0",
-    "ui/create/cta-bg.webp": "cddea4c3359762c726714628518b7cdbaf18daa051d46f6c2765cb1482e4c867",
-    "ui/create/header-accent.png": "900c599e6a1bbd3f9839b3cc12a00870a4d2339c9214647108691e47fa81ae6e",
+    "ui/create/burst.png": "9366e6cd5acfd3b566de37dbadcf17f5b182045667ecc0f897aca1a345d68bed",
+    "ui/create/cta-bg.webp": "10ac528e39ea42c22b249d061429957e03f94588ec63cc4b08fee466fa794dd3",
+    "ui/create/header-accent.webp": "b94fb4990d29e7b5f7f2e5b4ea19d77d6410ad1ed018ddf12f9e7f6aa39b6e47",
+    "ui/create/paper-panel.webp": "1b431fceee533756d4d35cc86dff72a2067c94bb1e412fe8acdc160ff5cd5c76",
     "ui/home/hero.webp": "38c05440e846b78de680280274663a8eb241fcf307bdcdba014715d27fb78bac",
     "ui/home/rules.png": "fa1e91c7331add1b16de582e3e04060edea5bbf54f8a38fa80c1573c594a3a2b",
     "ui/home/settings.png": "758b15cfdddfe39862eb8421fe7a8cb9bb4d0bc79dfec72b8173a19564e58c17",
