@@ -265,10 +265,21 @@ const networkRenderer: SceneRenderer = (model, options) => {
 };
 
 const settingsRenderer: SceneRenderer = (model, options) => {
-  const profile = `<view class="settingsProfile">${fitImage(model.heroImage ?? "assets/cats/player.png", "settingsAvatar", "contain", "center bottom")}<view class="settingsCopy"><text class="settingsName" value="${escapeMarkup(model.heroLabel ?? "当前玩家")}"></text><text class="settingsDetail" value="只影响当前设备"></text></view></view>`;
   const localizedModel = model.eyebrow === "THIS DEVICE" ? { ...model, eyebrow: "当前设备" } : model;
-  const content = `${header(localizedModel, options)}${body(`${profile}${settingsRows(model.rows)}<text class="legalNote" value="规则版本 original-2025@1\n原创概念设计 · 不含官方美术"></text>`, true)}${actions(model.actions, "links")}`;
-  return frame(content, options);
+  const ultraShort = options.height <= 520;
+  const back = options.canGoBack
+    ? `<button id="back" class="createBack">${icon("arrow-left", "cream", "createBackIcon")}</button>`
+    : `<view class="createHeaderSpacer"></view>`;
+  const profileKicker = ultraShort ? "" : `<text class="settingsProfileKicker" value="DEVICE PROFILE"></text>`;
+  const profileDetail = ultraShort ? "自动保存" : "调整后立即生效并自动保存";
+  const profile = `<view class="settingsProfile">${fitImage(model.heroImage ?? "assets/ui/home/settings.png", "settingsAvatar", "contain", "center center")}<view class="settingsCopy">${profileKicker}<text class="settingsName" value="${escapeMarkup(model.heroLabel ?? "本机偏好")}"></text><text class="settingsDetail" value="${profileDetail}"></text></view><view class="settingsProfileBadge">${icon("check", "ink", "settingsProfileBadgeIcon")}<text class="settingsProfileBadgeText" value="仅本机"></text></view></view>`;
+  const primary = model.actions?.[0];
+  const primaryMarkup = primary
+    ? `<button id="action-0" class="settingsPrimary">${fitImage("assets/ui/create/cta-bg.webp", "settingsPrimaryBackground", "contain", "center center")}<view class="settingsPrimaryCopy"><text class="settingsPrimaryLabel" value="${escapeMarkup(primary.label)}"></text></view></button>`
+    : "";
+  const actionAliases = (model.actions ?? []).slice(1).map((_, index) => `<button id="action-${index + 1}" class="createActionAlias"></button>`).join("");
+  const content = `<view class="safeTop"></view><view class="createHeader settingsHeader">${back}<view class="createHeaderCopy settingsHeaderCopy">${fitImage("assets/ui/create/header-accent.webp", "createHeaderAccent", "contain", "center center")}<text class="eyebrow" value="${escapeMarkup(localizedModel.eyebrow ?? "当前设备")}"></text><text class="settingsHeaderTitle" value="${escapeMarkup(localizedModel.title)}"></text></view><view class="createHeaderSpacer"></view></view><scrollview id="scene-scroll" class="settingsBody scrollBody" scrollY="true">${profile}${settingsRows(model.rows, ultraShort)}</scrollview><view class="actionDock settingsActionDock">${primaryMarkup}</view>${actionAliases}`;
+  return frame(content, options, "ink", "sceneSettings");
 };
 
 export const SCENE_RENDERERS: SceneRendererRegistry = {
@@ -356,25 +367,37 @@ function resultRanking(values: readonly ScreenRow[] | undefined, viewerId: strin
   }).join("")}</view>`;
 }
 
-function settingsRows(values: readonly ScreenRow[] | undefined): string {
+function settingsRows(values: readonly ScreenRow[] | undefined, ultraShort = false): string {
   if (!values?.length) return "";
   const toggles: string[] = [];
   const links: string[] = [];
+  let privacy = "";
   values.forEach((row, index) => {
-    const interactive = row.action ? " rowInteractive" : "";
-    const image = icon(rowIcon(row), "ink", "rowIcon");
-    const copy = `<view class="rowCopy rowCopySetting"><text class="rowTitle rowTitleSetting" value="${escapeMarkup(row.title)}"></text>${row.detail ? `<text class="rowDetail rowDetailSetting" value="${escapeMarkup(row.detail)}"></text>` : ""}</view>`;
+    const controlAction = row.control?.kind === "toggle" ? row.control.action : undefined;
+    const interactive = row.action || controlAction ? " rowInteractive" : "";
     if (row.id === "sound" || row.id === "vibration") {
       const badgeValue = row.badge?.trim().toLowerCase() ?? "";
-      const enabled = badgeValue === "开" || badgeValue === "on" || (badgeValue.includes("开启") && !badgeValue.includes("关闭"));
+      const enabled = row.control?.kind === "toggle"
+        ? row.control.checked
+        : badgeValue === "开" || badgeValue === "on" || (badgeValue.includes("开启") && !badgeValue.includes("关闭"));
       const switchClass = enabled ? "toggleSwitch settingsToggle toggleSwitchOn settingsToggleOn" : "toggleSwitch settingsToggle";
-      toggles.push(`<button id="row-${index}" class="row rowSetting${interactive}">${image}${copy}<view class="${switchClass}"><view class="toggleKnob settingsToggleKnob${enabled ? " toggleKnobOn settingsToggleKnobOn" : ""}"></view><text class="settingsToggleLabel${enabled ? " settingsToggleLabelOn" : ""}" value="${enabled ? "开" : "关"}"></text></view></button>`);
+      const iconToneClass = row.id === "sound" ? " settingsControlIconSound" : " settingsControlIconVibration";
+      const controlIcon = row.id === "vibration" ? "device-mobile" : rowIcon(row);
+      const state = ultraShort ? "" : `<text class="settingsControlState${enabled ? " settingsControlStateOn" : ""}" value="${enabled ? "当前已开启" : "当前已关闭"}"></text>`;
+      toggles.push(`<button id="row-${index}" class="row rowSetting settingsControl${interactive}"><view class="settingsControlIconBox${iconToneClass}">${icon(controlIcon, "cream", "settingsControlIcon")}</view><view class="rowCopy rowCopySetting settingsControlCopy"><text class="rowTitle rowTitleSetting settingsControlTitle" value="${escapeMarkup(row.title)}"></text><text class="rowDetail rowDetailSetting settingsControlDetail" value="${escapeMarkup(row.detail ?? "只影响当前设备")}"></text>${state}</view><view class="${switchClass}"><view class="toggleKnob settingsToggleKnob${enabled ? " toggleKnobOn settingsToggleKnobOn" : ""}"></view><text class="settingsToggleLabel${enabled ? " settingsToggleLabelOn" : ""}" value="${enabled ? "开" : "关"}"></text></view></button>`);
       return;
     }
+    if (row.id === "privacy") {
+      const privacyRow = (label: string) => `<view class="settingsPrivacyRow">${fitImage("assets/ui/create/burst.png", "settingsPrivacyBullet", "contain", "center center")}<text class="settingsPrivacyText" value="${escapeMarkup(label)}"></text></view>`;
+      privacy = `<view id="row-${index}" class="row rowSetting settingsPrivacy"><view class="settingsPrivacyHeader">${icon("lock", "cream", "settingsPrivacyIcon")}<view class="settingsPrivacyCopy"><text class="settingsPrivacyTitle" value="${escapeMarkup(row.title)}"></text><text class="settingsPrivacyDetail" value="${escapeMarkup(row.detail ?? "仅保存恢复牌局所需信息")}"></text></view></view>${privacyRow("声音与触感偏好只保存在本机")}${privacyRow("只保留恢复牌局所需的会话信息")}</view>`;
+      return;
+    }
+    const image = icon(rowIcon(row), "ink", "rowIcon");
+    const copy = `<view class="rowCopy rowCopySetting"><text class="rowTitle rowTitleSetting" value="${escapeMarkup(row.title)}"></text>${row.detail ? `<text class="rowDetail rowDetailSetting" value="${escapeMarkup(row.detail)}"></text>` : ""}</view>`;
     const caret = row.action ? icon("caret-right", "ink", "rowCaret") : "";
     links.push(`<button id="row-${index}" class="row rowSetting settingsLink${interactive}">${image}${copy}${row.badge ? `<text class="rowBadge" value="${escapeMarkup(row.badge)}"></text>` : ""}${caret}</button>`);
   });
-  return `<view class="rowList rowListSetting">${toggles.join("")}<view class="settingsLinks">${links.join("")}</view></view>`;
+  return `<view class="rowList rowListSetting settingsControlList">${toggles.join("")}${privacy}<view class="settingsLinks">${links.join("")}</view></view>`;
 }
 
 function choiceTargetRows(values: readonly ScreenRow[] | undefined): string {

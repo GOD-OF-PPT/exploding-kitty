@@ -252,10 +252,12 @@ export class ScreenHost {
       viewerId: view.viewerId,
       displayFont: this.displayFont,
     });
-    const useProductSurface = model.id === "home"
+    const useProductSurface = model.id !== "settings" && (
+      model.id === "home"
       || model.id === "create"
       || this.activityAvailable(model, view)
-      || Boolean(model.rows?.some((row) => row.control));
+      || Boolean(model.rows?.some((row) => row.control))
+    );
     Layout.init(useProductSurface ? this.template(model, view) : rendered.template, useProductSurface
       ? {
         ...UI_STYLE,

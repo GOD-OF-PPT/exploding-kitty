@@ -31,7 +31,7 @@ try {
     .sort((left, right) => left - right)
     .map((codePoint) => `U+${codePoint.toString(16).toUpperCase()}`)
     .join(",");
-  const subset = spawnSync("pyftsubset", [
+  const subsetArguments = [
     source,
     `--output-file=${temporaryFont}`,
     `--unicodes=${unicodes}`,
@@ -45,7 +45,8 @@ try {
     "--name-IDs=*",
     "--name-legacy",
     "--name-languages=*",
-  ], { encoding: "utf8", shell: false });
+  ];
+  const subset = runSubset(subsetArguments);
   if (subset.error) throw subset.error;
   if (subset.status !== 0) {
     throw new Error(`pyftsubset failed (${subset.status}): ${subset.stderr || subset.stdout}`);
@@ -60,6 +61,22 @@ try {
   console.log(`Display TTF: ${bytes.length} bytes; ${requiredCodePoints.size} required characters; sha256 ${sha256}.`);
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true });
+}
+
+function runSubset(args) {
+  const executable = spawnSync("pyftsubset", args, { encoding: "utf8", shell: false });
+  if (!executable.error || executable.error.code !== "ENOENT") return executable;
+
+  const pythonCommands = [
+    process.env.PYFTSUBSET_PYTHON?.trim(),
+    "python",
+    "python3",
+  ].filter(Boolean);
+  for (const command of pythonCommands) {
+    const result = spawnSync(command, ["-m", "fontTools.subset", ...args], { encoding: "utf8", shell: false });
+    if (!result.error || result.error.code !== "ENOENT") return result;
+  }
+  return executable;
 }
 
 async function firstExisting(paths) {

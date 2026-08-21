@@ -242,6 +242,8 @@ const screens: Record<ScreenId, SceneDefinition> = {
     id: "settings",
     eyebrow: "THIS DEVICE",
     title: "声音与振动",
+    heroImage: "assets/ui/home/settings.png",
+    heroLabel: "本机偏好",
     rows: [
       {
         id: "sound",
@@ -263,9 +265,9 @@ const screens: Record<ScreenId, SceneDefinition> = {
           action: intent("toggle-vibration", "切换触感反馈", "ToggleVibration"),
         },
       },
-      { id: "privacy", title: "隐私说明", detail: "仅保存会话恢复所需信息" },
+      { id: "privacy", title: "隐私与本机数据", detail: "仅保存声音、触感偏好与会话恢复所需信息" },
     ],
-    actions: [nav("back", "完成", "home", "cream")],
+    actions: [nav("back", "完成设置", "home", "cream")],
   }) },
 };
 
