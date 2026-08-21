@@ -52,7 +52,9 @@ export function createSceneStyles(model: ScreenModel, options: RenderSceneOption
   const short = density === "short";
   const compact = density === "compact";
   const longHeaderTitle = model.title.length >= 8;
-  const safeTop = Math.max(8, options.safeTop, (options.capsule?.bottom ?? 0) + CAPSULE_GAP);
+  const safeTop = model.id === "create"
+    ? Math.max(short ? 24 : 26, options.safeTop)
+    : Math.max(8, options.safeTop, (options.capsule?.bottom ?? 0) + CAPSULE_GAP);
   const safeBottomInset = Math.max(0, options.safeBottom);
   const footerHeight = model.id === "login" ? 34 : model.id === "home" ? 24 : 0;
   const safeBottom = Math.max(12, safeBottomInset + 12 + footerHeight);
@@ -108,9 +110,10 @@ export function createSceneStyles(model: ScreenModel, options: RenderSceneOption
     sceneEliminated: css({ backgroundColor: "#64120e" }),
     sceneResult: css({ backgroundColor: PALETTE.ink }),
     sceneNetwork: css({ backgroundColor: PALETTE.ink }),
+    sceneCreate: css({ backgroundColor: "#0d0e0d" }),
     sceneBackground: css({ position: "absolute", left: 0, top: 0, width: 390, height: options.height }),
     sceneTint: css({ position: "absolute", left: 0, top: 0, width: 390, height: options.height }),
-    sceneTintInk: css({ backgroundColor: "rgba(7,7,6,.76)" }),
+    sceneTintInk: css({ backgroundColor: model.id === "create" ? "#0d0e0d" : "rgba(7,7,6,.76)" }),
     sceneTintRed: css({ backgroundColor: "rgba(111,13,8,.58)" }),
 
     comicSurface: css({ ...hardShadow(), backgroundColor: PALETTE.cream }),
@@ -122,7 +125,9 @@ export function createSceneStyles(model: ScreenModel, options: RenderSceneOption
     warningCallout: css({ ...hardShadow(2, 3, 3), minHeight: MIN_TOUCH_SIZE, padding: 10, color: PALETTE.white, backgroundColor: "#7d1914", borderColor: PALETTE.ink, fontFamily: BODY_FONT, fontSize: 12, fontWeight: "bold", textAlign: "center", whiteSpace: "normal" }),
     actionDisabled: css({ backgroundColor: "#6e6456", borderColor: "#332d27" }),
     disabledControl: css({ opacity: 0.58 }),
-    toggleSwitch: css({ width: 82, height: MIN_TOUCH_SIZE, position: "relative", backgroundColor: "#41392e", borderWidth: 3, borderColor: PALETTE.ink, borderRadius: 24, flexShrink: 0 }),
+    toggleSwitch: css(model.id === "create"
+      ? { position: "absolute", left: 0, top: 0, width: 1, height: 1, opacity: 0, borderWidth: 0 }
+      : { width: 82, height: MIN_TOUCH_SIZE, position: "relative", backgroundColor: "#41392e", borderWidth: 3, borderColor: PALETTE.ink, borderRadius: 24, flexShrink: 0 }),
     toggleSwitchOn: css({ backgroundColor: PALETTE.cyan }),
     toggleKnob: css({ position: "absolute", left: 6, top: 6, width: 29, height: 29, backgroundColor: PALETTE.cream, borderWidth: 2, borderColor: PALETTE.ink, borderRadius: 16 }),
     toggleKnobOn: css({ left: 41 }),
@@ -260,18 +265,74 @@ export function createSceneStyles(model: ScreenModel, options: RenderSceneOption
     modeChoiceTitle: css({ width: 220, height: 28, lineHeight: 27, color: PALETTE.ink, fontFamily: DISPLAY_FONT, fontSize: short ? 18 : 22, fontWeight: "bold" }),
     modeChoiceDetail: css({ width: 220, minHeight: 28, lineHeight: 18, color: PALETTE.mutedOnLight, fontFamily: BODY_FONT, fontSize: 12, whiteSpace: "normal" }),
     modeTip: css({ width: 350, minHeight: 28, lineHeight: 20, color: PALETTE.cyan, fontFamily: BODY_FONT, fontSize: 12, textAlign: "center" }),
+
+    createHeader: css({ width: 390, height: short ? Math.max(76, 116 - safeTop) : compact ? Math.max(90, 126 - safeTop) : Math.max(118, 168 - safeTop), paddingLeft: 16, paddingRight: 16, flexShrink: 0, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }),
+    createBack: css({ width: short ? 46 : 48, height: short ? 46 : 48, marginTop: short ? 4 : compact ? 6 : 10, flexShrink: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: "#141412", borderWidth: 2, borderColor: PALETTE.cream, borderRadius: 6, ':active': { transform: "scale(0.95, 0.95)" } }),
+    createBackIcon: css({ width: short ? 25 : 27, height: short ? 25 : 27 }),
+    createHeaderCopy: css({ position: "relative", width: 262, height: short ? 88 : compact ? 100 : 132, paddingTop: short ? 12 : compact ? 15 : 27, flexShrink: 0, flexDirection: "column", alignItems: "center" }),
+    createHeaderAccent: css({ position: "absolute", left: short ? 6 : compact ? 1 : -9, top: short ? 32 : compact ? 36 : 48, width: short ? 250 : compact ? 260 : 280, height: short ? 49 : compact ? 51 : 55 }),
+    createEyebrow: css({ width: 250, height: short ? 18 : 22, lineHeight: short ? 18 : 22, textAlign: "center", fontFamily: BODY_FONT, fontSize: short ? 10 : 11, fontWeight: "bold", color: PALETTE.yellow, whiteSpace: "nowrap" }),
+    createHeaderTitle: css({ position: "relative", width: 276, height: short ? 52 : compact ? 56 : 61, lineHeight: short ? 48 : compact ? 52 : 57, textAlign: "center", fontFamily: DISPLAY_FONT, fontSize: short ? 32 : compact ? 35 : 39, fontWeight: "bold", color: PALETTE.cream, textStrokeWidth: 2, textStrokeColor: "#050505", whiteSpace: "nowrap" }),
+    createHeaderSpacer: css({ width: short ? 46 : 48, height: short ? 46 : 48, flexShrink: 0 }),
+    createControlGrid: css({ width: 358, height: short ? 168 : compact ? 190 : 244, marginLeft: 16, paddingTop: short ? 2 : compact ? 4 : 6, flexShrink: 0, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }),
+    createControlCard: css({ width: 174, height: short ? 164 : compact ? 184 : 236, paddingTop: short ? 8 : compact ? 12 : 17, flexShrink: 0, flexDirection: "column", alignItems: "center", backgroundColor: PALETTE.cream, borderWidth: 3, borderColor: "#050505", borderRightWidth: 6, borderBottomWidth: 6, borderRadius: 3 }),
+    createControlCopy: css({ width: 158, height: short ? 42 : compact ? 50 : 55, flexShrink: 0, flexDirection: "column", alignItems: "center" }),
+    createControlTitle: css({ width: 158, height: short ? 24 : compact ? 28 : 31, lineHeight: short ? 23 : compact ? 27 : 30, textAlign: "center", fontFamily: DISPLAY_FONT, fontSize: short ? 16 : compact ? 18 : 19, fontWeight: "bold", color: "#050505", whiteSpace: "nowrap" }),
+    createControlDetail: css({ width: 158, height: short ? 18 : compact ? 21 : 22, lineHeight: short ? 18 : compact ? 20 : 22, textAlign: "center", fontFamily: BODY_FONT, fontSize: short ? 9.5 : compact ? 10.5 : 11.5, color: "#6a5d50", whiteSpace: "nowrap" }),
+    createControlValue: css({ width: 158, height: short ? 66 : compact ? 76 : 96, lineHeight: short ? 62 : compact ? 72 : 92, textAlign: "center", fontFamily: DISPLAY_FONT, fontSize: short ? 36 : compact ? 42 : 48, fontWeight: "bold", color: "#050505", whiteSpace: "nowrap" }),
+    createStepper: css({ width: 158, height: short || compact ? 46 : 48, flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "center" }),
+    createStepperButton: css({ width: 44, height: short || compact ? 46 : 48, lineHeight: short || compact ? 43 : 45, textAlign: "center", fontFamily: BODY_FONT, fontSize: short ? 23 : 25, fontWeight: "bold", color: "#050505", backgroundColor: "#facf0d", borderWidth: 3, borderColor: "#050505", borderRadius: 6, ':active': { transform: "scale(0.94, 0.94)" } }),
+    createStepperCurrent: css({ width: 70, height: short || compact ? 46 : 48, lineHeight: short || compact ? 43 : 45, textAlign: "center", fontFamily: DISPLAY_FONT, fontSize: short ? 15 : compact ? 16 : 17, fontWeight: "bold", color: PALETTE.cream, backgroundColor: "#0b0b0a", borderWidth: 3, borderColor: "#050505", whiteSpace: "nowrap" }),
+    createBotCard: css({ width: 358, height: short ? 72 : compact ? 80 : 92, marginLeft: 16, marginTop: short ? 8 : compact ? 10 : 16, paddingLeft: short ? 16 : 22, paddingRight: short ? 13 : 17, flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: PALETTE.cream, borderWidth: 3, borderColor: "#050505", borderRightWidth: 6, borderBottomWidth: 6, borderRadius: 3, ':active': { transform: "scale(0.985, 0.985)" } }),
+    createBotCardNested: css({ marginLeft: 0, marginTop: 0 }),
+    createBotCopy: css({ width: 190, height: short ? 48 : compact ? 54 : 60, flexShrink: 0, flexDirection: "column", justifyContent: "center" }),
+    createBotTitle: css({ width: 190, height: short ? 27 : compact ? 30 : 34, lineHeight: short ? 26 : compact ? 29 : 33, fontFamily: DISPLAY_FONT, fontSize: short ? 18 : compact ? 19 : 21, fontWeight: "bold", color: "#050505", whiteSpace: "nowrap" }),
+    createBotDetail: css({ width: 190, height: short ? 19 : compact ? 21 : 24, lineHeight: short ? 19 : compact ? 21 : 23, fontFamily: BODY_FONT, fontSize: short ? 9.5 : compact ? 10.5 : 11.5, color: "#6a5d50", whiteSpace: "nowrap" }),
+    createBotToggle: css({ position: "relative", width: short ? 106 : compact ? 112 : 118, height: short ? 46 : compact ? 48 : 52, padding: short ? 4 : 5, flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "flex-start", backgroundColor: "#6f645b", borderWidth: 3, borderColor: "#050505", borderRadius: 27 }),
+    createBotToggleOn: css({ justifyContent: "flex-end", backgroundColor: PALETTE.cyan }),
+    createBotToggleLabel: css({ position: "absolute", top: short ? 6 : 8, width: short ? 61 : 67, height: 30, lineHeight: 30, textAlign: "center", fontFamily: BODY_FONT, fontSize: short ? 11 : 12, fontWeight: "bold", color: PALETTE.cream, whiteSpace: "nowrap" }),
+    createBotToggleLabelOn: css({ left: 3, color: PALETTE.cream }),
+    createBotToggleLabelOff: css({ right: 3, color: PALETTE.cream }),
+    createBotThumb: css({ width: short ? 32 : compact ? 34 : 36, height: short ? 32 : compact ? 34 : 36, flexShrink: 0, backgroundColor: PALETTE.paper, borderWidth: 3, borderColor: "#050505", borderRadius: 19 }),
+    createReview: css({ width: 358, height: short ? 116 : compact ? 126 : 170, marginLeft: 16, marginTop: short ? 8 : compact ? 10 : 16, paddingLeft: 12, paddingRight: 12, paddingTop: short ? 4 : compact ? 5 : 8, flexShrink: 0, flexDirection: "column", backgroundColor: "#0b0b0a", borderWidth: 3, borderColor: "#5d554e", borderRightWidth: 6, borderBottomWidth: 6, borderRadius: 4 }),
+    createReviewNested: css({ marginLeft: 0, marginTop: 0 }),
+    createReviewHeader: css({ width: 328, height: short ? 32 : compact ? 34 : 43, flexShrink: 0, flexDirection: "row", alignItems: "center" }),
+    createReviewIcon: css({ width: short ? 24 : compact ? 27 : 32, height: short ? 24 : compact ? 27 : 32, marginRight: short ? 8 : 10, flexShrink: 0 }),
+    createReviewTitle: css({ width: short ? 296 : compact ? 291 : 286, height: short ? 28 : compact ? 31 : 37, lineHeight: short ? 28 : compact ? 31 : 37, fontFamily: DISPLAY_FONT, fontSize: short ? 13 : compact ? 14 : 16, fontWeight: "bold", color: PALETTE.yellow, whiteSpace: "nowrap" }),
+    createReviewRow: css({ width: 328, height: short ? 25 : compact ? 28 : 35, flexShrink: 0, flexDirection: "row", alignItems: "center", borderWidth: 0, borderBottomWidth: 1, borderColor: "#3e3933" }),
+    createReviewBullet: css({ width: short ? 18 : compact ? 20 : 22, height: short ? 18 : compact ? 20 : 22, marginLeft: short ? 6 : 8, marginRight: short ? 10 : 12, flexShrink: 0 }),
+    createReviewText: css({ width: short ? 294 : compact ? 288 : 278, height: short ? 23 : compact ? 26 : 31, lineHeight: short ? 23 : compact ? 26 : 31, fontFamily: DISPLAY_FONT, fontSize: short ? 11.5 : compact ? 12.5 : 14, fontWeight: "bold", color: PALETTE.cream, whiteSpace: "nowrap" }),
+    createActionDock: css({ width: 390, height: short ? 96 : compact ? 100 : 138, minHeight: short ? 96 : compact ? 100 : 138, paddingLeft: 16, paddingRight: 16, paddingTop: short ? 8 : compact ? 10 : Math.max(8, 24 - Math.max(0, safeBottomInset - 28)), flexGrow: 1, flexShrink: 0, flexDirection: "column", alignItems: "center" }),
+    createPrimary: css({ position: "relative", width: 358, height: 86, flexShrink: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0, 0, 0, 0)", borderWidth: 0, ':active': { transform: "scale(0.98, 0.98)" } }),
+    createPrimaryDisabled: css({ opacity: 0.62 }),
+    createPrimaryBackground: css({ position: "absolute", left: 0, top: 0, width: 358, height: 86 }),
+    createPrimaryCopy: css({ position: "relative", width: 330, height: 68, flexDirection: "column", alignItems: "center", justifyContent: "center" }),
+    createPrimaryLabel: css({ width: 330, height: 39, lineHeight: 38, textAlign: "center", fontFamily: DISPLAY_FONT, fontSize: short ? 24 : compact ? 25 : 27, fontWeight: "bold", color: "#050505", whiteSpace: "nowrap" }),
+    createPrimaryHint: css({ width: 330, height: 23, lineHeight: 23, textAlign: "center", fontFamily: BODY_FONT, fontSize: 11.5, fontWeight: "bold", color: "#5e5145", whiteSpace: "nowrap" }),
+    createActionAlias: css({ position: "absolute", left: 0, top: 0, width: 0, height: 0, opacity: 0, borderWidth: 0 }),
+
     formBody: css({ paddingTop: 5 }),
     formRows: css({ width: 354, flexDirection: "column" }),
-    formRow: css({ ...hardShadow(3, 3, 3), width: 348, minHeight: short ? 66 : 92, marginLeft: 3, marginBottom: 12, padding: 12, flexDirection: "row", alignItems: "center", backgroundColor: PALETTE.cream }),
-    formRowDark: css({ backgroundColor: "#211d18", borderColor: "#080706" }),
-    formRowStamp: css({ minHeight: 54, backgroundColor: "rgba(7,7,6,.8)", borderWidth: 1, borderColor: "#806d5c" }),
+    formRow: css(model.id === "create"
+      ? { position: "relative", width: 174, height: short ? 164 : compact ? 184 : 236, minHeight: short ? 164 : compact ? 184 : 236, marginLeft: 0, marginBottom: 0, padding: 0, flexShrink: 0, flexDirection: "column", backgroundColor: "rgba(0,0,0,0)", borderWidth: 0 }
+      : { ...hardShadow(3, 3, 3), width: 348, minHeight: short ? 66 : 92, marginLeft: 3, marginBottom: 12, padding: 12, flexDirection: "row", alignItems: "center", backgroundColor: PALETTE.cream }),
+    formRowDark: css(model.id === "create"
+      ? { width: 358, height: short ? 72 : compact ? 80 : 92, minHeight: short ? 72 : compact ? 80 : 92, marginLeft: 16, marginTop: short ? 8 : compact ? 10 : 16, backgroundColor: "rgba(0,0,0,0)", borderWidth: 0 }
+      : { backgroundColor: "#211d18", borderColor: "#080706" }),
+    formRowStamp: css(model.id === "create"
+      ? { width: 358, height: short ? 116 : compact ? 126 : 170, minHeight: short ? 116 : compact ? 126 : 170, marginLeft: 16, marginTop: short ? 8 : compact ? 10 : 16, backgroundColor: "rgba(0,0,0,0)", borderWidth: 0 }
+      : { minHeight: 54, backgroundColor: "rgba(7,7,6,.8)", borderWidth: 1, borderColor: "#806d5c" }),
     formCopy: css({ flex: 1, minWidth: 0, flexDirection: "column" }),
     formTitle: css({ width: 210, height: 26, lineHeight: 25, color: PALETTE.ink, fontFamily: DISPLAY_FONT, fontSize: 17, fontWeight: "bold" }),
     formTitleDark: css({ color: PALETTE.cream }),
-    formDetail: css({ width: 172, minHeight: 24, lineHeight: 18, color: PALETTE.mutedOnLight, fontFamily: BODY_FONT, fontSize: 12, whiteSpace: "normal" }),
+    formDetail: css(model.id === "create"
+      ? { position: "absolute", left: 0, top: 0, width: 80, height: 1, minHeight: 1, lineHeight: 1, color: PALETTE.mutedOnLight, fontFamily: BODY_FONT, fontSize: 12, opacity: 0, whiteSpace: "nowrap" }
+      : { width: 172, minHeight: 24, lineHeight: 18, color: PALETTE.mutedOnLight, fontFamily: BODY_FONT, fontSize: 12, whiteSpace: "normal" }),
     formDetailDark: css({ color: PALETTE.mutedOnDark }),
     formBadge: css({ minWidth: 76, height: MIN_TOUCH_SIZE, lineHeight: MIN_TOUCH_SIZE, paddingLeft: 8, paddingRight: 8, color: PALETTE.ink, backgroundColor: PALETTE.yellow, borderWidth: 2, borderColor: PALETTE.ink, fontFamily: DISPLAY_FONT, fontSize: 16, textAlign: "center" }),
-    formStepper: css({ width: 104, height: MIN_TOUCH_SIZE, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flexShrink: 0 }),
+    formStepper: css(model.id === "create"
+      ? { position: "absolute", left: 90, top: 0, width: 60, height: 44, opacity: 0, flexShrink: 0 }
+      : { width: 104, height: MIN_TOUCH_SIZE, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flexShrink: 0 }),
     formStepperCaret: css({ width: 20, height: 20, marginLeft: 4, flexShrink: 0 }),
     formToggleLabel: css({ position: "absolute", right: 9, top: 7, width: 28, height: 27, lineHeight: 27, color: PALETTE.cream, fontFamily: BODY_FONT, fontSize: 11, fontWeight: "bold", textAlign: "center" }),
     formToggleLabelOn: css({ left: 8, right: 46, color: PALETTE.ink }),

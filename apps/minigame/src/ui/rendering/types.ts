@@ -19,6 +19,7 @@ export type RenderSceneOptions = Readonly<{
   canGoBack: boolean;
   selectedTokens: readonly string[];
   error: string | null;
+  sending?: boolean;
   viewerId: string;
   displayFont: string;
 }>;

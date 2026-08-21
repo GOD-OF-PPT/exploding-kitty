@@ -248,12 +248,13 @@ export class ScreenHost {
       canGoBack: Boolean(this.navigation.length || this.override),
       selectedTokens: this.selectedTokens,
       error: this.error,
+      sending: this.sending,
       viewerId: view.viewerId,
       displayFont: this.displayFont,
     });
-    const useProductSurface = model.id === "home"
+    const useProductSurface = model.id !== "create" && (model.id === "home"
       || this.activityAvailable(model, view)
-      || Boolean(model.rows?.some((row) => row.control));
+      || Boolean(model.rows?.some((row) => row.control)));
     Layout.init(useProductSurface ? this.template(model, view) : rendered.template, useProductSurface
       ? {
         ...UI_STYLE,

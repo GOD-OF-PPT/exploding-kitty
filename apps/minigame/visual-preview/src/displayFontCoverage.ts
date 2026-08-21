@@ -12,6 +12,12 @@ const NO_BACK = new Set<ScreenId>(["login", "home", "response", "explosion", "el
 const TEXT_TAG = /<text\b[^>]*>/gu;
 const CLASS_ATTRIBUTE = /\bclass="([^"]*)"/u;
 const VALUE_ATTRIBUTE = /\bvalue="([^"]*)"/u;
+const CREATE_ROOM_DISPLAY_COPY = [
+  "处理中…",
+  "每回合 60 秒",
+  "允许机器人补位",
+  "不允许机器人补位",
+] as const;
 
 /**
  * Deterministic strings that the real production renderers paint with the
@@ -19,7 +25,7 @@ const VALUE_ATTRIBUTE = /\bvalue="([^"]*)"/u;
  * this list guards product copy and controlled regression states.
  */
 export function collectDisplayFontStrings(): readonly string[] {
-  const strings = new Set<string>();
+  const strings = new Set<string>(CREATE_ROOM_DISPLAY_COPY);
   const models = [...Object.values(SCREEN_FIXTURES), ...productionScreenModels()];
 
   for (const model of models) {

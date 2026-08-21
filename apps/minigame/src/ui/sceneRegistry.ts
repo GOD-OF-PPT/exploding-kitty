@@ -85,7 +85,7 @@ const screens: Record<ScreenId, SceneDefinition> = {
         {
           id: "timer",
           title: "行动计时",
-          detail: "每位玩家的行动时间",
+          detail: "30 / 45 / 60 秒",
           control: {
             kind: "stepper",
             value: `${draft.turnSeconds} 秒`,
@@ -96,16 +96,16 @@ const screens: Record<ScreenId, SceneDefinition> = {
         {
           id: "bots",
           title: "机器人补位",
-          detail: "空位允许 Bot 加入",
+          detail: "人数不足时自动补位",
           control: {
             kind: "toggle",
             checked: draft.allowBots,
             action: intent("toggle-bots", "切换机器人补位", "ToggleRoomBots"),
           },
         },
-        { id: "ruleset", title: "规则集", detail: "original-2025@1", badge: "基础版" },
+        { id: "ruleset", title: "原创规则 · 2025 基础版", detail: "original-2025@1" },
       ],
-      actions: [intent("create", "创建并邀请", "CreateRoom"), nav("back", "返回", "play-mode", "ink")],
+      actions: [intent("create", "创建房间", "CreateRoom"), nav("back", "返回", "play-mode", "ink")],
     };
   } },
   join: { id: "join", build: (context) => ({ id: "join", eyebrow: "JOIN THE CHAOS", title: COPY.join, subtitle: "输入好友发来的 6 位房间码", heroImage: "assets/cats/a-ju.png", rows: [{ id: "room-code", title: "房间码", detail: context.joinCode || "点击输入", badge: context.joinCode?.length === 6 ? "可加入" : "6 位数字" }], actions: [intent("join", "进入房间", "JoinRoom"), nav("back", "返回", "play-mode", "ink")] }) },
