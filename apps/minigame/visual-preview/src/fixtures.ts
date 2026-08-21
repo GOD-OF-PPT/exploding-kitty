@@ -146,6 +146,13 @@ const TABLE_BASE = Object.freeze({
   players: PLAYERS,
   myTurn: true,
   turnsOwed: 1,
+  feedback: {
+    title: "你打出「洗牌」",
+    detail: "已结算 · 轮到你行动",
+    tone: "success",
+    phase: "settled",
+    card: CARDS.shuffle,
+  },
 } satisfies NonNullable<ScreenModel["table"]>);
 
 const LOBBY_HOST_ROWS = Object.freeze([
@@ -304,7 +311,16 @@ export const SCREEN_FIXTURES = Object.freeze({
     id: "game",
     eyebrow: "第 8 回合 · 顺时针 · 32 秒",
     title: "轮到你了",
-    table: TABLE_BASE,
+    table: {
+      ...TABLE_BASE,
+      feedback: {
+        title: "正在打出「洗牌」",
+        detail: "牌已送往弃牌堆 · 正在结算",
+        tone: "action",
+        phase: "committing",
+        card: CARDS.shuffle,
+      },
+    },
     actions: [intent("draw", "抽一张", "Draw"), nav("menu", "菜单", "game-menu", "ink")],
   },
   "other-turn": {
@@ -312,7 +328,17 @@ export const SCREEN_FIXTURES = Object.freeze({
     eyebrow: "第 8 回合 · 顺时针 · 31 秒",
     title: "等待其他玩家行动",
     subtitle: "等待 阿橘 行动 · 还剩 31 秒",
-    table: { ...TABLE_BASE, myTurn: false },
+    table: {
+      ...TABLE_BASE,
+      myTurn: false,
+      feedback: {
+        title: "你打出「跳过」",
+        detail: "已结算 · 轮到阿橘行动",
+        tone: "action",
+        phase: "settled",
+        card: CARDS.skip,
+      },
+    },
     actions: [nav("menu", "菜单", "game-menu", "ink"), nav("history", "行动记录", "history")],
   },
   attack: {

@@ -64,6 +64,13 @@ export type ScreenModel = Readonly<{
     myTurn: boolean;
     turnsOwed: number;
     drawAction?: ScreenAction;
+    feedback?: Readonly<{
+      title: string;
+      detail: string;
+      tone: "neutral" | "action" | "danger" | "success";
+      phase?: "committing" | "settled";
+      card?: CardModel;
+    }>;
   }>;
 }>;
 

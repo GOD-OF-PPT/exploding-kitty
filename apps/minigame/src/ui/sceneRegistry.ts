@@ -1,5 +1,5 @@
 ﻿import { deriveScene, eligibleTargets, hasProductAction, legalSelectionKind, selectedCards as selectCards, selectionNeedsTarget } from "@exploding-kitty/presentation-model";
-import { activityTimeline } from "./activityFeed";
+import { activityTimeline, latestActivity } from "./activityFeed";
 import { CARD_CATALOG, COPY, RULE_DETAILS, RULE_ROWS } from "./copy";
 import type { ScreenAction, ScreenId, ScreenModel, ScreenRow } from "./model";
 import type { ProductViewModel } from "./normalize";
@@ -283,10 +283,22 @@ function table(context: SceneContext, myTurn: boolean): ScreenModel {
     ? intent("draw", "抽一张", "Draw", { turnId: context.view.game.turnId })
     : undefined;
   const tutorialHint = context.view.room.tutorial ? activeTutorialHint(context, myTurn) : null;
+  const feedback = latestActivity(context.view);
   return {
     id: myTurn ? "game" : "other-turn", eyebrow: `第 ${context.view.game.turnNumber} 回合 · ${context.view.game.direction} · ${remainingSeconds(context.view.game.deadline, context)} 秒`,
     title: myTurn ? (context.view.game.turnsOwed > 1 ? `你还欠 ${context.view.game.turnsOwed} 个回合` : "轮到你了") : "等待其他玩家行动",
-    table: { turn: context.view.game.turnNumber, direction: context.view.game.direction, deckCount: context.view.game.drawPileCount, discard, hand: context.view.hand, players: context.view.players, myTurn, turnsOwed: context.view.game.turnsOwed, drawAction },
+    table: {
+      turn: context.view.game.turnNumber,
+      direction: context.view.game.direction,
+      deckCount: context.view.game.drawPileCount,
+      discard,
+      hand: context.view.hand,
+      players: context.view.players,
+      myTurn,
+      turnsOwed: context.view.game.turnsOwed,
+      drawAction,
+      ...(feedback ? { feedback: { title: feedback.title, detail: feedback.detail, tone: feedback.tone } } : {}),
+    },
     rows: tutorialHint ? [tutorialHint] : undefined,
     actions: playAction ? [playAction] : [],
   };

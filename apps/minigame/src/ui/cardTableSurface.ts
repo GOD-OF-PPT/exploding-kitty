@@ -75,6 +75,13 @@ export type TableSurfaceState = Readonly<{
   selectedTokens?: readonly string[];
   handPage?: number;
   fontFamily?: string;
+  feedback?: Readonly<{
+    title: string;
+    detail: string;
+    tone: "neutral" | "action" | "danger" | "success";
+    phase?: "committing" | "settled";
+    card?: CardModel;
+  }>;
 }>;
 
 type TableLayout = Readonly<{
@@ -216,7 +223,7 @@ export class CardTableSurface {
 
   private preload(state: TableSurfaceState): void {
     if (!this.createImage) return;
-    const sources = [BACKGROUND, CARD_BACK, state.discard?.image, ...state.hand.map((card) => card.image)]
+    const sources = [BACKGROUND, CARD_BACK, state.discard?.image, state.feedback?.card?.image, ...state.hand.map((card) => card.image)]
       .filter((value): value is string => Boolean(value));
     for (const source of new Set(sources)) {
       if (this.images.has(source)) continue;
@@ -232,7 +239,7 @@ export class CardTableSurface {
 
   private draw(): void {
     const { ctx } = this;
-    const { width, height, deckCount, discard, myTurn, turnsOwed } = this.state;
+    const { width, height, deckCount, discard, feedback, myTurn, turnsOwed } = this.state;
     const canDraw = this.canDraw();
     const layout = this.tableLayout();
     ctx.clearRect(0, 0, width, height);
@@ -263,11 +270,24 @@ export class CardTableSurface {
 
     this.drawTurnBanner(layout.banner, myTurn, turnsOwed, layout.tableScale);
     this.drawPile(layout.drawPile, CARD_BACK, "draw", deckCount, !canDraw, layout.tableScale, layout.pileLabelGap);
-    this.drawPile(layout.discardPile, discard?.image, "discard", undefined, false, layout.tableScale, layout.pileLabelGap);
+    const settling = feedback?.phase === "committing" ? feedback.card : undefined;
+    this.drawPile(
+      layout.discardPile,
+      settling?.image ?? discard?.image,
+      "discard",
+      undefined,
+      false,
+      layout.tableScale,
+      layout.pileLabelGap,
+      settling ? "结算中" : "弃牌堆",
+    );
     this.drawDrawBurst(layout.drawBurst, myTurn, canDraw, turnsOwed, layout.tableScale);
     this.drawHandZone(layout);
 
-    for (const slot of this.paintOrder(this.handSlots(layout))) this.drawCard(slot, !myTurn || !slot.card.playable);
+    const departing = feedback?.phase === "committing" ? new Set(this.state.selectedTokens ?? []) : null;
+    for (const slot of this.paintOrder(this.handSlots(layout))) {
+      this.drawCard(slot, !myTurn || !slot.card.playable || Boolean(departing?.has(slot.card.token)));
+    }
     if (this.usesPagedHand()) this.drawPagination(layout);
   }
 
@@ -364,9 +384,10 @@ export class CardTableSurface {
 
   private drawTurnBanner(rect: Rect, myTurn: boolean, turnsOwed: number, scale: number): void {
     const { ctx } = this;
-    const label = myTurn
+    const feedback = this.state.feedback;
+    const label = feedback?.title ?? (myTurn
       ? (turnsOwed > 1 ? `你还欠 ${turnsOwed} 个回合！` : "轮到你了")
-      : this.state.waitingLabel ?? "等待其他玩家行动…";
+      : this.state.waitingLabel ?? "等待其他玩家行动…");
     ctx.save();
     ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
     ctx.rotate(-Math.PI / 180);
@@ -375,17 +396,27 @@ export class CardTableSurface {
     ctx.fill();
     // The waiting state dims only the unavailable draw/hand controls; the
     // reference keeps the turn banner at full vermilion for legibility.
-    ctx.fillStyle = "#f23b20";
+    ctx.fillStyle = feedback
+      ? feedback.tone === "danger" ? COLORS.redDark
+        : feedback.tone === "success" ? "#997400"
+          : feedback.tone === "action" ? "#126f79"
+            : "#4e4740"
+      : "#f23b20";
     ctx.strokeStyle = COLORS.ink;
     ctx.lineWidth = 3 * scale;
     roundedRect(ctx, -rect.width / 2, -rect.height / 2, rect.width, rect.height, scale);
     ctx.fill();
     ctx.stroke();
-    this.setFont(Math.max(14, 25 * scale), 900, true);
+    this.setFont(Math.max(12, (feedback ? 17 : 25) * scale), 900, true);
     ctx.fillStyle = COLORS.cream;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(label, 0, 0, Math.max(1, rect.width - 12));
+    ctx.fillText(label, 0, feedback ? -7 * scale : 0, Math.max(1, rect.width - 12));
+    if (feedback?.detail) {
+      this.setFont(Math.max(8, 9 * scale), 700, false);
+      ctx.fillStyle = feedback.phase === "committing" ? COLORS.yellow : COLORS.cream;
+      ctx.fillText(feedback.detail, 0, 11 * scale, Math.max(1, rect.width - 16));
+    }
     ctx.restore();
   }
 
@@ -397,6 +428,7 @@ export class CardTableSurface {
     dim: boolean,
     scale: number,
     labelGap: number,
+    discardLabel = "弃牌堆",
   ): void {
     const { ctx } = this;
     const priorAlpha = ctx.globalAlpha;
@@ -453,7 +485,8 @@ export class CardTableSurface {
       this.setFont(Math.max(11, 11 * scale), 800, false);
       ctx.fillStyle = COLORS.cream;
       ctx.textAlign = "center";
-      ctx.fillText("弃牌堆", centerX, labelY);
+      ctx.fillStyle = discardLabel === "结算中" ? COLORS.yellow : COLORS.cream;
+      ctx.fillText(discardLabel, centerX, labelY);
     }
     ctx.globalAlpha = priorAlpha;
     ctx.restore();
