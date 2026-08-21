@@ -56,7 +56,9 @@ describe("mini-game scene renderers", () => {
       const rendered = renderScene(model, options);
 
       expect(rendered.template, id).toContain('class="scene');
-      expect(rendered.template, id).toContain("assets/ui/backgrounds/comic-bg-390x844.jpg");
+      expect(rendered.template, id).toContain(id === "create"
+        ? "assets/ui/create/create-artboard.webp"
+        : "assets/ui/backgrounds/comic-bg-390x844.jpg");
       expect(rendered.styles.scene!.height, id).toBe(844);
       model.actions?.forEach((_, index) => expect(rendered.template, `${id}:action-${index}`).toContain(`id="action-${index}"`));
       model.rows?.forEach((_, index) => expect(rendered.template, `${id}:row-${index}`).toContain(`id="row-${index}"`));
@@ -291,7 +293,7 @@ describe("mini-game scene renderers", () => {
     expect(rendered.template.indexOf('class="choicePromptDetail"')).toBeLessThan(rendered.template.indexOf('id="row-0"'));
   });
 
-  it("distinguishes adjustable create controls from the fixed ruleset", () => {
+  it("keeps the create artboard adjustable while the ruleset remains fixed", () => {
     const rendered = renderScene({
       id: "create",
       title: "创建房间",
@@ -303,11 +305,15 @@ describe("mini-game scene renderers", () => {
       ],
     }, options);
 
-    expect(rendered.template).toMatch(/id="row-0" class="formRow rowInteractive"[\s\S]*class="formStepper"/);
-    expect(rendered.template).toMatch(/id="row-1" class="formRow rowInteractive"[\s\S]*class="formStepper"/);
-    expect(rendered.template).toMatch(/id="row-2" class="formRow formRowDark rowInteractive"[\s\S]*class="toggleSwitch toggleSwitchOn"/);
-    expect(rendered.template).toContain('id="row-3" class="formRow formRowStamp"');
-    expect(rendered.template).not.toMatch(/id="row-3"[^>]*rowInteractive/);
+    expect(rendered.template).toContain('class="createArtboard" src="assets/ui/create/create-artboard.webp"');
+    expect(rendered.template).toContain('id="row-0-down"');
+    expect(rendered.template).toContain('id="row-0-up"');
+    expect(rendered.template).toContain('id="row-1-down"');
+    expect(rendered.template).toContain('id="row-1-up"');
+    expect(rendered.template).toContain('id="row-2" class="createHot createBotHot"');
+    expect(rendered.template).toContain('id="row-3" class="createRulesHit"');
+    expect(rendered.template).not.toContain('id="row-3-down"');
+    expect(rendered.template).not.toContain('id="row-3-up"');
   });
 
   it("presents settings as direct switches plus tutorial, rules, and version entries", () => {

@@ -118,30 +118,16 @@ describe("real short-screen layout", () => {
     }
   });
 
-  it.each(FIXTURE_VIEWPORTS)("keeps create details clear of their visible controls at $key", (viewport) => {
+  it.each(FIXTURE_VIEWPORTS)("keeps the create artboard controls explicit at $key", (viewport) => {
     const model = SCREEN_FIXTURES.create;
     const options = fixtureOptions(model, viewport);
     layout(model, options, viewport.width, viewport.height);
 
-    const details = allByClass("formDetail");
-    const steppers = allByClass("formStepper");
-    expect(steppers).toHaveLength(2);
-    for (const [index, stepper] of steppers.entries()) {
-      const detail = details[index];
-      expect(detail, `create:row-${index} detail exists`).toBeDefined();
-      expect.soft(rightEdge(detail!), `create:row-${index} detail clears badge and caret`)
-        .toBeLessThanOrEqual(stepper.layoutBox.absoluteX);
-      expect.soft(bottom(detail!), `create:row-${index} detail stays inside its row`)
-        .toBeLessThanOrEqual(bottom(elementById(`row-${index}`)));
+    expect(firstByClass("createArtboard").layoutBox).toMatchObject({ width: 390, height: 844 });
+    for (const id of ["row-0-down", "row-0-up", "row-1-down", "row-1-up", "row-2"]) {
+      expectTouchTarget(id, `create:${id}`);
     }
-    for (const index of [2, 3] as const) {
-      expectNoSingleGlyphLastLine(
-        model.rows?.[index]?.detail,
-        details[index]!,
-        10,
-        `create:row-${index} detail has no orphan glyph`,
-      );
-    }
+    expect(elementById("row-3")).toBeTruthy();
   });
 
   it.each(FIXTURE_VIEWPORTS)("keeps fixture content clear of fixed controls at $key", (viewport) => {

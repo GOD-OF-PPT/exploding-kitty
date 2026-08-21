@@ -25,6 +25,7 @@ import { AuthoritativeSoundPlayer, SOUND_ASSETS } from "./soundEffects";
 import { activityTimeline, latestActivity, latestActivitySequence, type ActivityItem } from "./activityFeed";
 import { registerFitImage } from "./rendering/fitImage";
 import { renderScene } from "./rendering/rendererRegistry";
+import { createArtboardContent } from "./rendering/createArtboard";
 
 type ScreenHostOptions = Readonly<{
   wx: WxLike;
@@ -351,26 +352,7 @@ export class ScreenHost {
   }
 
   private createTemplate(model: ScreenModel): string {
-    const rows = new Map((model.rows ?? []).map((row, index) => [row.id, { row, index }]));
-    const players = rows.get("players");
-    const timer = rows.get("timer");
-    const bots = rows.get("bots");
-    const playersValue = players?.row.control?.kind === "stepper" ? players.row.control.value : "4 人";
-    const timerValue = timer?.row.control?.kind === "stepper" ? timer.row.control.value : "45 秒";
-    const botsEnabled = bots?.row.control?.kind === "toggle" ? bots.row.control.checked : true;
-    const primary = model.actions?.[0];
-    const primaryHint = this.error ?? "创建后即可邀请好友";
-    const primaryMarkup = this.sending
-      ? `<view class="createPrimary createPrimaryDisabled"><image class="createPrimaryBackground" src="assets/ui/create/cta-bg.webp"></image><view class="createPrimaryCopy"><text class="createPrimaryLabel" value="处理中…"></text><text class="createPrimaryHint" value="正在创建私人房间"></text></view></view>`
-      : `<button id="action-0" class="createPrimary"><image class="createPrimaryBackground" src="assets/ui/create/cta-bg.webp"></image><view class="createPrimaryCopy"><text class="createPrimaryLabel" value="${escape(primary?.label ?? "创建房间")}"></text><text class="createPrimaryHint${this.error ? " createPrimaryHintError" : ""}" value="${escape(primaryHint)}"></text></view></button>`;
-    return `<view class="app createScreen"><view class="topSafe"></view><view class="createHeader"><button id="back" class="createBack${this.sending ? " createBackDisabled" : ""}"><image class="createBackIcon" src="assets/ui/icons/cream/arrow-left.png"></image></button><view class="createHeaderCopy"><image class="createHeaderAccent" src="assets/ui/create/header-accent.webp"></image><text class="createEyebrow" value="${escape(model.eyebrow ?? "PRIVATE ROOM")}"></text><text class="createHeaderTitle" value="${escape(model.title)}"></text></view><view class="createHeaderSpacer"></view></view><view class="createControlGrid${this.sending ? " createControlsDisabled" : ""}">${this.createStepperCardTemplate(players?.row, players?.index ?? 0, playersValue)}${this.createStepperCardTemplate(timer?.row, timer?.index ?? 1, timerValue)}</view><button id="row-${bots?.index ?? 2}" class="createBotCard${this.sending ? " createBotCardDisabled" : ""}"><image class="createBotPanel" src="assets/ui/create/paper-panel.webp"></image><view class="createBotCopy"><text class="createBotTitle" value="${escape(bots?.row.title ?? "允许机器人加入")}"></text><text class="createBotDetail" value="${escape(bots?.row.detail ?? "房主可在房间内手动添加")}"></text></view><view class="createBotToggle${botsEnabled ? " createBotToggleOn" : ""}"><text class="createBotToggleLabel${botsEnabled ? " createBotToggleLabelOn" : " createBotToggleLabelOff"}" value="${botsEnabled ? "已开启" : "已关闭"}"></text><view class="createBotThumb"></view></view></button><view id="row-${rows.get("ruleset")?.index ?? 3}" class="createReview"><view class="createReviewHeader"><image class="createReviewIcon" src="assets/ui/icons/cream/book-open.png"></image><text class="createReviewTitle" value="原创规则 · 2025 基础版"></text></view>${this.createReviewRow(`${playersValue}对局`)}${this.createReviewRow(`每回合 ${timerValue}`)}${this.createReviewRow(botsEnabled ? "允许手动加入 Bot" : "不允许加入 Bot", false)}</view><view class="createActionDock">${primaryMarkup}</view></view>`;
-  }
-
-  private createStepperCardTemplate(row: ScreenRow | undefined, index: number, value: string): string {
-    const [number = value, unit = ""] = value.split(" ");
-    const downDisabled = this.sending || this.createStepperAtLimit(row, -1);
-    const upDisabled = this.sending || this.createStepperAtLimit(row, 1);
-    return `<view id="row-${index}" class="createControlCard"><image class="createControlPanel" src="assets/ui/create/paper-panel.webp"></image><view class="createControlCopy"><text class="createControlTitle" value="${escape(row?.title ?? "设置")}"></text><text class="createControlDetail" value="${escape(row?.detail ?? "")}"></text></view><view class="createControlValue"><text class="createControlNumber" value="${escape(number)}"></text><text class="createControlUnit" value="${escape(unit)}"></text></view><view class="createStepper"><button id="row-${index}-down" class="createStepperButton${downDisabled ? " createStepperButtonDisabled" : ""}" value="−"></button><text class="createStepperCurrent" value="${escape(value)}"></text><button id="row-${index}-up" class="createStepperButton${upDisabled ? " createStepperButtonDisabled" : ""}" value="+"></button></view></view>`;
+    return `<view class="app createScreen">${createArtboardContent(model, { sending: this.sending, error: this.error })}</view>`;
   }
 
   private createStepperAtLimit(row: ScreenRow | undefined, direction: -1 | 1): boolean {
@@ -378,10 +360,6 @@ export class ScreenHost {
     if (row?.id === "timer") return direction < 0 ? this.roomDraft.turnSeconds <= 30 : this.roomDraft.turnSeconds >= 60;
     if (row?.id === "position") return direction < 0 ? this.insertionPosition <= 0 : this.insertionPosition >= insertionDeckSize(this.currentView());
     return false;
-  }
-
-  private createReviewRow(label: string, divider = true): string {
-    return `<view class="createReviewRow"><image class="createReviewBullet" src="assets/ui/create/burst.png"></image><text class="createReviewText" value="${escape(label)}"></text>${divider ? `<view class="createReviewDivider"></view>` : ""}</view>`;
   }
 
   private defuseTemplate(model: ScreenModel, view: ProductViewModel): string {
@@ -471,91 +449,17 @@ export class ScreenHost {
     }
     if (model.id !== "create") return {};
     const fontFamily = this.displayFont;
-    const compact = this.metrics.logicalHeight < 820;
-    const ultraCompact = this.metrics.logicalHeight < 690;
-    const shared = {
-      createScreen: { ...UI_STYLE.createScreen, height: this.metrics.logicalHeight },
-      createHeader: { ...UI_STYLE.createHeader, height: compact ? 110 : Math.max(118, 168 - this.metrics.safeInsets.top) },
-      createHeaderTitle: { ...UI_STYLE.createHeaderTitle, fontFamily },
-      createControlTitle: { ...UI_STYLE.createControlTitle, fontFamily },
-      createControlNumber: { ...UI_STYLE.createControlNumber, fontFamily },
-      createControlUnit: { ...UI_STYLE.createControlUnit, fontFamily },
-      createStepperCurrent: { ...UI_STYLE.createStepperCurrent, fontFamily },
-      createBotTitle: { ...UI_STYLE.createBotTitle, fontFamily },
-      createReviewTitle: { ...UI_STYLE.createReviewTitle, fontFamily },
-      createReviewText: { ...UI_STYLE.createReviewText, fontFamily },
-      createPrimaryLabel: { ...UI_STYLE.createPrimaryLabel, fontFamily },
-      createActionDock: { ...UI_STYLE.createActionDock, paddingTop: Math.max(12, 20 - Math.max(0, this.metrics.safeInsets.bottom - 27)) },
-    };
-    if (!compact) return shared;
-    const compactStyles = {
-      ...shared,
-      createHeaderCopy: { ...UI_STYLE.createHeaderCopy, height: 104, paddingTop: 14 },
-      createHeaderAccent: { ...UI_STYLE.createHeaderAccent, top: 34, height: 48 },
-      createEyebrow: { ...UI_STYLE.createEyebrow, height: 19, lineHeight: 19, fontSize: 10.5 },
-      createHeaderTitle: { ...UI_STYLE.createHeaderTitle, height: 49, lineHeight: 47, fontSize: 37, fontFamily },
-      createControlGrid: { ...UI_STYLE.createControlGrid, height: 204, paddingTop: 2 },
-      createControlCard: { ...UI_STYLE.createControlCard, height: 200, paddingTop: 8 },
-      createControlPanel: { ...UI_STYLE.createControlPanel, height: 200 },
-      createControlCopy: { ...UI_STYLE.createControlCopy, height: 47 },
-      createControlTitle: { ...UI_STYLE.createControlTitle, height: 27, lineHeight: 27, fontSize: 18, fontFamily },
-      createControlDetail: { ...UI_STYLE.createControlDetail, height: 20, lineHeight: 20, fontSize: 11 },
-      createControlValue: { ...UI_STYLE.createControlValue, height: 91, paddingBottom: 17 },
-      createControlNumber: { ...UI_STYLE.createControlNumber, height: 61, lineHeight: 61, fontSize: 52, fontFamily },
-      createControlUnit: { ...UI_STYLE.createControlUnit, height: 34, lineHeight: 31, fontSize: 17, fontFamily },
-      createStepper: { ...UI_STYLE.createStepper, height: 46 },
-      createStepperButton: { ...UI_STYLE.createStepperButton, height: 46, lineHeight: 43 },
-      createStepperCurrent: { ...UI_STYLE.createStepperCurrent, height: 46, lineHeight: 43, fontFamily },
-      createBotCard: { ...UI_STYLE.createBotCard, height: 82, marginTop: 10 },
-      createBotPanel: { ...UI_STYLE.createBotPanel, height: 82 },
-      createBotCopy: { ...UI_STYLE.createBotCopy, height: 55 },
-      createBotTitle: { ...UI_STYLE.createBotTitle, height: 31, lineHeight: 30, fontSize: 19, fontFamily },
-      createBotDetail: { ...UI_STYLE.createBotDetail, height: 22, lineHeight: 21, fontSize: 11.5 },
-      createBotToggle: { ...UI_STYLE.createBotToggle, height: 48, borderRadius: 25 },
-      createBotThumb: { ...UI_STYLE.createBotThumb, width: 32, height: 32, borderRadius: 17 },
-      createReview: { ...UI_STYLE.createReview, height: 142, marginTop: 10, paddingTop: 4 },
-      createReviewHeader: { ...UI_STYLE.createReviewHeader, height: 34 },
-      createReviewIcon: { ...UI_STYLE.createReviewIcon, width: 27, height: 27 },
-      createReviewTitle: { ...UI_STYLE.createReviewTitle, height: 32, lineHeight: 32, fontSize: 14.5, fontFamily },
-      createReviewRow: { ...UI_STYLE.createReviewRow, height: 33 },
-      createReviewBullet: { ...UI_STYLE.createReviewBullet, width: 19, height: 19 },
-      createReviewText: { ...UI_STYLE.createReviewText, height: 30, lineHeight: 30, fontSize: 13.5, fontFamily },
-      createActionDock: { ...UI_STYLE.createActionDock, height: 105, paddingTop: Math.max(4, 10 - Math.max(0, this.metrics.safeInsets.bottom - 18)) },
-    };
-    if (!ultraCompact) return compactStyles;
     return {
-      ...compactStyles,
-      createHeader: { ...UI_STYLE.createHeader, height: 90 },
-      createHeaderCopy: { ...UI_STYLE.createHeaderCopy, height: 88, paddingTop: 7 },
-      createHeaderAccent: { ...UI_STYLE.createHeaderAccent, top: 27, height: 43 },
-      createEyebrow: { ...UI_STYLE.createEyebrow, height: 17, lineHeight: 17, fontSize: 9.5 },
-      createHeaderTitle: { ...UI_STYLE.createHeaderTitle, height: 44, lineHeight: 42, fontSize: 34, fontFamily },
-      createControlGrid: { ...UI_STYLE.createControlGrid, height: 184, paddingTop: 2 },
-      createControlCard: { ...UI_STYLE.createControlCard, height: 180, paddingTop: 6 },
-      createControlPanel: { ...UI_STYLE.createControlPanel, height: 180 },
-      createControlCopy: { ...UI_STYLE.createControlCopy, height: 42 },
-      createControlTitle: { ...UI_STYLE.createControlTitle, height: 24, lineHeight: 24, fontSize: 17, fontFamily },
-      createControlDetail: { ...UI_STYLE.createControlDetail, height: 18, lineHeight: 18, fontSize: 10.5 },
-      createControlValue: { ...UI_STYLE.createControlValue, height: 83, paddingBottom: 12 },
-      createControlNumber: { ...UI_STYLE.createControlNumber, height: 56, lineHeight: 56, fontSize: 47, fontFamily },
-      createControlUnit: { ...UI_STYLE.createControlUnit, height: 31, lineHeight: 29, fontSize: 16, fontFamily },
-      createStepper: { ...UI_STYLE.createStepper, height: 44 },
-      createStepperButton: { ...UI_STYLE.createStepperButton, height: 44, lineHeight: 41 },
-      createStepperCurrent: { ...UI_STYLE.createStepperCurrent, height: 44, lineHeight: 41, fontSize: 15.5, fontFamily },
-      createBotCard: { ...UI_STYLE.createBotCard, height: 72, marginTop: 8 },
-      createBotPanel: { ...UI_STYLE.createBotPanel, height: 72 },
-      createBotCopy: { ...UI_STYLE.createBotCopy, height: 49 },
-      createBotTitle: { ...UI_STYLE.createBotTitle, height: 28, lineHeight: 27, fontSize: 18, fontFamily },
-      createBotDetail: { ...UI_STYLE.createBotDetail, height: 20, lineHeight: 19, fontSize: 10.5 },
-      createBotToggle: { ...UI_STYLE.createBotToggle, height: 44, borderRadius: 23 },
-      createBotToggleLabel: { ...UI_STYLE.createBotToggleLabel, top: 5, fontSize: 12.5 },
-      createBotThumb: { ...UI_STYLE.createBotThumb, width: 28, height: 28, borderRadius: 15 },
-      createReview: { ...UI_STYLE.createReview, height: 48, marginTop: 8, paddingTop: 4 },
-      createReviewHeader: { ...UI_STYLE.createReviewHeader, height: 36 },
-      createReviewIcon: { ...UI_STYLE.createReviewIcon, width: 25, height: 25, marginRight: 8 },
-      createReviewTitle: { ...UI_STYLE.createReviewTitle, height: 33, lineHeight: 33, fontSize: 14, fontFamily },
-      createReviewRow: { ...UI_STYLE.createReviewRow, height: 0, opacity: 0 },
-      createActionDock: { ...UI_STYLE.createActionDock, height: 96, paddingTop: 4 },
+      createScreen: { ...UI_STYLE.createScreen, height: this.metrics.logicalHeight },
+      createScroll: { ...UI_STYLE.createScroll, height: this.metrics.logicalHeight },
+      createStateNumber: { ...UI_STYLE.createStateNumber, fontFamily },
+      createStateUnit: { ...UI_STYLE.createStateUnit, fontFamily },
+      createStateCurrent: { ...UI_STYLE.createStateCurrent, fontFamily },
+      createReviewStateRow: { ...UI_STYLE.createReviewStateRow, fontFamily },
+      createBotStateLabel: { ...UI_STYLE.createBotStateLabel, fontFamily },
+      createPrimarySendingLabel: { ...UI_STYLE.createPrimarySendingLabel, fontFamily },
+      createPrimarySendingHint: { ...UI_STYLE.createPrimarySendingHint, fontFamily },
+      createPrimaryErrorPatch: { ...UI_STYLE.createPrimaryErrorPatch, fontFamily },
     };
   }
 

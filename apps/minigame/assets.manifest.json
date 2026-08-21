@@ -23,9 +23,9 @@
     "sounds/select.wav",
     "ui/backgrounds/comic-bg-390x844.jpg",
     "ui/create/burst.png",
+    "ui/create/create-artboard.webp",
     "ui/create/cta-bg.webp",
     "ui/create/header-accent.webp",
-    "ui/create/paper-panel.webp",
     "ui/home/hero.webp",
     "ui/home/rules.png",
     "ui/home/settings.png",
@@ -299,6 +299,21 @@
       "maxCropRatio": 0,
       "edgePolicy": "bleed"
     },
+    "ui/create/create-artboard.webp": {
+      "role": "ui-crop",
+      "intrinsic": {
+        "width": 1170,
+        "height": 2532
+      },
+      "maxCssSize": {
+        "width": 390,
+        "height": 844
+      },
+      "targetDpr": 3,
+      "fit": "contain",
+      "maxCropRatio": 0,
+      "edgePolicy": "bleed"
+    },
     "ui/create/cta-bg.webp": {
       "role": "ui-crop",
       "intrinsic": {
@@ -323,21 +338,6 @@
       "maxCssSize": {
         "width": 358,
         "height": 84
-      },
-      "targetDpr": 3,
-      "fit": "contain",
-      "maxCropRatio": 0,
-      "edgePolicy": "bleed"
-    },
-    "ui/create/paper-panel.webp": {
-      "role": "ui-crop",
-      "intrinsic": {
-        "width": 1128,
-        "height": 738
-      },
-      "maxCssSize": {
-        "width": 376,
-        "height": 246
       },
       "targetDpr": 3,
       "fit": "contain",
@@ -1042,9 +1042,9 @@
     "sounds/select.wav": "9472c9a3477fac53d1ea48867baebce4720c2188a1546fb5b97c6ffbd5607472",
     "ui/backgrounds/comic-bg-390x844.jpg": "81c302cb7bed251b19e0c259fb4c984ab5119607aafdc3cf68230434bdae3cf3",
     "ui/create/burst.png": "9366e6cd5acfd3b566de37dbadcf17f5b182045667ecc0f897aca1a345d68bed",
+    "ui/create/create-artboard.webp": "6b56a9bd8c2e723e97ca8378339bedb80d5277795c0db24db2382bd0021b786a",
     "ui/create/cta-bg.webp": "10ac528e39ea42c22b249d061429957e03f94588ec63cc4b08fee466fa794dd3",
     "ui/create/header-accent.webp": "b94fb4990d29e7b5f7f2e5b4ea19d77d6410ad1ed018ddf12f9e7f6aa39b6e47",
-    "ui/create/paper-panel.webp": "1b431fceee533756d4d35cc86dff72a2067c94bb1e412fe8acdc160ff5cd5c76",
     "ui/home/hero.webp": "38c05440e846b78de680280274663a8eb241fcf307bdcdba014715d27fb78bac",
     "ui/home/rules.png": "fa1e91c7331add1b16de582e3e04060edea5bbf54f8a38fa80c1573c594a3a2b",
     "ui/home/settings.png": "758b15cfdddfe39862eb8421fe7a8cb9bb4d0bc79dfec72b8173a19564e58c17",

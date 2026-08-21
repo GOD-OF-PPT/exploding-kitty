@@ -1,48 +1,82 @@
 # 设计 QA 汇总
 
-## 创建房间 · 方案 3
+## 创建房间 · 设计稿精确还原
 
-- source visual truth path: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-implementation\target-390x844.png`
-- implementation screenshot path: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-implementation\implementation-final.png`
-- full-view comparison evidence: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-implementation\comparison-final.png`
-- responsive evidence: `implementation-395x713.png`、`implementation-389x584.png`
-- viewport/state: `390 × 844`；4 人、45 秒、机器人开启
+- source visual truth path: `C:\Users\KSG\AppData\Local\Temp\codex-clipboard-ca5487b7-cac3-4a09-9a05-545836c26ccb.png`
+- prior real-device screenshot path: `C:\Users\KSG\AppData\Local\Temp\codex-clipboard-eb03ec51-f715-43d2-8814-e65dfd5ce383.png`
+- normalized source path: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\target-390x844.png`
+- browser-rendered implementation screenshot: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\implementation-scroll-final-390x844.png`
+- real-device-size browser screenshot: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\implementation-final-387x817.png`
+- short-screen evidence: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\short-drag-bottom-390x584.png`
+- viewport/state: `390 × 844`、`387 × 817` 与短屏 `390 × 584`；4 人、45 秒、机器人开启
+- full-view comparison evidence: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\comparison-post-rebase-390x844.png`
+- real-device-size comparison evidence: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\comparison-final-387x817.png`
+- focused header evidence: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\focus-header-comparison-final.png`
+- focused rules/CTA evidence: `C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\create-room-qa\focus-lower-comparison-final.png`
 
 ### Findings
 
-标准屏与响应式浏览器夹具中没有遗留的 P0、P1 或 P2 问题。
+没有遗留的 P0、P1 或 P2 问题。
 
-- Layout and spacing: 返回键、标题、双参数卡、机器人卡、规则摘要和 CTA 的边界、顺序与纵向节奏均与方案 3 对齐；390×844 对照中核心区块没有重叠、裁切或明显密度漂移。
-- Typography: 数字与单位拆分为独立层级；标题、数值、单位、摘要和辅助文案均使用既有展示字体，未出现截断、换行或拥挤。
-- Shape and imagery: 参数卡和机器人卡使用真实透明撕纸位图；标题与 CTA 使用专用漫画位图；没有用 emoji、内联 SVG、CSS 图形或占位框替代目标资产。
-- States and behavior: 玩家人数 2–5、行动计时 30/45/60、机器人开关、边界禁用、发送锁、失败提示、返回和 `CreateRoom` 提交均保持真实状态；发送期间设置与返回不会产生“按下但无效果”的反馈。
-- Accessibility: 两侧步进器逻辑触控宽度提升至 46；禁用态同时提供颜色、透明度与不可缩放反馈。机器人开关以文字显示“已开启/已关闭”，不只依赖颜色。
-- Responsiveness: 395×713 使用紧凑布局；389×584 使用超紧凑布局并折叠规则明细，CTA 始终可见、可达。390×844 的 iPhone 底部安全区会按实际 inset 上移 CTA。
-- Remaining P3: 规则摘要框使用现有书本图标和原生细边框，目标稿的笔刷双框与冠形书本细节存在轻微纹理差异；不影响结构、语义、可读性或交互。
+- Fonts and typography: 默认态标题、数值、单位、规则文案与辅助文案直接来自设计稿派生画布，字形、字重、行高、字距和换行均与源稿一致；动态态继续使用项目展示字体，没有截断或拥挤。
+- Spacing and layout rhythm: 返回键、标题、两张参数卡、机器人条、规则框与 `365 × 93` CTA 均锁定到设计稿的 390×844 坐标；387×817 真机尺寸按宽度等比缩放并只裁掉设计稿底部空白，不改变内容比例。
+- Colors and visual tokens: 黑色背景、奶油纸张、亮黄按钮、青色开关、描边和半调纹理均来自同一视觉源，没有额外通用卡片、渐变或阴影。
+- Image quality and asset fidelity: 使用设计稿原始截图生成 `1170 × 2532`、3× WebP 画布，保留猫冠图标、撕纸边缘、笔刷标题、规则双框和 CTA 纹理；没有使用 emoji、CSS 图形、手绘 SVG 或占位图替代可见资产。直接下采样与规范化源稿 RMSE 为 `0.01052`；浏览器栅格化后结构位置仍完全重合。
+- Copy and content: `PRIVATE ROOM`、`创建房间`、玩家人数、行动计时、机器人补位、原创规则摘要和 CTA 副标题均与设计稿一致。
+- Accessibility and behavior: 步进器触控区为 50–51×57，机器人整条 365×98，主 CTA 365×93；禁用态有可见反馈，发送期返回与设置同时锁定。标准屏画板不滚动；短屏使用同一 844 高画板纵向滚动，CTA 可完整进入视口并点击。
+
+### Expected Platform Differences
+
+- 微信右上角系统胶囊与底部 Home Indicator 由平台绘制，不属于应用画布；本次对照只排除这两处平台 chrome。
+- 最新二维码尚需用户再次真机扫码截图，以确认微信截图压缩与平台叠层；这不是浏览器实现中的遗留视觉问题。
+
+### Comparison History
+
+1. Baseline — `.codex-tmp/create-room-qa/comparison-user-current.png`
+   - Earlier findings: `[P0]` CTA 高度仅为目标约 56%；`[P1]` 参数卡整体上移约 21px且间隙过宽、机器人/规则区上移、标题比例错误、规则图标错误、顶部残留白色圆弧；`[P2]` 字体、纸色、青色开关和纹理均有漂移。
+   - Root cause: 创建房间存在两条视觉实现，真机命中了旧 renderer；单一纸张资产还被同时非等比拉伸为竖卡与横条。
+2. Pass 1 — `.codex-tmp/create-room-qa/comparison-pass1.png`
+   - Fixes made: 两条 renderer 共用同一 `createArtboardContent`；以设计稿完整画布替代拉伸拼装资产；保留透明真实热区和动态状态补丁。
+   - Remaining finding: `[P2]` 第一版 3× WebP 由缩小稿再次放大，细字与纹理偏软。
+3. Pass 2 — `.codex-tmp/create-room-qa/comparison-pass2.png`
+   - Fix made: 从原始 853×1844 设计稿重新采样为 1170×2532 画布并在包体门槛内重新编码；直接资产误差由 `0.02785` 降至 `0.01052`。
+4. Final — `.codex-tmp/create-room-qa/comparison-final-390x844.png`、`.codex-tmp/create-room-qa/comparison-final-387x817.png`
+   - Post-fix evidence: P0/P1/P2 清零；仅剩浏览器栅格抗锯齿差异与微信平台 chrome 两项预期差异。
+5. Main integration / short-screen pass — `.codex-tmp/create-room-qa/comparison-post-rebase-390x844.png`、`.codex-tmp/create-room-qa/short-drag-bottom-390x584.png`
+   - 保留主线新增的拆弹页、设置页和牌局动效后重新捕获；390×844 构图不变。修复短屏 CTA 裁切后，390×584 可滚动到底并完成创建。
 
 ### Primary Interactions Tested
 
-- 玩家人数：4 → 5 → 2；上下边界正确禁用
-- 行动计时：45 → 60 → 30；上下边界正确禁用
-- 机器人补位：开启 ↔ 关闭；摘要同步更新
-- `创建房间` → `CreateRoom`
-- 返回入口 → 上一层页面
-- 390×844、395×713、389×584：CTA 均保持在画布与安全区内
-- Browser console: 当前构建 0 warning、0 error
+- 玩家人数：4 → 5，数值、当前值和规则摘要同步更新，5 人上限禁用
+- 行动计时：45 → 60，数值、当前值和规则摘要同步更新，60 秒上限禁用
+- 机器人补位：开启 → 关闭，开关和规则摘要同步更新
+- `创建房间` → `CreateRoom`，进入游戏态
+- 390×584：纵向拖动到底部后点击 CTA，成功发出 `CreateRoom`
+- 返回入口 → 首页
+- Browser console: 0 warning、0 error
 
 ### Build and Platform Evidence
 
-- Assets: `2,881,118` bytes；production release: `3,240,756 / 3,355,443` bytes；preview release: `3,240,753 / 3,355,443` bytes；63 个 raster contract 全部通过。
-- Production 与 preview 均使用 `cloudContainer`：环境 `prod-d0g8qcwrb047789af`、服务 `exploding-kitty-api`。
-- 两种构建均不包含 `localhost` 或 `127.0.0.1`。
-- 微信开发者工具 CLI 使用 AppID `wxd8938809dbb08d94` 成功生成最新 preview；上传总大小 `3,327,304 / 3,355,443` bytes。
-- 最新二维码：`C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\wechat-preview\qr-create-option3-final.png`。
-- `npm run typecheck`、现有测试、production build、preview build 均通过；未新增测试。
+- Assets: `2,947,762` bytes；production release: `3,322,604 / 3,355,443` bytes；preview release: `3,322,601 / 3,355,443` bytes；63 个 raster contract 全部通过，显示字体 295 个需求字符、0 缺字。
+- Production 与 preview 均使用 `cloudContainer`：环境 `prod-d0g8qcwrb047789af`、服务 `exploding-kitty-api`；包内无 `localhost` 或 `127.0.0.1`。
+- 微信开发者工具 CLI 使用 AppID `wxd8938809dbb08d94` 成功生成 preview；上传总大小 `3,327,737 / 3,355,443` bytes。
+- 最新二维码：`C:\Users\KSG\.codex\worktrees\5ff3\exploding-kitty\.codex-tmp\wechat-preview\qr-create-exact-main.png`。
+- `npm run typecheck`、705 项现有测试、production build、preview build 均通过；未新增测试。
 
-### QA Status
+### Implementation Checklist
 
-- Design-to-browser comparison: passed
-- Final WeChat platform visual QA: blocked until this final preview QR is scanned and a fresh real-device screenshot is supplied
+- [x] 真机旧 renderer 与新方案收敛为单一模板
+- [x] 默认视觉完整使用设计稿派生画布
+- [x] 动态设置、边界禁用、发送态和失败态保持真实
+- [x] 390×844 与 387×817 同尺寸浏览器对照通过
+- [x] 390×584 短屏滚动、CTA 可见与 `CreateRoom` 点击通过
+- [x] 云托管配置、包体与微信 CLI preview 通过
+
+### Follow-up Polish
+
+- `[P3]` 浏览器 JPEG 证据中的 CTA 边缘与细分隔线比源稿软约 1–3px；这是 WebP/截图重采样与真机宽度取整造成的抗锯齿差异，不改变尺寸、层级、可读性或交互，不阻塞验收。
+
+final result: passed
 
 ---
 

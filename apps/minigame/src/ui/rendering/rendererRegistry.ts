@@ -14,6 +14,7 @@ import {
   subtitle,
 } from "./primitives";
 import { createSceneStyles } from "./styles";
+import { createArtboardContent } from "./createArtboard";
 import type { RenderedScene, RenderSceneOptions, SceneRenderer, SceneRendererRegistry } from "./types";
 
 const loginRenderer: SceneRenderer = (model, options) => {
@@ -55,34 +56,7 @@ const playModeRenderer: SceneRenderer = (model, options) => {
 };
 
 const createRenderer: SceneRenderer = (model, options) => {
-  const indexedRows = new Map((model.rows ?? []).map((row, index) => [row.id, { row, index }]));
-  const players = indexedRows.get("players");
-  const timer = indexedRows.get("timer");
-  const bots = indexedRows.get("bots");
-  const ruleset = indexedRows.get("ruleset");
-  const playersValue = players?.row.control?.kind === "stepper"
-    ? players.row.control.value
-    : players?.row.badge ?? "4 人";
-  const timerValue = timer?.row.control?.kind === "stepper"
-    ? timer.row.control.value
-    : timer?.row.badge ?? "45 秒";
-  const botsEnabled = bots?.row.control?.kind === "toggle"
-    ? bots.row.control.checked
-    : bots?.row.badge
-      ? bots.row.badge.includes("开启") || bots.row.badge.includes("允许")
-      : true;
-  const primary = model.actions?.[0];
-  const primaryMarkup = options.sending
-    ? `<view class="createPrimary createPrimaryDisabled"><fitimage class="createPrimaryBackground" src="assets/ui/create/cta-bg.webp" data-fit="contain" data-position="center center"></fitimage><view class="createPrimaryCopy"><text class="createPrimaryLabel" value="处理中…"></text><text class="createPrimaryHint" value="正在创建私人房间"></text></view></view>`
-    : `<button id="action-0" class="createPrimary"><fitimage class="createPrimaryBackground" src="assets/ui/create/cta-bg.webp" data-fit="contain" data-position="center center"></fitimage><view class="createPrimaryCopy"><text class="createPrimaryLabel" value="${escapeMarkup(primary?.label ?? "创建房间")}"></text><text class="createPrimaryHint" value="创建后即可邀请好友"></text></view></button>`;
-  const stepperCard = (entry: typeof players, fallbackIndex: number, value: string) => {
-    const index = entry?.index ?? fallbackIndex;
-    return `<view id="row-${index}" class="formRow rowInteractive"><view class="createControlCard"><view class="createControlCopy"><text class="createControlTitle" value="${escapeMarkup(entry?.row.title ?? "设置")}"></text><text class="createControlDetail" value="${escapeMarkup(entry?.row.detail ?? "")}"></text></view><text class="createControlValue" value="${escapeMarkup(value)}"></text><view class="createStepper"><button id="row-${index}-down" class="createStepperButton" value="−"></button><text class="createStepperCurrent" value="${escapeMarkup(value)}"></text><button id="row-${index}-up" class="createStepperButton" value="+"></button></view></view><text class="formDetail" value="${escapeMarkup(entry?.row.detail ?? "")}"></text><view class="formStepper"></view></view>`;
-  };
-  const reviewRow = (label: string) => `<view class="createReviewRow"><fitimage class="createReviewBullet" src="assets/ui/create/burst.png" data-fit="contain" data-position="center center"></fitimage><text class="createReviewText" value="${escapeMarkup(label)}"></text></view>`;
-  const actionAliases = (model.actions ?? []).slice(1).map((_, index) => `<button id="action-${index + 1}" class="createActionAlias"></button>`).join("");
-  const content = `<view class="safeTop"></view><view class="createHeader"><button id="back" class="createBack">${icon("arrow-left", "cream", "createBackIcon")}</button><view class="createHeaderCopy"><fitimage class="createHeaderAccent" src="assets/ui/create/header-accent.webp" data-fit="contain" data-position="center center"></fitimage><text class="createEyebrow" value="${escapeMarkup(model.eyebrow ?? "PRIVATE ROOM")}"></text><text class="createHeaderTitle" value="${escapeMarkup(model.title)}"></text></view><view class="createHeaderSpacer"></view></view><view class="createControlGrid">${stepperCard(players, 0, playersValue)}${stepperCard(timer, 1, timerValue)}</view><button id="row-${bots?.index ?? 2}" class="formRow formRowDark rowInteractive"><view class="createBotCard createBotCardNested"><view class="createBotCopy"><text class="createBotTitle" value="${escapeMarkup(bots?.row.title ?? "允许机器人加入")}"></text><text class="createBotDetail" value="${escapeMarkup(bots?.row.detail ?? "房主可在房间内手动添加")}"></text></view><view class="createBotToggle${botsEnabled ? " createBotToggleOn" : ""}"><text class="createBotToggleLabel${botsEnabled ? " createBotToggleLabelOn" : " createBotToggleLabelOff"}" value="${botsEnabled ? "已开启" : "已关闭"}"></text><view class="createBotThumb"></view></view></view><text class="formDetail" value="${escapeMarkup(bots?.row.detail ?? "")}"></text><view class="toggleSwitch${botsEnabled ? " toggleSwitchOn" : ""}"></view></button><view id="row-${ruleset?.index ?? 3}" class="formRow formRowStamp"><view class="createReview createReviewNested"><view class="createReviewHeader">${icon("book-open", "cream", "createReviewIcon")}<text class="createReviewTitle" value="${escapeMarkup(ruleset?.row.title ?? "原创规则 · 2025 基础版")}"></text></view>${reviewRow(`${playersValue}对局`)}${reviewRow(`每回合 ${timerValue}`)}${reviewRow(botsEnabled ? "允许手动加入 Bot" : "不允许加入 Bot")}</view><text class="formDetail" value="${escapeMarkup(ruleset?.row.detail ?? "")}"></text></view><view class="createActionDock">${primaryMarkup}</view>${actionAliases}`;
-  return frame(content, options, "ink", "sceneCreate");
+  return `<view class="scene sceneCreate">${createArtboardContent(model, options)}</view>`;
 };
 
 const joinRenderer: SceneRenderer = (model, options) => {
