@@ -192,7 +192,7 @@
 - middle-position state: `.codex-tmp/defuse-audit/defuse-middle-383x770.png`
 - bottom-position state: `.codex-tmp/defuse-audit/defuse-bottom-383x770.png`
 - battle-report state: `.codex-tmp/defuse-audit/defuse-activity-countdown-fixed-383x770.png`
-- final side-by-side comparison: `.codex-tmp/defuse-audit/defuse-before-after-383x770.png`
+- final side-by-side comparison: `.codex-tmp/defuse-audit/defuse-before-after-final-383x770.png`
 - viewport/state: 用户截图同尺寸 `383 × 770`、标准安全区 `390 × 844`、超短屏 `389 × 584`；覆盖牌堆顶、中间、牌堆底和战报展开状态
 
 ### Visual Truth
@@ -217,7 +217,7 @@
 3. Interaction pass — 发现按钮子文本会被递归点击绑定导致单击双增量，改为按钮自身 `value`，验证每次点击只移动一个位置。
 4. Responsive pass — 根据真实逻辑屏高调整标题、卡面、选择器、CTA 和战报抽屉；短屏与安全区状态均一屏完成核心任务。
 5. Countdown repaint pass — 修复局部倒计时重绘使用旧页面背景色造成的亮色块；战报打开时暂停隐藏标题的局部重绘，关闭战报后完整渲染会立即恢复最新倒计时，避免遮罩穿透和低端真机闪烁。
-6. Final comparison — `.codex-tmp/defuse-audit/defuse-before-after-383x770.png` 并排检查后，P0/P1/P2 清零；修复后等待多次倒计时刷新并重新捕获主页面和战报页，浏览器 Canvas 控制台 0 warning、0 error。
+6. Final comparison — `.codex-tmp/defuse-audit/defuse-before-after-final-383x770.png` 并排检查后，P0/P1/P2 清零；修复后等待多次倒计时刷新并重新捕获主页面和战报页，浏览器 Canvas 控制台 0 warning、0 error。
 
 ## Primary Interactions Tested
 
