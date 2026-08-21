@@ -39,6 +39,15 @@ function assertHost(room: RoomRecord, playerId: string): void {
   if (room.ownerId !== playerId) throw new ServiceError("NOT_ROOM_HOST");
 }
 
+function nextBotNumber(room: RoomRecord): number {
+  const highest = room.members.reduce((current, member) => {
+    if (!member.bot) return current;
+    const match = /^Bot (\d+)$/u.exec(member.name);
+    return Math.max(current, match ? Number(match[1]) : 0);
+  }, 0);
+  return highest + 1;
+}
+
 export class RoomCoordinator {
   readonly #store: GameStore;
   readonly #clock: Clock;
@@ -151,12 +160,25 @@ export class RoomCoordinator {
           return room;
         }
       }
+      const saveReceipt = async (revision: number): Promise<void> => {
+        if (!command) return;
+        await transaction.saveReceipt({
+          roomId: room.id,
+          actorId: auth.playerId,
+          commandId: command.commandId,
+          fingerprint: command.fingerprint,
+          receipt: { ok: true, commandId: command.commandId, revision },
+          createdAt: this.#clock.now(),
+        });
+      };
       assertHost(room, auth.playerId);
-      if (room.members.some((entry) => entry.bot)) return room;
       if (!room.settings.allowBots) throw new ServiceError("BOTS_DISABLED");
       if (room.status !== "LOBBY") throw new ServiceError("MATCH_ALREADY_STARTED");
-      if (room.members.length >= room.settings.maxPlayers) throw new ServiceError("ROOM_FULL");
-      const botIndex = room.members.filter((entry) => entry.bot).length + 1;
+      if (room.members.length >= room.settings.maxPlayers) {
+        await saveReceipt(room.revision);
+        return room;
+      }
+      const botIndex = nextBotNumber(room);
       const updated: RoomRecord = {
         ...room,
         revision: room.revision + 1,
@@ -172,16 +194,7 @@ export class RoomCoordinator {
       await transaction.appendAudit([
         roomAuditEvent(updated.id, updated.revision, "BOT_ADDED", auth.playerId, this.#clock.now()),
       ]);
-      if (command) {
-        await transaction.saveReceipt({
-          roomId: room.id,
-          actorId: auth.playerId,
-          commandId: command.commandId,
-          fingerprint: command.fingerprint,
-          receipt: { ok: true, commandId: command.commandId, revision: updated.revision },
-          createdAt: this.#clock.now(),
-        });
-      }
+      await saveReceipt(updated.revision);
       return updated;
     });
   }

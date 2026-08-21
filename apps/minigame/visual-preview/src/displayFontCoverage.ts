@@ -15,8 +15,8 @@ const VALUE_ATTRIBUTE = /\bvalue="([^"]*)"/u;
 const CREATE_ROOM_DISPLAY_COPY = [
   "处理中…",
   "每回合 60 秒",
-  "允许机器人补位",
-  "不允许机器人补位",
+  "允许手动加入 Bot",
+  "不允许加入 Bot",
 ] as const;
 
 /**

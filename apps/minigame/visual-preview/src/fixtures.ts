@@ -267,7 +267,7 @@ export const SCREEN_FIXTURES = Object.freeze({
     rows: [
       { id: "players", title: "玩家人数", detail: "当前 4 人 · 点按切换 2 - 5 人", badge: "4 人", action: intent("cycle-players", "切换人数", "CycleRoomPlayers") },
       { id: "timer", title: "行动计时", detail: "点按切换 30 / 45 / 60 秒", badge: "45 秒", action: intent("cycle-timer", "切换计时", "CycleTurnSeconds") },
-      { id: "bots", title: "机器人补位", detail: "允许机器人补位，点按关闭", badge: "已开启", action: intent("toggle-bots", "关闭", "ToggleRoomBots") },
+      { id: "bots", title: "允许机器人加入", detail: "房主可在房间内手动添加", badge: "已开启", action: intent("toggle-bots", "关闭", "ToggleRoomBots") },
       { id: "ruleset", title: "规则集（固定）", detail: "original-2025@1 · 版本固定", badge: "基础版" },
     ],
     actions: [intent("create", "创建并邀请", "CreateRoom"), nav("back", "返回", "play-mode", "ink")],

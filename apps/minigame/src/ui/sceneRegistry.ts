@@ -95,12 +95,12 @@ const screens: Record<ScreenId, SceneDefinition> = {
         },
         {
           id: "bots",
-          title: "机器人补位",
-          detail: "人数不足时自动补位",
+          title: "允许机器人加入",
+          detail: "房主可在房间内手动添加",
           control: {
             kind: "toggle",
             checked: draft.allowBots,
-            action: intent("toggle-bots", "切换机器人补位", "ToggleRoomBots"),
+            action: intent("toggle-bots", "切换机器人加入", "ToggleRoomBots"),
           },
         },
         { id: "ruleset", title: "原创规则 · 2025 基础版", detail: "original-2025@1" },
