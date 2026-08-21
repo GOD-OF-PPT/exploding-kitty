@@ -145,7 +145,7 @@ export function deriveScene(view: ProductView, context: SceneContext = {}): Scen
   if (!view.authenticated) return "login";
   if (view.result || view.status === "FINISHED" || view.phase === "FINISHED") return "result";
   if (view.eliminated && !context.spectating) return "eliminated";
-  if (view.pending?.kind === "RESPONSE") return "response";
+  if (view.pending?.kind === "RESPONSE" && hasLegalNopeResponse(view)) return "response";
   if (view.pending?.kind === "GIVE_CARD") return "give-card";
   if (view.pending?.kind === "DEFUSE_INSERTION") return "defuse";
   if (view.pending?.kind === "PRIVATE_PEEK") return "future";
@@ -159,6 +159,11 @@ export function deriveScene(view: ProductView, context: SceneContext = {}): Scen
     return "game";
   }
   return "home";
+}
+
+function hasLegalNopeResponse(view: ProductView): boolean {
+  const nopeTokens = new Set(view.hand.filter((card) => card.type === "NOPE").map((card) => card.token));
+  return view.legalActionDetails.some((action) => action.type === "PlayNope" && action.cardTokens?.some((token) => nopeTokens.has(token)));
 }
 
 const object = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};

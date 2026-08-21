@@ -65,7 +65,8 @@ describe("scene registry", () => {
   it("routes authoritative pending states and attack debt into reachable scenes", () => {
     const base = { phase: "MATCH", viewerId: "you", matchId: "m1", you: { id: "you", alive: true, hand: [] }, turn: { id: "t1", playerId: "you", remaining: 1 } };
     const cases = [
-      [{ ...base, pending: { kind: "RESPONSE", id: "w1" } }, "response"],
+      [{ ...base, pending: { kind: "RESPONSE", id: "w1" }, legalActions: [{ type: "PassResponse", windowId: "w1" }] }, "game"],
+      [{ ...base, you: { ...base.you, hand: [{ token: "nope", type: "NOPE" }] }, pending: { kind: "RESPONSE", id: "w1" }, legalActions: [{ type: "PlayNope", windowId: "w1", cardTokens: ["nope"] }, { type: "PassResponse", windowId: "w1" }] }, "response"],
       [{ ...base, pending: { kind: "GIVE_CARD", id: "p1" } }, "give-card"],
       [{ ...base, pending: { kind: "PRIVATE_PEEK", id: "p1" } }, "future"],
       [{ ...base, pending: { kind: "EXPLOSION", id: "p1" } }, "explosion"],
@@ -88,12 +89,20 @@ describe("scene registry", () => {
   });
 
   it("only exposes authoritative response and private-choice commands", () => {
-    const response = normalizeProductView({
+    const passOnly = normalizeProductView({
       phase: "MATCH", viewerId: "you", matchId: "m1", pending: { kind: "RESPONSE", id: "w1", windowId: "w1" },
       you: { id: "you", hand: [{ token: "nope", type: "NOPE" }] },
       legalActions: [{ type: "PassResponse", windowId: "w1" }],
     }, "online");
-    expect(buildScreen("response", { view: response }).actions?.map((action) => action.intent?.type)).toEqual(["PassResponse"]);
+    expect(deriveScreen({ view: passOnly })).toBe("other-turn");
+
+    const response = normalizeProductView({
+      phase: "MATCH", viewerId: "you", matchId: "m1", pending: { kind: "RESPONSE", id: "w1", windowId: "w1" },
+      you: { id: "you", hand: [{ token: "nope", type: "NOPE" }] },
+      legalActions: [{ type: "PlayNope", windowId: "w1", cardTokens: ["nope"] }, { type: "PassResponse", windowId: "w1" }],
+    }, "online");
+    expect(deriveScreen({ view: response })).toBe("response");
+    expect(buildScreen("response", { view: response }).actions?.map((action) => action.intent?.type)).toEqual(["PlayNope", "PassResponse"]);
 
     const peek = normalizeProductView({
       phase: "MATCH", viewerId: "you", matchId: "m1", pending: { kind: "PRIVATE_PEEK", id: "p1", promptId: "p1", cards: [{ type: "SKIP" }] },
